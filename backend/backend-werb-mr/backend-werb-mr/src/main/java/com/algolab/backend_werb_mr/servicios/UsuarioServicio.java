@@ -3,6 +3,7 @@ package com.algolab.backend_werb_mr.servicios;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.algolab.backend_werb_mr.modelos.Usuario;
@@ -11,14 +12,28 @@ import com.algolab.backend_werb_mr.repositorio.Repositorio;
 @Service
 public class UsuarioServicio implements IUsuarioServicio {
     private final Repositorio repositorio;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioServicio(Repositorio repositorio) {
+    public UsuarioServicio(Repositorio repositorio, PasswordEncoder passwordEncoder) {
         this.repositorio = repositorio;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public Usuario guardar(Usuario usuario) {
         return repositorio.guardar(usuario);
+    }
+
+    @Override
+    public Usuario registrar(Usuario usuario) {
+        usuario.setContrasena(passwordEncoder.encode(usuario.getContrasena()));
+        return repositorio.guardar(usuario);
+    }
+
+    @Override
+    public Optional<Usuario> iniciarSesion(String correo, String contrasena) {
+        return repositorio.buscarPorCorreo(correo)
+                .filter(usuario -> passwordEncoder.matches(contrasena, usuario.getContrasena()));
     }
 
     @Override

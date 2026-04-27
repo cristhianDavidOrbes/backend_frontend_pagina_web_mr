@@ -8,6 +8,10 @@ import com.algolab.backend_werb_mr.modelos.Usuario;
 public interface IUsuarioServicio {
     Usuario guardar(Usuario usuario);
 
+    Usuario registrar(Usuario usuario);
+
+    Optional<Usuario> iniciarSesion(String correo, String contrasena);
+
     Optional<Usuario> buscarPorId(Long id);
 
     List<Usuario> listar();

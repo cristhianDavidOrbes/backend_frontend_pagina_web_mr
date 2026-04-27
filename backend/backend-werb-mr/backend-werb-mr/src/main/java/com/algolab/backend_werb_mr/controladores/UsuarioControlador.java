@@ -1,123 +1,130 @@
 package com.algolab.backend_werb_mr.controladores;
 
+import java.util.List;
 import java.util.Map;
 
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.algolab.backend_werb_mr.dtos.AuthRespuestaDTO;
+import com.algolab.backend_werb_mr.dtos.LoginRequest;
+import com.algolab.backend_werb_mr.dtos.RegistroUsuarioRequest;
+import com.algolab.backend_werb_mr.dtos.UsuarioRespuestaDTO;
 import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.modelos.Usuario;
+import com.algolab.backend_werb_mr.seguridad.JwtServicio;
 import com.algolab.backend_werb_mr.servicios.IUsuarioServicio;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioControlador {
     private final IUsuarioServicio usuarioServicio;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final JwtServicio jwtServicio;
 
-    public UsuarioControlador(IUsuarioServicio usuarioServicio) {
+    public UsuarioControlador(IUsuarioServicio usuarioServicio, JwtServicio jwtServicio) {
         this.usuarioServicio = usuarioServicio;
+        this.jwtServicio = jwtServicio;
     }
 
-    @PostMapping(value = "/iniciar-sesion", consumes = MediaType.ALL_VALUE)
-    public ResponseEntity<Map<String, Object>> iniciarSesion(@RequestBody String body) {
-        Map<String, String> datos = leerBody(body);
-
-        if (datos == null) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "sesionIniciada", false,
-                    "mensaje", "JSON invalido"));
-        }
-
-        String correo = limpiar(datos.get("correo"));
-        String contrasena = limpiar(datos.get("contrasena"));
+    @PostMapping(value = "/iniciar-sesion", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AuthRespuestaDTO> iniciarSesion(@RequestBody LoginRequest request) {
+        String correo = limpiar(request.getCorreo());
+        String contrasena = limpiar(request.getContrasena());
 
         if (correo == null || contrasena == null) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "sesionIniciada", false,
-                    "mensaje", "Debe enviar correo y contrasena"));
+            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
+                    false,
+                    "Debe enviar correo y contrasena",
+                    null,
+                    null));
         }
 
-        Usuario usuarioEncontrado = usuarioServicio.buscarPorCorreo(correo).orElse(null);
+        if (!usuarioServicio.existePorCorreo(correo)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new AuthRespuestaDTO(
+                    false,
+                    "El usuario no existe en la base de datos",
+                    null,
+                    null));
+        }
+
+        Usuario usuarioEncontrado = usuarioServicio.iniciarSesion(correo, contrasena).orElse(null);
 
         if (usuarioEncontrado == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
-                    "sesionIniciada", false,
-                    "mensaje", "El usuario no existe en la base de datos"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new AuthRespuestaDTO(
+                    false,
+                    "Contrasena incorrecta",
+                    null,
+                    null));
         }
 
-        if (!usuarioEncontrado.getContrasena().equals(contrasena)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                    "sesionIniciada", false,
-                    "mensaje", "Contrasena incorrecta"));
-        }
-
-        return ResponseEntity.ok(Map.of(
-                "sesionIniciada", true,
-                "mensaje", "Inicio de sesion exitoso",
-                "usuario", usuarioEncontrado));
+        return ResponseEntity.ok(new AuthRespuestaDTO(
+                true,
+                "Inicio de sesion exitoso",
+                jwtServicio.generarToken(usuarioEncontrado),
+                UsuarioRespuestaDTO.desdeUsuario(usuarioEncontrado)));
     }
 
-    @PostMapping(value = "/registrar", consumes = MediaType.ALL_VALUE)
-    public ResponseEntity<Map<String, Object>> registrarUsuario(@RequestBody String body) {
-        Map<String, String> datos = leerBody(body);
-
-        if (datos == null) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "registrado", false,
-                    "mensaje", "JSON invalido"));
-        }
-
-        String nombre = limpiar(datos.get("nombre"));
-        String correo = limpiar(datos.get("correo"));
-        String rolTexto = limpiar(datos.get("rol"));
-        String contrasena = limpiar(datos.get("contrasena"));
+    @PostMapping(value = "/registrar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AuthRespuestaDTO> registrarUsuario(@RequestBody RegistroUsuarioRequest request) {
+        String nombre = limpiar(request.getNombre());
+        String correo = limpiar(request.getCorreo());
+        String rolTexto = limpiar(request.getRol());
+        String contrasena = limpiar(request.getContrasena());
 
         if (nombre == null || correo == null || rolTexto == null || contrasena == null) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "registrado", false,
-                    "mensaje", "Debe enviar nombre, correo, rol y contrasena"));
+            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
+                    false,
+                    "Debe enviar nombre, correo, rol y contrasena",
+                    null,
+                    null));
         }
 
         Rol rol;
         try {
             rol = Rol.valueOf(rolTexto.toUpperCase());
         } catch (IllegalArgumentException error) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "registrado", false,
-                    "mensaje", "Rol invalido. Use ESTUDIANTE, DOCENTE o ADMINISTRADOR"));
+            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
+                    false,
+                    "Rol invalido. Use ESTUDIANTE, DOCENTE o ADMINISTRADOR",
+                    null,
+                    null));
         }
 
         if (usuarioServicio.existePorCorreo(correo)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                    "registrado", false,
-                    "mensaje", "El usuario ya existe en la base de datos"));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthRespuestaDTO(
+                    false,
+                    "El usuario ya existe en la base de datos",
+                    null,
+                    null));
         }
 
         Usuario usuario = new Usuario(null, nombre, correo, rol, contrasena);
-        Usuario usuarioGuardado = usuarioServicio.guardar(usuario);
+        Usuario usuarioGuardado = usuarioServicio.registrar(usuario);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "registrado", true,
-                "mensaje", "Usuario registrado correctamente",
-                "usuario", usuarioGuardado));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new AuthRespuestaDTO(
+                true,
+                "Usuario registrado correctamente",
+                jwtServicio.generarToken(usuarioGuardado),
+                UsuarioRespuestaDTO.desdeUsuario(usuarioGuardado)));
     }
 
-    private Map<String, String> leerBody(String body) {
-        try {
-            return objectMapper.readValue(body, new TypeReference<Map<String, String>>() {
-            });
-        } catch (JsonProcessingException error) {
-            return null;
-        }
+    @GetMapping("/perfil")
+    public ResponseEntity<Map<String, Object>> obtenerPerfil(Authentication authentication) {
+        List<String> roles = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
+
+        return ResponseEntity.ok(Map.of(
+                "correo", authentication.getName(),
+                "roles", roles));
     }
 
     private String limpiar(String valor) {
