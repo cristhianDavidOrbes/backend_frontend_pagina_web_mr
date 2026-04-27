@@ -154,6 +154,11 @@ export default function AdministradorPage() {
       return;
     }
 
+    if (usuarioActual?.id === usuarioForm.id && usuarioForm.rol !== "ADMINISTRADOR") {
+      setMensaje("No puedes quitarte tu propio rol de administrador.");
+      return;
+    }
+
     try {
       const usuarioActualizado = await api<Usuario>(`/api/usuarios/${usuarioForm.id}`, {
         method: "PUT",
@@ -178,6 +183,11 @@ export default function AdministradorPage() {
 
   async function eliminarUsuario(id: number) {
     setMensaje("");
+
+    if (usuarioActual?.id === id) {
+      setMensaje("No puedes borrar tu propia cuenta de administrador.");
+      return;
+    }
 
     try {
       await api<null>(`/api/usuarios/${id}`, {
@@ -349,8 +359,13 @@ export default function AdministradorPage() {
                               Editar
                             </button>
                             <button
-                              className={`${buttonClass} bg-red-700 text-white hover:bg-red-800`}
+                              className={`${buttonClass} ${
+                                usuarioActual?.id === usuario.id
+                                  ? "bg-neutral-300 text-neutral-600"
+                                  : "bg-red-700 text-white hover:bg-red-800"
+                              }`}
                               type="button"
+                              disabled={usuarioActual?.id === usuario.id}
                               onClick={() => eliminarUsuario(usuario.id)}
                             >
                               Borrar
@@ -410,6 +425,7 @@ export default function AdministradorPage() {
                     className={inputClass}
                     id="usuario-rol"
                     value={usuarioForm.rol}
+                    disabled={usuarioActual?.id === usuarioForm.id}
                     onChange={(event) =>
                       setUsuarioForm((actual) => ({
                         ...actual,
@@ -421,6 +437,11 @@ export default function AdministradorPage() {
                     <option value="DOCENTE">DOCENTE</option>
                     <option value="ADMINISTRADOR">ADMINISTRADOR</option>
                   </select>
+                  {usuarioActual?.id === usuarioForm.id ? (
+                    <p className="mt-2 text-xs text-neutral-500">
+                      No puedes cambiar tu propio rango de administrador.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex gap-2">
