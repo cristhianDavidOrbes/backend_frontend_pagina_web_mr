@@ -29,6 +29,9 @@ public class Usuario {
     @Column(nullable = false)
     private String contrasena;
 
+    public Usuario() {
+    }
+
     public Usuario(Long id, String nombre, String correo, Rol rol, String contrasena) {
         this.id = id;
         this.nombre = nombre;
