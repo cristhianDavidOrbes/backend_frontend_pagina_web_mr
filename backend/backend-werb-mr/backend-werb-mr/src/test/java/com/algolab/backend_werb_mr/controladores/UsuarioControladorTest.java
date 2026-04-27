@@ -140,6 +140,31 @@ class UsuarioControladorTest {
         assertEquals(HttpStatus.NO_CONTENT, respuestaEliminar.getStatusCode());
     }
 
+    @Test
+    void administradorNoPuedeQuitarSuPropioRolAdministrador() {
+        Usuario administrador = usuarioServicio.registrar(
+                new Usuario(null, "Admin", "admin@test.com", Rol.ADMINISTRADOR, "123456"));
+
+        ResponseEntity<?> respuesta = controlador.actualizarUsuario(
+                administrador.getId(),
+                solicitudActualizacion("Admin", "admin@test.com", Rol.DOCENTE),
+                autenticacion("admin@test.com", Rol.ADMINISTRADOR));
+
+        assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
+    }
+
+    @Test
+    void administradorNoPuedeEliminarSuPropiaCuenta() {
+        Usuario administrador = usuarioServicio.registrar(
+                new Usuario(null, "Admin", "admin@test.com", Rol.ADMINISTRADOR, "123456"));
+
+        ResponseEntity<?> respuesta = controlador.eliminarUsuario(
+                administrador.getId(),
+                autenticacion("admin@test.com", Rol.ADMINISTRADOR));
+
+        assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
+    }
+
     private static RegistroUsuarioRequest solicitudRegistro(String nombre, String correo, Rol rol, String contrasena) {
         RegistroUsuarioRequest request = new RegistroUsuarioRequest();
         request.setNombre(nombre);

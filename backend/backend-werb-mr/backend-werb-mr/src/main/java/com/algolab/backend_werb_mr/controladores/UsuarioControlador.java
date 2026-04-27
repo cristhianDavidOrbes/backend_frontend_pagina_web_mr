@@ -236,6 +236,12 @@ public class UsuarioControlador {
                         "mensaje", "Rol invalido. Use ESTUDIANTE, DOCENTE o ADMINISTRADOR"));
             }
 
+            if (esUsuarioAutenticado(authentication, usuario) && usuario.getRol() == Rol.ADMINISTRADOR
+                    && rol != Rol.ADMINISTRADOR) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                        "mensaje", "No puede quitarse su propio rol de administrador"));
+            }
+
             usuario.setRol(rol);
         }
 
@@ -250,8 +256,15 @@ public class UsuarioControlador {
                     "mensaje", "Solo el administrador puede eliminar usuarios"));
         }
 
-        if (usuarioServicio.buscarPorId(id).isEmpty()) {
+        Usuario usuario = usuarioServicio.buscarPorId(id).orElse(null);
+
+        if (usuario == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        if (esUsuarioAutenticado(authentication, usuario)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "No puede eliminar su propia cuenta de administrador"));
         }
 
         usuarioServicio.eliminarPorId(id);
@@ -278,6 +291,10 @@ public class UsuarioControlador {
     private boolean puedeActualizarUsuario(Authentication authentication, Usuario usuario) {
         return tieneRol(authentication, Rol.ADMINISTRADOR)
                 || usuario.getCorreo().equals(authentication.getName());
+    }
+
+    private boolean esUsuarioAutenticado(Authentication authentication, Usuario usuario) {
+        return authentication != null && usuario.getCorreo().equals(authentication.getName());
     }
 
     private boolean tieneRol(Authentication authentication, Rol rol) {
