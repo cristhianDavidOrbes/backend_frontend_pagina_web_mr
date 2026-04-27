@@ -1,9 +1,14 @@
 package com.algolab.backend_werb_mr.dtos;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 public class AuthRespuestaDTO {
     private boolean exitoso;
     private String mensaje;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String token;
+
     private UsuarioRespuestaDTO usuario;
 
     public AuthRespuestaDTO() {

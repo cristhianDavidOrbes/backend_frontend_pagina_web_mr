@@ -26,6 +26,7 @@ public class SeguridadConfiguracion {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/usuarios/registrar").permitAll()
                         .requestMatchers("/api/usuarios/iniciar-sesion").permitAll()
+                        .requestMatchers("/api/niveles/**").hasAnyRole("DOCENTE", "ADMINISTRADOR")
                         .requestMatchers("/api/descripciones-niveles/**").hasAnyRole("DOCENTE", "ADMINISTRADOR")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFiltro, UsernamePasswordAuthenticationFilter.class)

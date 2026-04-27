@@ -8,12 +8,16 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.algolab.backend_werb_mr.dtos.ActualizarUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.AuthRespuestaDTO;
 import com.algolab.backend_werb_mr.dtos.LoginRequest;
 import com.algolab.backend_werb_mr.dtos.RegistroUsuarioRequest;
@@ -36,6 +40,14 @@ public class UsuarioControlador {
 
     @PostMapping(value = "/iniciar-sesion", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AuthRespuestaDTO> iniciarSesion(@RequestBody LoginRequest request) {
+        if (request == null) {
+            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
+                    false,
+                    "Debe enviar correo y contrasena",
+                    null,
+                    null));
+        }
+
         String correo = limpiar(request.getCorreo());
         String contrasena = limpiar(request.getContrasena());
 
@@ -74,6 +86,19 @@ public class UsuarioControlador {
 
     @PostMapping(value = "/registrar", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AuthRespuestaDTO> registrarUsuario(@RequestBody RegistroUsuarioRequest request) {
+        return registrarUsuarioInterno(request, false);
+    }
+
+    private ResponseEntity<AuthRespuestaDTO> registrarUsuarioInterno(RegistroUsuarioRequest request,
+            boolean permitirRolesPrivilegiados) {
+        if (request == null) {
+            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
+                    false,
+                    "Debe enviar nombre, correo, rol y contrasena",
+                    null,
+                    null));
+        }
+
         String nombre = limpiar(request.getNombre());
         String correo = limpiar(request.getCorreo());
         String rolTexto = limpiar(request.getRol());
@@ -98,6 +123,14 @@ public class UsuarioControlador {
                     null));
         }
 
+        if (!permitirRolesPrivilegiados && rol != Rol.ESTUDIANTE) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new AuthRespuestaDTO(
+                    false,
+                    "El registro publico solo permite crear usuarios ESTUDIANTE",
+                    null,
+                    null));
+        }
+
         if (usuarioServicio.existePorCorreo(correo)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthRespuestaDTO(
                     false,
@@ -112,8 +145,117 @@ public class UsuarioControlador {
         return ResponseEntity.status(HttpStatus.CREATED).body(new AuthRespuestaDTO(
                 true,
                 "Usuario registrado correctamente",
-                jwtServicio.generarToken(usuarioGuardado),
+                null,
                 UsuarioRespuestaDTO.desdeUsuario(usuarioGuardado)));
+    }
+
+    @GetMapping
+    public ResponseEntity<?> listarUsuarios(Authentication authentication) {
+        if (!tieneRol(authentication, Rol.DOCENTE) && !tieneRol(authentication, Rol.ADMINISTRADOR)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "Solo el docente y el administrador pueden listar usuarios"));
+        }
+
+        List<UsuarioRespuestaDTO> usuarios = usuarioServicio.listar().stream()
+                .map(UsuarioRespuestaDTO::desdeUsuario)
+                .toList();
+
+        return ResponseEntity.ok(usuarios);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> buscarUsuario(@PathVariable Long id, Authentication authentication) {
+        Usuario usuario = usuarioServicio.buscarPorId(id).orElse(null);
+
+        if (usuario == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (!puedeConsultarUsuario(authentication, usuario)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "No tiene permiso para consultar este usuario"));
+        }
+
+        return ResponseEntity.ok(UsuarioRespuestaDTO.desdeUsuario(usuario));
+    }
+
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AuthRespuestaDTO> crearUsuario(@RequestBody RegistroUsuarioRequest request,
+            Authentication authentication) {
+        if (!tieneRol(authentication, Rol.ADMINISTRADOR)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new AuthRespuestaDTO(
+                    false,
+                    "Solo el administrador puede crear usuarios desde el CRUD",
+                    null,
+                    null));
+        }
+
+        return registrarUsuarioInterno(request, true);
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> actualizarUsuario(@PathVariable Long id, @RequestBody ActualizarUsuarioRequest request,
+            Authentication authentication) {
+        if (request == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "Debe enviar los datos del usuario"));
+        }
+
+        Usuario usuario = usuarioServicio.buscarPorId(id).orElse(null);
+
+        if (usuario == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (!puedeActualizarUsuario(authentication, usuario)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "No tiene permiso para actualizar este usuario"));
+        }
+
+        String nombre = limpiar(request.getNombre());
+        String correo = limpiar(request.getCorreo());
+
+        if (nombre == null || correo == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "Debe enviar nombre y correo"));
+        }
+
+        Usuario usuarioConCorreo = usuarioServicio.buscarPorCorreo(correo).orElse(null);
+        if (usuarioConCorreo != null && !usuarioConCorreo.getId().equals(id)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "mensaje", "El correo ya esta registrado por otro usuario"));
+        }
+
+        usuario.setNombre(nombre);
+        usuario.setCorreo(correo);
+
+        if (tieneRol(authentication, Rol.ADMINISTRADOR) && limpiar(request.getRol()) != null) {
+            Rol rol = obtenerRol(request.getRol());
+            if (rol == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "mensaje", "Rol invalido. Use ESTUDIANTE, DOCENTE o ADMINISTRADOR"));
+            }
+
+            usuario.setRol(rol);
+        }
+
+        Usuario usuarioActualizado = usuarioServicio.actualizar(usuario);
+        return ResponseEntity.ok(UsuarioRespuestaDTO.desdeUsuario(usuarioActualizado));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> eliminarUsuario(@PathVariable Long id, Authentication authentication) {
+        if (!tieneRol(authentication, Rol.ADMINISTRADOR)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "Solo el administrador puede eliminar usuarios"));
+        }
+
+        if (usuarioServicio.buscarPorId(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        usuarioServicio.eliminarPorId(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/perfil")
@@ -125,6 +267,41 @@ public class UsuarioControlador {
         return ResponseEntity.ok(Map.of(
                 "correo", authentication.getName(),
                 "roles", roles));
+    }
+
+    private boolean puedeConsultarUsuario(Authentication authentication, Usuario usuario) {
+        return tieneRol(authentication, Rol.ADMINISTRADOR)
+                || tieneRol(authentication, Rol.DOCENTE)
+                || usuario.getCorreo().equals(authentication.getName());
+    }
+
+    private boolean puedeActualizarUsuario(Authentication authentication, Usuario usuario) {
+        return tieneRol(authentication, Rol.ADMINISTRADOR)
+                || usuario.getCorreo().equals(authentication.getName());
+    }
+
+    private boolean tieneRol(Authentication authentication, Rol rol) {
+        if (authentication == null) {
+            return false;
+        }
+
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority -> authority.equals("ROLE_" + rol.name()));
+    }
+
+    private Rol obtenerRol(String rolTexto) {
+        String rolLimpio = limpiar(rolTexto);
+
+        if (rolLimpio == null) {
+            return null;
+        }
+
+        try {
+            return Rol.valueOf(rolLimpio.toUpperCase());
+        } catch (IllegalArgumentException error) {
+            return null;
+        }
     }
 
     private String limpiar(String valor) {

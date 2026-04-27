@@ -20,7 +20,7 @@ import com.algolab.backend_werb_mr.modelos.DescripcionNivel;
 import com.algolab.backend_werb_mr.servicios.IDescripcionNivelServicio;
 
 @RestController
-@RequestMapping("/api/descripciones-niveles")
+@RequestMapping("/api/niveles")
 public class DescripcionNivelControlador {
     private final IDescripcionNivelServicio descripcionNivelServicio;
 
