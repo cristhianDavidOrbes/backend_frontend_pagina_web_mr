@@ -255,6 +255,14 @@ SPRING_DATASOURCE_USERNAME=usuario
 SPRING_DATASOURCE_PASSWORD=contrasena
 ```
 
+Si usas la base de datos PostgreSQL de Railway, agrega en las variables del servicio backend:
+
+```properties
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+```
+
+Reemplaza `Postgres` por el nombre exacto del servicio de base de datos si Railway lo creo con otro nombre. El backend convierte automaticamente esa URL de Railway a formato JDBC.
+
 Despues del despliegue, genera un dominio publico para el backend y usa esa URL en el frontend como `API_BASE_URL`.
 
 ## Comandos
