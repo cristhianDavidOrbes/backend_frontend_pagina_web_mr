@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8080";
+const DEFAULT_API_BASE_URL = "https://backendfrontendpaginawebmr-production.up.railway.app";
 
 type ProxyOptions = {
   request: Request;
@@ -10,6 +10,7 @@ type ProxyOptions = {
 
 export async function proxyBackend({ request, path, method }: ProxyOptions) {
   try {
+    const apiBaseUrl = (process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(/\/$/, "");
     const authorization = request.headers.get("authorization");
     const headers: HeadersInit = {
       "Content-Type": "application/json",
@@ -19,7 +20,7 @@ export async function proxyBackend({ request, path, method }: ProxyOptions) {
       headers.Authorization = authorization;
     }
 
-    const respuesta = await fetch(`${API_BASE_URL}${path}`, {
+    const respuesta = await fetch(`${apiBaseUrl}${path}`, {
       method,
       headers,
       body: method === "GET" || method === "DELETE" ? undefined : await request.text(),
