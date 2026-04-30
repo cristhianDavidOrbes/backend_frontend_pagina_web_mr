@@ -2,11 +2,11 @@ FROM eclipse-temurin:21-jdk AS build
 
 WORKDIR /workspace
 
-COPY gradlew .
-COPY gradle ./gradle
-COPY build.gradle .
-COPY settings.gradle .
-COPY src ./src
+COPY backend/backend-werb-mr/backend-werb-mr/gradlew .
+COPY backend/backend-werb-mr/backend-werb-mr/gradle ./gradle
+COPY backend/backend-werb-mr/backend-werb-mr/build.gradle .
+COPY backend/backend-werb-mr/backend-werb-mr/settings.gradle .
+COPY backend/backend-werb-mr/backend-werb-mr/src ./src
 
 RUN chmod +x gradlew && ./gradlew bootJar -x test --no-daemon
 
