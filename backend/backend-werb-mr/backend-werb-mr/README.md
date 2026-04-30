@@ -221,6 +221,42 @@ ADMIN_CORREO=cristhian.david@admin.com
 ADMIN_CONTRASENA=Cdol1122@
 ```
 
+## Despliegue en Railway
+
+El backend esta preparado para desplegarse como un servicio Java/Spring Boot en Railway.
+
+Configuracion del servicio:
+
+```txt
+Root Directory: /backend/backend-werb-mr/backend-werb-mr
+Config File: /backend/backend-werb-mr/backend-werb-mr/railway.json
+```
+
+Pasos:
+
+1. Crear un proyecto en Railway.
+2. Agregar una base de datos PostgreSQL al proyecto.
+3. Crear un servicio desde el repositorio de GitHub.
+4. Configurar el `Root Directory` con la ruta indicada arriba.
+5. En el servicio del backend, agregar estas variables:
+
+```properties
+JWT_SECRET=valor-largo-y-seguro
+ADMIN_NOMBRE=Nombre Admin
+ADMIN_CORREO=admin@correo.com
+ADMIN_CONTRASENA=contrasena-segura
+```
+
+El backend tambien acepta las variables de PostgreSQL que Railway expone en el servicio de base de datos (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`). Si prefieres configurarlo manualmente, puedes usar:
+
+```properties
+SPRING_DATASOURCE_URL=jdbc:postgresql://host:puerto/base_de_datos
+SPRING_DATASOURCE_USERNAME=usuario
+SPRING_DATASOURCE_PASSWORD=contrasena
+```
+
+Despues del despliegue, genera un dominio publico para el backend y usa esa URL en el frontend como `API_BASE_URL`.
+
 ## Comandos
 
 Ejecutar pruebas:
