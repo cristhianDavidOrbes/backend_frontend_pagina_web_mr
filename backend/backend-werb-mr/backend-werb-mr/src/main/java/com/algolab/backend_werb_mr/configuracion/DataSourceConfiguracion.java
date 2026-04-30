@@ -7,6 +7,8 @@ import java.nio.charset.StandardCharsets;
 import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -15,19 +17,35 @@ import org.springframework.util.StringUtils;
 
 @Configuration
 public class DataSourceConfiguracion {
+    private static final Logger logger = LoggerFactory.getLogger(DataSourceConfiguracion.class);
+
     @Bean
     @Primary
     public DataSource dataSource(Environment environment) {
         HikariDataSource dataSource = new HikariDataSource();
         dataSource.setDriverClassName("org.postgresql.Driver");
 
+        String railwayDatabaseUrl = firstNonBlank(
+                environment.getProperty("DATABASE_PRIVATE_URL"),
+                environment.getProperty("DATABASE_URL"),
+                environment.getProperty("DATABASE_PUBLIC_URL"),
+                environment.getProperty("POSTGRES_URL"));
+
+        if (StringUtils.hasText(railwayDatabaseUrl)) {
+            configurarDesdeUrlPostgres(dataSource, railwayDatabaseUrl);
+            logger.info("Configurando PostgreSQL desde DATABASE_URL de Railway");
+            return dataSource;
+        }
+
         String explicitUrl = firstNonBlank(
                 environment.getProperty("SPRING_DATASOURCE_URL"),
+                environment.getProperty("spring.datasource.url"),
                 environment.getProperty("DB_URL"));
 
         if (StringUtils.hasText(explicitUrl)) {
             if (esUrlPostgres(explicitUrl)) {
                 configurarDesdeUrlPostgres(dataSource, explicitUrl);
+                logger.info("Configurando PostgreSQL desde SPRING_DATASOURCE_URL/DB_URL");
                 return dataSource;
             }
 
@@ -42,18 +60,13 @@ public class DataSourceConfiguracion {
                     environment.getProperty("DB_PASSWORD"),
                     environment.getProperty("PGPASSWORD"),
                     ""));
+            logger.info("Configurando PostgreSQL desde URL JDBC explicita");
             return dataSource;
         }
 
-        String railwayDatabaseUrl = firstNonBlank(
-                environment.getProperty("DATABASE_PRIVATE_URL"),
-                environment.getProperty("DATABASE_URL"),
-                environment.getProperty("DATABASE_PUBLIC_URL"),
-                environment.getProperty("POSTGRES_URL"));
-
-        if (StringUtils.hasText(railwayDatabaseUrl)) {
-            configurarDesdeUrlPostgres(dataSource, railwayDatabaseUrl);
-            return dataSource;
+        if (estaEnRailway(environment) && !StringUtils.hasText(environment.getProperty("PGHOST"))) {
+            throw new IllegalStateException(
+                    "Falta configurar la base de datos en Railway. En Variables del servicio backend agrega DATABASE_URL=${{Postgres.DATABASE_URL}} o configura PGHOST, PGPORT, PGDATABASE, PGUSER y PGPASSWORD.");
         }
 
         String host = firstNonBlank(environment.getProperty("PGHOST"), "localhost");
@@ -62,6 +75,7 @@ public class DataSourceConfiguracion {
         dataSource.setJdbcUrl("jdbc:postgresql://" + host + ":" + port + "/" + database);
         dataSource.setUsername(firstNonBlank(environment.getProperty("PGUSER"), "postgres"));
         dataSource.setPassword(firstNonBlank(environment.getProperty("PGPASSWORD"), ""));
+        logger.info("Configurando PostgreSQL desde variables PGHOST/PGPORT/PGDATABASE");
 
         return dataSource;
     }
@@ -115,5 +129,11 @@ public class DataSourceConfiguracion {
 
     private boolean esEsquemaPostgres(String scheme) {
         return "postgres".equals(scheme) || "postgresql".equals(scheme);
+    }
+
+    private boolean estaEnRailway(Environment environment) {
+        return StringUtils.hasText(environment.getProperty("RAILWAY_ENVIRONMENT"))
+                || StringUtils.hasText(environment.getProperty("RAILWAY_PROJECT_ID"))
+                || StringUtils.hasText(environment.getProperty("RAILWAY_SERVICE_ID"));
     }
 }
