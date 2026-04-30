@@ -22,13 +22,13 @@ El frontend no llama directamente al backend desde el navegador. Usa rutas inter
 Backend por defecto:
 
 ```txt
-http://localhost:8080
+https://backendfrontendpaginawebmr-production.up.railway.app
 ```
 
 Se puede cambiar con la variable:
 
 ```env
-API_BASE_URL=http://localhost:8080
+API_BASE_URL=https://backendfrontendpaginawebmr-production.up.railway.app
 ```
 
 Flujo actual:
@@ -226,4 +226,4 @@ Administrador inicial para probar el panel:
 }
 ```
 
-Antes de probar el frontend, el backend debe estar corriendo.
+Antes de probar el frontend, el backend debe estar desplegado o corriendo en la URL configurada con `API_BASE_URL`.
