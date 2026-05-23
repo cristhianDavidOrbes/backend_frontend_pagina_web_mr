@@ -6,17 +6,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.env.EnvironmentPostProcessor;
-import org.springframework.core.Ordered;
+import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
-public class RailwayDatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
+public class RailwayDatabaseUrlInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
     @Override
-    public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        if (tieneValor(environment, "spring.datasource.url") || tieneValor(environment, "SPRING_DATASOURCE_URL")
-                || tieneValor(environment, "DB_URL")) {
+    public void initialize(ConfigurableApplicationContext applicationContext) {
+        ConfigurableEnvironment environment = applicationContext.getEnvironment();
+
+        if (tieneValorNoLocal(environment, "SPRING_DATASOURCE_URL") || tieneValorNoLocal(environment, "DB_URL")) {
             return;
         }
 
@@ -39,24 +39,24 @@ public class RailwayDatabaseUrlEnvironmentPostProcessor implements EnvironmentPo
         String userInfo = uri.getUserInfo();
         if (userInfo != null && !userInfo.isBlank()) {
             String[] partes = userInfo.split(":", 2);
-            properties.putIfAbsent("spring.datasource.username", decodificar(partes[0]));
+            properties.put("spring.datasource.username", decodificar(partes[0]));
 
             if (partes.length > 1) {
-                properties.putIfAbsent("spring.datasource.password", decodificar(partes[1]));
+                properties.put("spring.datasource.password", decodificar(partes[1]));
             }
         }
 
         environment.getPropertySources().addFirst(new MapPropertySource("railwayDatabaseUrl", properties));
     }
 
-    @Override
-    public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE;
-    }
-
     private boolean tieneValor(ConfigurableEnvironment environment, String propiedad) {
         String valor = environment.getProperty(propiedad);
         return valor != null && !valor.isBlank();
+    }
+
+    private boolean tieneValorNoLocal(ConfigurableEnvironment environment, String propiedad) {
+        String valor = environment.getProperty(propiedad);
+        return valor != null && !valor.isBlank() && !valor.contains("localhost");
     }
 
     private int obtenerPuerto(URI uri) {
