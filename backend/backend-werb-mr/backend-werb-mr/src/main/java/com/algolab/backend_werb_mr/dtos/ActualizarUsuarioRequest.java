@@ -4,6 +4,8 @@ public class ActualizarUsuarioRequest {
     private String nombre;
     private String correo;
     private String rol;
+    private Integer nivelActual;
+    private Integer puntaje;
 
     public ActualizarUsuarioRequest() {
     }
@@ -30,5 +32,21 @@ public class ActualizarUsuarioRequest {
 
     public void setRol(String rol) {
         this.rol = rol;
+    }
+
+    public Integer getNivelActual() {
+        return nivelActual;
+    }
+
+    public void setNivelActual(Integer nivelActual) {
+        this.nivelActual = nivelActual;
+    }
+
+    public Integer getPuntaje() {
+        return puntaje;
+    }
+
+    public void setPuntaje(Integer puntaje) {
+        this.puntaje = puntaje;
     }
 }

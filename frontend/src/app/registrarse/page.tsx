@@ -13,6 +13,8 @@ type RegistroRespuesta = {
     nombre: string;
     correo: string;
     rol: string;
+    nivelActual: number;
+    puntaje: number;
   };
 };
 

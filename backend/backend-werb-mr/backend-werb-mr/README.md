@@ -1,6 +1,6 @@
 # Backend AlgoLab
 
-Backend hecho con Spring Boot para manejar usuarios, autenticacion con JWT y descripciones de niveles.
+Backend hecho con Spring Boot para manejar usuarios, autenticacion con JWT, descripciones de niveles y progreso de estudiantes.
 
 ## Resumen
 
@@ -17,6 +17,8 @@ POST /api/usuarios/iniciar-sesion
 ```
 
 El registro publico solo permite crear usuarios con rol `ESTUDIANTE`. Los usuarios `DOCENTE` y `ADMINISTRADOR` se crean desde el CRUD de usuarios usando una cuenta administradora.
+
+El progreso del juego se guarda solo para usuarios autenticados. El modo invitado de Unity no usa endpoints del backend y no guarda progreso.
 
 Al arrancar la aplicacion se crea un administrador inicial si no existe:
 
@@ -61,11 +63,13 @@ Reglas principales:
 |---|---|---|---|
 | `POST` | `/api/usuarios/iniciar-sesion` | Publico | Si |
 | `POST` | `/api/usuarios/registrar` | Publico, solo crea `ESTUDIANTE` | Si |
+| `GET` | `/api/usuarios/me` | Usuario autenticado | No |
 | `GET` | `/api/usuarios/perfil` | Usuario autenticado | No |
 | `GET` | `/api/usuarios` | `DOCENTE`, `ADMINISTRADOR` | No |
 | `GET` | `/api/usuarios/{id}` | `DOCENTE`, `ADMINISTRADOR`, o el mismo usuario | No |
 | `POST` | `/api/usuarios` | `ADMINISTRADOR` | Si |
 | `PUT` | `/api/usuarios/{id}` | `ADMINISTRADOR`, o el mismo usuario | Si |
+| `PATCH` | `/api/usuarios/{id}` | `ADMINISTRADOR`, o el mismo usuario | Si |
 | `DELETE` | `/api/usuarios/{id}` | `ADMINISTRADOR`, excepto su propia cuenta | No |
 
 Body para iniciar sesion:
@@ -88,8 +92,28 @@ Respuesta exitosa de inicio de sesion:
     "id": 1,
     "nombre": "Cristhian David",
     "correo": "cristhian.david@admin.com",
-    "rol": "ADMINISTRADOR"
+    "rol": "ADMINISTRADOR",
+    "nivelActual": 1,
+    "puntaje": 0
   }
+}
+```
+
+Respuesta de usuario autenticado:
+
+```http
+GET /api/usuarios/me
+Authorization: Bearer <token>
+```
+
+```json
+{
+  "id": 1,
+  "nombre": "Cristhian David",
+  "correo": "cristhian.david@admin.com",
+  "rol": "ESTUDIANTE",
+  "nivelActual": 1,
+  "puntaje": 0
 }
 ```
 
@@ -123,7 +147,9 @@ Body para actualizar usuario:
 {
   "nombre": "Maria Actualizada",
   "correo": "maria.actualizada@email.com",
-  "rol": "ADMINISTRADOR"
+  "rol": "ADMINISTRADOR",
+  "nivelActual": 1,
+  "puntaje": 0
 }
 ```
 
@@ -132,6 +158,97 @@ Notas:
 - `rol` solo lo puede cambiar un `ADMINISTRADOR`.
 - Si un usuario no administrador manda `rol`, el backend no lo aplica.
 - El administrador autenticado no puede cambiar su propio rol a `DOCENTE` o `ESTUDIANTE`.
+- `nivelActual` debe estar entre `1` y `5`.
+- `puntaje` es un numero entero.
+
+Body para actualizar solo progreso resumido del usuario:
+
+```http
+PATCH /api/usuarios/{id}
+Authorization: Bearer <token>
+```
+
+```json
+{
+  "nivelActual": 2,
+  "puntaje": 200
+}
+```
+
+### Progreso del juego
+
+Estos endpoints estan pensados para Unity. Siempre usan el usuario autenticado por JWT; no se debe enviar `usuarioId` en el body.
+
+| Metodo | Endpoint | Acceso | Body |
+|---|---|---|---|
+| `GET` | `/api/progreso/me` | Usuario autenticado | No |
+| `POST` | `/api/progreso` | Usuario autenticado | Si |
+
+Consultar progreso:
+
+```http
+GET /api/progreso/me
+Authorization: Bearer <token>
+```
+
+Respuesta cuando no hay progreso guardado:
+
+```json
+{
+  "usuarioId": 1,
+  "nivelActual": 1,
+  "puntajeTotal": 0,
+  "niveles": []
+}
+```
+
+Respuesta con progreso:
+
+```json
+{
+  "usuarioId": 1,
+  "nivelActual": 2,
+  "puntajeTotal": 100,
+  "niveles": [
+    {
+      "nivel": 1,
+      "completado": true,
+      "puntaje": 100,
+      "tiempoRestante": 80,
+      "intentos": 1
+    }
+  ]
+}
+```
+
+Guardar o actualizar progreso:
+
+```http
+POST /api/progreso
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "nivel": 1,
+  "completado": true,
+  "puntaje": 100,
+  "tiempoRestante": 80,
+  "intentos": 1
+}
+```
+
+Reglas:
+
+- `nivel` debe ser mayor o igual a `1`.
+- `puntaje`, `tiempoRestante` e `intentos` no pueden ser negativos.
+- Si el progreso del nivel no existe, se crea.
+- Si el progreso del nivel ya existe, se actualiza.
+- Si el usuario repite un nivel, se conserva el mayor puntaje y el mayor tiempo restante.
+- Si el usuario completa un nivel, se recalcula `puntajeTotal` sumando niveles completados.
+- Si el usuario completa un nivel, `nivelActual` avanza al siguiente nivel sin pasar del ultimo nivel disponible.
+- Sin token JWT, el backend responde como no autorizado.
 
 ### Niveles
 

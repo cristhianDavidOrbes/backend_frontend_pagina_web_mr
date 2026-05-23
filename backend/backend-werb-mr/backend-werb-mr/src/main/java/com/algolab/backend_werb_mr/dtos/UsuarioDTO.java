@@ -7,6 +7,8 @@ public class UsuarioDTO {
     private String name;
     private String mail;
     private Rol rol;
+    private Integer nivelActual;
+    private Integer puntaje;
 
     public UsuarioDTO() {
     }
@@ -16,6 +18,17 @@ public class UsuarioDTO {
         this.name = name;
         this.mail = mail;
         this.rol = rol;
+        this.nivelActual = 1;
+        this.puntaje = 0;
+    }
+
+    public UsuarioDTO(Long id, String name, String mail, Rol rol, Integer nivelActual, Integer puntaje) {
+        this.id = id;
+        this.name = name;
+        this.mail = mail;
+        this.rol = rol;
+        this.nivelActual = nivelActual;
+        this.puntaje = puntaje;
     }
 
     public Long getId() {
@@ -48,5 +61,21 @@ public class UsuarioDTO {
 
     public void setRol(Rol rol) {
         this.rol = rol;
+    }
+
+    public Integer getNivelActual() {
+        return nivelActual;
+    }
+
+    public void setNivelActual(Integer nivelActual) {
+        this.nivelActual = nivelActual;
+    }
+
+    public Integer getPuntaje() {
+        return puntaje;
+    }
+
+    public void setPuntaje(Integer puntaje) {
+        this.puntaje = puntaje;
     }
 }

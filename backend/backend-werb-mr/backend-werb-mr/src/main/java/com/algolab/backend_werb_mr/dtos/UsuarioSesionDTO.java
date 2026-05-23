@@ -3,7 +3,7 @@ package com.algolab.backend_werb_mr.dtos;
 import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.modelos.Usuario;
 
-public class UsuarioRespuestaDTO {
+public class UsuarioSesionDTO {
     private Long id;
     private String nombre;
     private String correo;
@@ -11,19 +11,10 @@ public class UsuarioRespuestaDTO {
     private Integer nivelActual;
     private Integer puntaje;
 
-    public UsuarioRespuestaDTO() {
+    public UsuarioSesionDTO() {
     }
 
-    public UsuarioRespuestaDTO(Long id, String nombre, String correo, Rol rol) {
-        this.id = id;
-        this.nombre = nombre;
-        this.correo = correo;
-        this.rol = rol;
-        this.nivelActual = 1;
-        this.puntaje = 0;
-    }
-
-    public UsuarioRespuestaDTO(Long id, String nombre, String correo, Rol rol, Integer nivelActual, Integer puntaje) {
+    public UsuarioSesionDTO(Long id, String nombre, String correo, Rol rol, Integer nivelActual, Integer puntaje) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
@@ -32,8 +23,8 @@ public class UsuarioRespuestaDTO {
         this.puntaje = puntaje;
     }
 
-    public static UsuarioRespuestaDTO desdeUsuario(Usuario usuario) {
-        return new UsuarioRespuestaDTO(
+    public static UsuarioSesionDTO desdeUsuario(Usuario usuario) {
+        return new UsuarioSesionDTO(
                 usuario.getId(),
                 usuario.getNombre(),
                 usuario.getCorreo(),

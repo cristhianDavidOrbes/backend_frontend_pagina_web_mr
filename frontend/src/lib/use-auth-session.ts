@@ -7,6 +7,8 @@ export type UsuarioSesion = {
   nombre: string;
   correo: string;
   rol: "ESTUDIANTE" | "DOCENTE" | "ADMINISTRADOR";
+  nivelActual: number;
+  puntaje: number;
 };
 
 function subscribe(callback: () => void) {

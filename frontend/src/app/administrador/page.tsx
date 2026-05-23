@@ -11,6 +11,8 @@ type Usuario = {
   nombre: string;
   correo: string;
   rol: Rol;
+  nivelActual: number;
+  puntaje: number;
 };
 
 type Nivel = {
@@ -27,6 +29,8 @@ type UsuarioForm = {
   nombre: string;
   correo: string;
   rol: Rol;
+  nivelActual: string;
+  puntaje: string;
 };
 
 type NivelForm = {
@@ -49,6 +53,8 @@ const usuarioInicial: UsuarioForm = {
   nombre: "",
   correo: "",
   rol: "ESTUDIANTE",
+  nivelActual: "1",
+  puntaje: "0",
 };
 
 const nivelInicial: NivelForm = {
@@ -166,6 +172,8 @@ export default function AdministradorPage() {
           nombre: usuarioForm.nombre,
           correo: usuarioForm.correo,
           rol: usuarioForm.rol,
+          nivelActual: Number(usuarioForm.nivelActual),
+          puntaje: Number(usuarioForm.puntaje),
         }),
       });
 
@@ -261,6 +269,8 @@ export default function AdministradorPage() {
       nombre: usuario.nombre,
       correo: usuario.correo,
       rol: usuario.rol,
+      nivelActual: String(usuario.nivelActual ?? 0),
+      puntaje: String(usuario.puntaje ?? 0),
     });
   }
 
@@ -330,12 +340,14 @@ export default function AdministradorPage() {
               </div>
 
               <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[860px] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-neutral-200 text-neutral-600">
                       <th className="py-3 pr-3 font-semibold">Nombre</th>
                       <th className="py-3 pr-3 font-semibold">Correo</th>
                       <th className="py-3 pr-3 font-semibold">Rol</th>
+                      <th className="py-3 pr-3 font-semibold">Nivel</th>
+                      <th className="py-3 pr-3 font-semibold">Puntaje</th>
                       <th className="py-3 pr-3 font-semibold">Acciones</th>
                     </tr>
                   </thead>
@@ -349,6 +361,8 @@ export default function AdministradorPage() {
                             {usuario.rol}
                           </span>
                         </td>
+                        <td className="py-3 pr-3">{usuario.nivelActual ?? 0}</td>
+                        <td className="py-3 pr-3">{usuario.puntaje ?? 0}</td>
                         <td className="py-3 pr-3">
                           <div className="flex gap-2">
                             <button
@@ -442,6 +456,49 @@ export default function AdministradorPage() {
                       No puedes cambiar tu propio rango de administrador.
                     </p>
                   ) : null}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium" htmlFor="usuario-nivel-actual">
+                      Nivel actual
+                    </label>
+                    <input
+                      className={inputClass}
+                      id="usuario-nivel-actual"
+                      max="5"
+                      min="1"
+                      type="number"
+                      value={usuarioForm.nivelActual}
+                      onChange={(event) =>
+                        setUsuarioForm((actual) => ({
+                          ...actual,
+                          nivelActual: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium" htmlFor="usuario-puntaje">
+                      Puntaje
+                    </label>
+                    <input
+                      className={inputClass}
+                      id="usuario-puntaje"
+                      step="1"
+                      type="number"
+                      value={usuarioForm.puntaje}
+                      onChange={(event) =>
+                        setUsuarioForm((actual) => ({
+                          ...actual,
+                          puntaje: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="flex gap-2">

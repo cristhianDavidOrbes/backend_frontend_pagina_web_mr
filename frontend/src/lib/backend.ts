@@ -5,7 +5,7 @@ const DEFAULT_API_BASE_URL = "https://backendfrontendpaginawebmr-production.up.r
 type ProxyOptions = {
   request: Request;
   path: string;
-  method: "GET" | "POST" | "PUT" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 };
 
 export async function proxyBackend({ request, path, method }: ProxyOptions) {

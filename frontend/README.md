@@ -35,7 +35,7 @@ Flujo actual:
 
 1. El usuario se registra desde `/registrarse`.
 2. El usuario inicia sesion desde `/iniciar-sesion`.
-3. El backend devuelve un JWT solo en inicio de sesion.
+3. El backend devuelve un JWT solo en inicio de sesion junto con datos basicos del usuario, nivel actual y puntaje.
 4. El frontend guarda en `localStorage`:
 
 ```txt
@@ -117,6 +117,8 @@ Muestra informacion basica del usuario autenticado:
 - nombre
 - correo
 - rol
+- nivel actual
+- puntaje
 
 ## Panel docente
 
@@ -146,7 +148,7 @@ Funciones disponibles:
 
 - listar usuarios registrados
 - buscar usuarios por nombre, correo o rol
-- editar nombre, correo y rol de usuarios
+- editar nombre, correo, rol, nivel actual y puntaje de usuarios
 - borrar usuarios
 - crear niveles
 - editar niveles
@@ -170,6 +172,7 @@ Estas rutas viven en el frontend y reenvian la peticion al backend:
 | `POST` | `/api/usuarios` | `/api/usuarios` |
 | `GET` | `/api/usuarios/{id}` | `/api/usuarios/{id}` |
 | `PUT` | `/api/usuarios/{id}` | `/api/usuarios/{id}` |
+| `PATCH` | `/api/usuarios/{id}` | `/api/usuarios/{id}` |
 | `DELETE` | `/api/usuarios/{id}` | `/api/usuarios/{id}` |
 | `GET` | `/api/niveles` | `/api/niveles` |
 | `POST` | `/api/niveles` | `/api/niveles` |

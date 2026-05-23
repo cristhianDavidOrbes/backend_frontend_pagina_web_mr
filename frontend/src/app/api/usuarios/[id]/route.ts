@@ -26,6 +26,16 @@ export async function PUT(request: Request, context: RouteContext) {
   });
 }
 
+export async function PATCH(request: Request, context: RouteContext) {
+  const { id } = await context.params;
+
+  return proxyBackend({
+    request,
+    path: `/api/usuarios/${id}`,
+    method: "PATCH",
+  });
+}
+
 export async function DELETE(request: Request, context: RouteContext) {
   const { id } = await context.params;
 

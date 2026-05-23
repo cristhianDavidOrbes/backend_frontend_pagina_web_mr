@@ -16,6 +16,8 @@ type LoginRespuesta = {
     nombre: string;
     correo: string;
     rol: string;
+    nivelActual: number;
+    puntaje: number;
   };
 };
 

@@ -8,8 +8,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -17,10 +20,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.algolab.backend_werb_mr.dtos.ActualizarProgresoUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.ActualizarUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.AuthRespuestaDTO;
 import com.algolab.backend_werb_mr.dtos.LoginRequest;
 import com.algolab.backend_werb_mr.dtos.RegistroUsuarioRequest;
+import com.algolab.backend_werb_mr.dtos.UsuarioSesionDTO;
 import com.algolab.backend_werb_mr.dtos.UsuarioRespuestaDTO;
 import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.modelos.Usuario;
@@ -30,6 +35,8 @@ import com.algolab.backend_werb_mr.servicios.IUsuarioServicio;
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioControlador {
+    private static final Logger logger = LoggerFactory.getLogger(UsuarioControlador.class);
+
     private final IUsuarioServicio usuarioServicio;
     private final JwtServicio jwtServicio;
 
@@ -163,6 +170,25 @@ public class UsuarioControlador {
         return ResponseEntity.ok(usuarios);
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<?> obtenerUsuarioAutenticado(Authentication authentication) {
+        if (authentication == null) {
+            logger.warn("No se encontro usuario autenticado al consultar /api/usuarios/me");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "mensaje", "No hay usuario autenticado"));
+        }
+
+        Usuario usuario = usuarioServicio.buscarPorCorreo(authentication.getName()).orElse(null);
+
+        if (usuario == null) {
+            logger.warn("No se encontro usuario autenticado con correo {}", authentication.getName());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "mensaje", "Usuario autenticado no encontrado"));
+        }
+
+        return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(usuario));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> buscarUsuario(@PathVariable Long id, Authentication authentication) {
         Usuario usuario = usuarioServicio.buscarPorId(id).orElse(null);
@@ -229,6 +255,15 @@ public class UsuarioControlador {
         usuario.setNombre(nombre);
         usuario.setCorreo(correo);
 
+        ResponseEntity<Map<String, String>> errorProgreso = validarYAsignarProgreso(
+                usuario,
+                request.getNivelActual(),
+                request.getPuntaje());
+
+        if (errorProgreso != null) {
+            return errorProgreso;
+        }
+
         if (tieneRol(authentication, Rol.ADMINISTRADOR) && limpiar(request.getRol()) != null) {
             Rol rol = obtenerRol(request.getRol());
             if (rol == null) {
@@ -243,6 +278,44 @@ public class UsuarioControlador {
             }
 
             usuario.setRol(rol);
+        }
+
+        Usuario usuarioActualizado = usuarioServicio.actualizar(usuario);
+        return ResponseEntity.ok(UsuarioRespuestaDTO.desdeUsuario(usuarioActualizado));
+    }
+
+    @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> actualizarProgresoUsuario(@PathVariable Long id,
+            @RequestBody ActualizarProgresoUsuarioRequest request,
+            Authentication authentication) {
+        if (request == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "Debe enviar nivelActual o puntaje"));
+        }
+
+        Usuario usuario = usuarioServicio.buscarPorId(id).orElse(null);
+
+        if (usuario == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (!puedeActualizarUsuario(authentication, usuario)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "No tiene permiso para actualizar este usuario"));
+        }
+
+        if (request.getNivelActual() == null && request.getPuntaje() == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "Debe enviar nivelActual o puntaje"));
+        }
+
+        ResponseEntity<Map<String, String>> errorProgreso = validarYAsignarProgreso(
+                usuario,
+                request.getNivelActual(),
+                request.getPuntaje());
+
+        if (errorProgreso != null) {
+            return errorProgreso;
         }
 
         Usuario usuarioActualizado = usuarioServicio.actualizar(usuario);
@@ -327,5 +400,23 @@ public class UsuarioControlador {
         }
 
         return valor.trim();
+    }
+
+    private ResponseEntity<Map<String, String>> validarYAsignarProgreso(Usuario usuario, Integer nivelActual,
+            Integer puntaje) {
+        if (nivelActual != null) {
+            if (nivelActual < 1 || nivelActual > 5) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "mensaje", "El nivel actual debe ser un numero entero entre 1 y 5"));
+            }
+
+            usuario.setNivelActual(nivelActual);
+        }
+
+        if (puntaje != null) {
+            usuario.setPuntaje(puntaje);
+        }
+
+        return null;
     }
 }

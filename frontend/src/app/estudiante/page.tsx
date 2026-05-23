@@ -28,6 +28,14 @@ export default function EstudiantePage() {
               <span className="font-semibold">Rol:</span>{" "}
               {hydrated ? usuario?.rol ?? "ESTUDIANTE" : "Cargando..."}
             </p>
+            <p>
+              <span className="font-semibold">Nivel actual:</span>{" "}
+              {hydrated ? usuario?.nivelActual ?? 1 : "Cargando..."}
+            </p>
+            <p>
+              <span className="font-semibold">Puntaje:</span>{" "}
+              {hydrated ? usuario?.puntaje ?? 0 : "Cargando..."}
+            </p>
           </div>
 
           <Link

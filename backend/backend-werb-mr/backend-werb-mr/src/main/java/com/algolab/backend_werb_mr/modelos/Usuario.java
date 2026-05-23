@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 
@@ -29,6 +30,12 @@ public class Usuario {
     @Column(nullable = false)
     private String contrasena;
 
+    @Column(nullable = false, columnDefinition = "integer default 1")
+    private Integer nivelActual = 1;
+
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private Integer puntaje = 0;
+
     public Usuario() {
     }
 
@@ -38,6 +45,24 @@ public class Usuario {
         this.correo = correo;
         this.rol = rol;
         this.contrasena = contrasena;
+    }
+
+    public Usuario(Long id, String nombre, String correo, Rol rol, String contrasena, Integer nivelActual,
+            Integer puntaje) {
+        this(id, nombre, correo, rol, contrasena);
+        this.nivelActual = nivelActual;
+        this.puntaje = puntaje;
+    }
+
+    @PrePersist
+    public void asignarProgresoInicial() {
+        if (nivelActual == null) {
+            nivelActual = 1;
+        }
+
+        if (puntaje == null) {
+            puntaje = 0;
+        }
     }
 
     public Long getId() {
@@ -80,6 +105,19 @@ public class Usuario {
         this.contrasena = contrasena;
     }
 
-    
-    
+    public Integer getNivelActual() {
+        return nivelActual == null ? 1 : nivelActual;
+    }
+
+    public void setNivelActual(Integer nivelActual) {
+        this.nivelActual = nivelActual;
+    }
+
+    public Integer getPuntaje() {
+        return puntaje == null ? 0 : puntaje;
+    }
+
+    public void setPuntaje(Integer puntaje) {
+        this.puntaje = puntaje;
+    }
 }
