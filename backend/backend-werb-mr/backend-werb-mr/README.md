@@ -338,6 +338,14 @@ ADMIN_CORREO=cristhian.david@admin.com
 ADMIN_CONTRASENA=define-una-contrasena-segura
 ```
 
+En Railway tambien se soporta `DATABASE_URL` con formato:
+
+```txt
+postgresql://usuario:contrasena@host:puerto/base_de_datos
+```
+
+Si `DATABASE_URL` existe, el backend la convierte internamente a `spring.datasource.url`, `spring.datasource.username` y `spring.datasource.password`. Esto evita que el despliegue use el valor local por defecto `localhost:5432`.
+
 ## Despliegue en Railway
 
 El backend esta preparado para desplegarse como un servicio Java/Spring Boot en Railway.
@@ -347,6 +355,12 @@ Configuracion del servicio:
 ```txt
 Root Directory: /backend/backend-werb-mr/backend-werb-mr
 Config File: /backend/backend-werb-mr/backend-werb-mr/railway.json
+```
+
+El despliegue usa el `Dockerfile` del backend. Ese Dockerfile compila con Gradle, copia el JAR como `/app/app.jar` y arranca con:
+
+```txt
+java -Dserver.port=${PORT:-8080} -jar app.jar
 ```
 
 Pasos:
@@ -364,7 +378,9 @@ ADMIN_CORREO=admin@correo.com
 ADMIN_CONTRASENA=contrasena-segura
 ```
 
-El backend tambien acepta las variables de PostgreSQL que Railway expone en el servicio de base de datos (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`). Si prefieres configurarlo manualmente, puedes usar:
+6. Asegurar que el servicio del backend tenga acceso a las variables de PostgreSQL.
+
+Railway puede exponer `DATABASE_URL`. El backend tambien acepta las variables de PostgreSQL que Railway expone en el servicio de base de datos (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`). Si prefieres configurarlo manualmente, puedes usar:
 
 ```properties
 SPRING_DATASOURCE_URL=jdbc:postgresql://host:puerto/base_de_datos
@@ -372,7 +388,61 @@ SPRING_DATASOURCE_USERNAME=usuario
 SPRING_DATASOURCE_PASSWORD=contrasena
 ```
 
+Importante: no dejes `DB_URL` o `SPRING_DATASOURCE_URL` apuntando a `localhost` en Railway. Si existe `DATABASE_URL`, el backend la prioriza cuando detecta valores locales.
+
 Despues del despliegue, genera un dominio publico para el backend y usa esa URL en el frontend como `API_BASE_URL`.
+
+### Pruebas post-despliegue
+
+Usa la URL publica de Railway, por ejemplo:
+
+```txt
+https://backendfrontendpaginawebmr-production.up.railway.app
+```
+
+Login:
+
+```http
+POST /api/usuarios/iniciar-sesion
+Content-Type: application/json
+```
+
+```json
+{
+  "correo": "cristhian.david@admin.com",
+  "contrasena": "define-una-contrasena-segura"
+}
+```
+
+Con el token recibido:
+
+```http
+GET /api/usuarios/me
+Authorization: Bearer <token>
+```
+
+```http
+GET /api/progreso/me
+Authorization: Bearer <token>
+```
+
+Guardar progreso:
+
+```http
+POST /api/progreso
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "nivel": 1,
+  "completado": true,
+  "puntaje": 100,
+  "tiempoRestante": 80,
+  "intentos": 1
+}
+```
 
 ## Comandos
 
