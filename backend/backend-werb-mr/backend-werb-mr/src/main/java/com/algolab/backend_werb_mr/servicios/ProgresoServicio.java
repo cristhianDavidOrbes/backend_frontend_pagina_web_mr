@@ -143,7 +143,7 @@ public class ProgresoServicio implements IProgresoServicio {
         return new ProgresoUsuarioDTO(
                 usuario.getId(),
                 usuario.getNivelActual(),
-                usuario.getPuntaje(),
+                calcularPuntajeTotal(progresos),
                 niveles);
     }
 }
