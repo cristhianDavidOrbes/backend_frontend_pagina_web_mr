@@ -26,13 +26,17 @@ public class UsuarioServicio implements IUsuarioServicio {
 
     @Override
     public Usuario registrar(Usuario usuario) {
+        if (usuario.getNombreUsuario() == null || usuario.getNombreUsuario().isBlank()) {
+            usuario.setNombreUsuario(generarNombreUsuario(usuario.getCorreo()));
+        }
+
         usuario.setContrasena(passwordEncoder.encode(usuario.getContrasena()));
         return repositorio.guardar(usuario);
     }
 
     @Override
-    public Optional<Usuario> iniciarSesion(String correo, String contrasena) {
-        return repositorio.buscarPorCorreo(correo)
+    public Optional<Usuario> iniciarSesion(String identificador, String contrasena) {
+        return repositorio.buscarPorCorreoONombreUsuario(identificador)
                 .filter(usuario -> passwordEncoder.matches(contrasena, usuario.getContrasena()));
     }
 
@@ -64,5 +68,35 @@ public class UsuarioServicio implements IUsuarioServicio {
     @Override
     public boolean existePorCorreo(String correo) {
         return repositorio.existePorCorreo(correo);
+    }
+
+    @Override
+    public boolean existePorNombreUsuario(String nombreUsuario) {
+        return repositorio.existePorNombreUsuario(nombreUsuario);
+    }
+
+    @Override
+    public boolean existePorCorreoONombreUsuario(String identificador) {
+        return repositorio.existePorCorreoONombreUsuario(identificador);
+    }
+
+    private String generarNombreUsuario(String correo) {
+        String base = correo.split("@", 2)[0]
+                .toLowerCase()
+                .replaceAll("[^a-z0-9._-]", "");
+
+        if (base.isBlank()) {
+            base = "usuario";
+        }
+
+        String candidato = base;
+        int contador = 1;
+
+        while (repositorio.existePorNombreUsuario(candidato)) {
+            candidato = base + contador;
+            contador++;
+        }
+
+        return candidato;
     }
 }

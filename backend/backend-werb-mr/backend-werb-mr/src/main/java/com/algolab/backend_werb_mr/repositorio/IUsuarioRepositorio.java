@@ -14,6 +14,15 @@ public interface IUsuarioRepositorio extends JpaRepository<Usuario, Long> {
     @Query("SELECT usuario FROM Usuario usuario WHERE usuario.correo = :correo")
     Optional<Usuario> buscarPorCorreo(@Param("correo") String correo);
 
+    @Query("SELECT usuario FROM Usuario usuario WHERE usuario.correo = :identificador OR usuario.nombreUsuario = :identificador")
+    Optional<Usuario> buscarPorCorreoONombreUsuario(@Param("identificador") String identificador);
+
     @Query("SELECT COUNT(usuario) > 0 FROM Usuario usuario WHERE usuario.correo = :correo")
     boolean existePorCorreo(@Param("correo") String correo);
+
+    @Query("SELECT COUNT(usuario) > 0 FROM Usuario usuario WHERE usuario.nombreUsuario = :nombreUsuario")
+    boolean existePorNombreUsuario(@Param("nombreUsuario") String nombreUsuario);
+
+    @Query("SELECT COUNT(usuario) > 0 FROM Usuario usuario WHERE usuario.correo = :identificador OR usuario.nombreUsuario = :identificador")
+    boolean existePorCorreoONombreUsuario(@Param("identificador") String identificador);
 }

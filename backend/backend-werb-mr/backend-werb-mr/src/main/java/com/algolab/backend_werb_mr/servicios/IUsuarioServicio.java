@@ -23,4 +23,8 @@ public interface IUsuarioServicio {
     Optional<Usuario> buscarPorCorreo(String correo);
 
     boolean existePorCorreo(String correo);
+
+    boolean existePorNombreUsuario(String nombreUsuario);
+
+    boolean existePorCorreoONombreUsuario(String identificador);
 }

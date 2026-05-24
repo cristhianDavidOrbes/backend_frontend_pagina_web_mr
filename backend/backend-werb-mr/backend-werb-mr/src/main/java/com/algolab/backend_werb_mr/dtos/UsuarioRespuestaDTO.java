@@ -7,6 +7,7 @@ public class UsuarioRespuestaDTO {
     private Long id;
     private String nombre;
     private String correo;
+    private String nombreUsuario;
     private Rol rol;
     private Integer nivelActual;
     private Integer puntaje;
@@ -23,10 +24,12 @@ public class UsuarioRespuestaDTO {
         this.puntaje = 0;
     }
 
-    public UsuarioRespuestaDTO(Long id, String nombre, String correo, Rol rol, Integer nivelActual, Integer puntaje) {
+    public UsuarioRespuestaDTO(Long id, String nombre, String correo, String nombreUsuario, Rol rol,
+            Integer nivelActual, Integer puntaje) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
+        this.nombreUsuario = nombreUsuario;
         this.rol = rol;
         this.nivelActual = nivelActual;
         this.puntaje = puntaje;
@@ -37,6 +40,7 @@ public class UsuarioRespuestaDTO {
                 usuario.getId(),
                 usuario.getNombre(),
                 usuario.getCorreo(),
+                usuario.getNombreUsuario(),
                 usuario.getRol(),
                 usuario.getNivelActual(),
                 usuario.getPuntaje());
@@ -64,6 +68,14 @@ public class UsuarioRespuestaDTO {
 
     public void setCorreo(String correo) {
         this.correo = correo;
+    }
+
+    public String getNombreUsuario() {
+        return nombreUsuario;
+    }
+
+    public void setNombreUsuario(String nombreUsuario) {
+        this.nombreUsuario = nombreUsuario;
     }
 
     public Rol getRol() {

@@ -45,7 +45,22 @@ public class Repositorio {
     }
 
     @Transactional(readOnly = true)
+    public Optional<Usuario> buscarPorCorreoONombreUsuario(String identificador) {
+        return usuarioRepositorio.buscarPorCorreoONombreUsuario(identificador);
+    }
+
+    @Transactional(readOnly = true)
     public boolean existePorCorreo(String correo) {
         return usuarioRepositorio.existePorCorreo(correo);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existePorNombreUsuario(String nombreUsuario) {
+        return usuarioRepositorio.existePorNombreUsuario(nombreUsuario);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existePorCorreoONombreUsuario(String identificador) {
+        return usuarioRepositorio.existePorCorreoONombreUsuario(identificador);
     }
 }

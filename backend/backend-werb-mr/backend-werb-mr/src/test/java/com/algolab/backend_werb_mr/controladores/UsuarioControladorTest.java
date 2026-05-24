@@ -52,8 +52,10 @@ class UsuarioControladorTest {
     }
 
     @Test
-    void inicioSesionDevuelveToken() {
-        usuarioServicio.registrar(new Usuario(null, "Estudiante", "estudiante@test.com", Rol.ESTUDIANTE, "123456"));
+    void inicioSesionExitosoConCorreoDevuelveToken() {
+        Usuario usuario = usuarioServicio.registrar(
+                new Usuario(null, "Estudiante", "estudiante@test.com", Rol.ESTUDIANTE, "123456"));
+        usuario.setNombreUsuario("estudiante");
 
         LoginRequest request = new LoginRequest();
         request.setCorreo("estudiante@test.com");
@@ -63,6 +65,51 @@ class UsuarioControladorTest {
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
         assertEquals("token-prueba", respuesta.getBody().getToken());
+    }
+
+    @Test
+    void inicioSesionExitosoConNombreUsuarioDevuelveToken() {
+        Usuario usuario = usuarioServicio.registrar(
+                new Usuario(null, "Estudiante", "estudiante@test.com", Rol.ESTUDIANTE, "123456"));
+        usuario.setNombreUsuario("estudiante");
+
+        LoginRequest request = new LoginRequest();
+        request.setCorreo("estudiante");
+        request.setContrasena("123456");
+
+        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.iniciarSesion(request);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals("token-prueba", respuesta.getBody().getToken());
+        assertEquals("estudiante", respuesta.getBody().getUsuario().getNombreUsuario());
+    }
+
+    @Test
+    void inicioSesionRechazaContrasenaIncorrecta() {
+        Usuario usuario = usuarioServicio.registrar(
+                new Usuario(null, "Estudiante", "estudiante@test.com", Rol.ESTUDIANTE, "123456"));
+        usuario.setNombreUsuario("estudiante");
+
+        LoginRequest request = new LoginRequest();
+        request.setCorreo("estudiante");
+        request.setContrasena("incorrecta");
+
+        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.iniciarSesion(request);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
+        assertFalse(respuesta.getBody().isExitoso());
+    }
+
+    @Test
+    void inicioSesionRechazaUsuarioInexistente() {
+        LoginRequest request = new LoginRequest();
+        request.setCorreo("noexiste");
+        request.setContrasena("123456");
+
+        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.iniciarSesion(request);
+
+        assertEquals(HttpStatus.NOT_FOUND, respuesta.getStatusCode());
+        assertFalse(respuesta.getBody().isExitoso());
     }
 
     @Test
@@ -211,8 +258,9 @@ class UsuarioControladorTest {
         }
 
         @Override
-        public Optional<Usuario> iniciarSesion(String correo, String contrasena) {
-            return buscarPorCorreo(correo);
+        public Optional<Usuario> iniciarSesion(String identificador, String contrasena) {
+            return buscarPorCorreoONombreUsuario(identificador)
+                    .filter(usuario -> usuario.getContrasena().equals(contrasena));
         }
 
         @Override
@@ -247,9 +295,31 @@ class UsuarioControladorTest {
             return buscarPorCorreo(correo).isPresent();
         }
 
+        @Override
+        public boolean existePorNombreUsuario(String nombreUsuario) {
+            return usuarios.values().stream()
+                    .anyMatch(usuario -> nombreUsuario.equals(usuario.getNombreUsuario()));
+        }
+
+        @Override
+        public boolean existePorCorreoONombreUsuario(String identificador) {
+            return buscarPorCorreoONombreUsuario(identificador).isPresent();
+        }
+
+        private Optional<Usuario> buscarPorCorreoONombreUsuario(String identificador) {
+            return usuarios.values().stream()
+                    .filter(usuario -> usuario.getCorreo().equals(identificador)
+                            || identificador.equals(usuario.getNombreUsuario()))
+                    .findFirst();
+        }
+
         private Usuario guardarUsuario(Usuario usuario) {
             if (usuario.getId() == null) {
                 usuario.setId(siguienteId++);
+            }
+
+            if (usuario.getNombreUsuario() == null) {
+                usuario.setNombreUsuario(usuario.getCorreo().split("@", 2)[0]);
             }
 
             usuarios.put(usuario.getId(), usuario);

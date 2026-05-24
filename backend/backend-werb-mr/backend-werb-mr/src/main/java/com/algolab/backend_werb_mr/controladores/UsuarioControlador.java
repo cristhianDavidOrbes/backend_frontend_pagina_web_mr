@@ -55,10 +55,10 @@ public class UsuarioControlador {
                     null));
         }
 
-        String correo = limpiar(request.getCorreo());
+        String identificador = limpiar(request.getCorreo());
         String contrasena = limpiar(request.getContrasena());
 
-        if (correo == null || contrasena == null) {
+        if (identificador == null || contrasena == null) {
             return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
                     false,
                     "Debe enviar correo y contrasena",
@@ -66,7 +66,7 @@ public class UsuarioControlador {
                     null));
         }
 
-        if (!usuarioServicio.existePorCorreo(correo)) {
+        if (!usuarioServicio.existePorCorreoONombreUsuario(identificador)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new AuthRespuestaDTO(
                     false,
                     "El usuario no existe en la base de datos",
@@ -74,7 +74,7 @@ public class UsuarioControlador {
                     null));
         }
 
-        Usuario usuarioEncontrado = usuarioServicio.iniciarSesion(correo, contrasena).orElse(null);
+        Usuario usuarioEncontrado = usuarioServicio.iniciarSesion(identificador, contrasena).orElse(null);
 
         if (usuarioEncontrado == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new AuthRespuestaDTO(

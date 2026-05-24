@@ -72,7 +72,7 @@ Reglas principales:
 | `PATCH` | `/api/usuarios/{id}` | `ADMINISTRADOR`, o el mismo usuario | Si |
 | `DELETE` | `/api/usuarios/{id}` | `ADMINISTRADOR`, excepto su propia cuenta | No |
 
-Body para iniciar sesion:
+Body para iniciar sesion con correo:
 
 ```json
 {
@@ -80,6 +80,17 @@ Body para iniciar sesion:
   "contrasena": "define-una-contrasena-segura"
 }
 ```
+
+Body para iniciar sesion con nombre de usuario:
+
+```json
+{
+  "correo": "cristhian.david",
+  "contrasena": "define-una-contrasena-segura"
+}
+```
+
+Nota: el campo se sigue llamando `correo` por compatibilidad con Unity y el frontend, pero el backend lo usa como identificador de inicio de sesion. Puede contener correo o `nombreUsuario`.
 
 Respuesta exitosa de inicio de sesion:
 
@@ -92,6 +103,7 @@ Respuesta exitosa de inicio de sesion:
     "id": 1,
     "nombre": "Cristhian David",
     "correo": "cristhian.david@admin.com",
+    "nombreUsuario": "cristhian.david",
     "rol": "ADMINISTRADOR",
     "nivelActual": 1,
     "puntaje": 0
@@ -111,6 +123,7 @@ Authorization: Bearer <token>
   "id": 1,
   "nombre": "Cristhian David",
   "correo": "cristhian.david@admin.com",
+  "nombreUsuario": "cristhian.david",
   "rol": "ESTUDIANTE",
   "nivelActual": 1,
   "puntaje": 0
@@ -129,6 +142,8 @@ Body para registro publico:
 ```
 
 Nota: este endpoint no devuelve token. El usuario debe iniciar sesion despues de registrarse.
+
+Al registrar usuarios nuevos, el backend genera `nombreUsuario` automaticamente a partir de la parte inicial del correo. Por ejemplo, `juan@email.com` genera `juan`. Si ya existe, agrega un numero al final para mantenerlo unico.
 
 Body para crear usuario como administrador:
 
