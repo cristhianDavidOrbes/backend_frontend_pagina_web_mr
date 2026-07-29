@@ -2,6 +2,7 @@ package com.algolab.backend_werb_mr.seguridad;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -26,6 +27,7 @@ public class SeguridadConfiguracion {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/usuarios/registrar").permitAll()
                         .requestMatchers("/api/usuarios/iniciar-sesion").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/ranking", "/api/ranking/**").permitAll()
                         .requestMatchers("/api/niveles/**").hasAnyRole("DOCENTE", "ADMINISTRADOR")
                         .requestMatchers("/api/descripciones-niveles/**").hasAnyRole("DOCENTE", "ADMINISTRADOR")
                         .anyRequest().authenticated())

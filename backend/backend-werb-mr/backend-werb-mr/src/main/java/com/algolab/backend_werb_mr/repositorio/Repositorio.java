@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.algolab.backend_werb_mr.modelos.Usuario;
+import com.algolab.backend_werb_mr.modelos.Rol;
 
 @Component
 @Transactional
@@ -29,6 +30,11 @@ public class Repositorio {
     @Transactional(readOnly = true)
     public List<Usuario> listar() {
         return usuarioRepositorio.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Usuario> listarPorRolParaRanking(Rol rol) {
+        return usuarioRepositorio.listarPorRolParaRanking(rol);
     }
 
     public Usuario actualizar(Usuario usuario) {

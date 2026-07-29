@@ -274,6 +274,14 @@ class UsuarioControladorTest {
         }
 
         @Override
+        public List<Usuario> listarRankingEstudiantes() {
+            return usuarios.values().stream()
+                    .filter(usuario -> usuario.getRol() == Rol.ESTUDIANTE)
+                    .sorted((a, b) -> Integer.compare(b.getPuntaje(), a.getPuntaje()))
+                    .toList();
+        }
+
+        @Override
         public Usuario actualizar(Usuario usuario) {
             return guardarUsuario(usuario);
         }

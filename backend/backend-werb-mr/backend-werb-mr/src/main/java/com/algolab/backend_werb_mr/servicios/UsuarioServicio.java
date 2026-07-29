@@ -7,6 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.algolab.backend_werb_mr.modelos.Usuario;
+import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.repositorio.Repositorio;
 
 @Service
@@ -48,6 +49,11 @@ public class UsuarioServicio implements IUsuarioServicio {
     @Override
     public List<Usuario> listar() {
         return repositorio.listar();
+    }
+
+    @Override
+    public List<Usuario> listarRankingEstudiantes() {
+        return repositorio.listarPorRolParaRanking(Rol.ESTUDIANTE);
     }
 
     @Override

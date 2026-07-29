@@ -16,6 +16,8 @@ public interface IUsuarioServicio {
 
     List<Usuario> listar();
 
+    List<Usuario> listarRankingEstudiantes();
+
     Usuario actualizar(Usuario usuario);
 
     void eliminarPorId(Long id);
