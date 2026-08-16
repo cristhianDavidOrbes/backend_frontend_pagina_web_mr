@@ -39,6 +39,18 @@ public class Usuario {
     @Column(nullable = false, columnDefinition = "integer default 0")
     private Integer puntaje = 0;
 
+    @Column(length = 300)
+    private String biografia;
+
+    @Column(length = 120)
+    private String institucion;
+
+    @Column(length = 120)
+    private String programa;
+
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(32) default 'orbita'")
+    private String avatar = "orbita";
+
     public Usuario() {
     }
 
@@ -65,6 +77,10 @@ public class Usuario {
 
         if (puntaje == null) {
             puntaje = 0;
+        }
+
+        if (avatar == null || avatar.isBlank()) {
+            avatar = "orbita";
         }
     }
 
@@ -130,5 +146,37 @@ public class Usuario {
 
     public void setPuntaje(Integer puntaje) {
         this.puntaje = puntaje;
+    }
+
+    public String getBiografia() {
+        return biografia;
+    }
+
+    public void setBiografia(String biografia) {
+        this.biografia = biografia;
+    }
+
+    public String getInstitucion() {
+        return institucion;
+    }
+
+    public void setInstitucion(String institucion) {
+        this.institucion = institucion;
+    }
+
+    public String getPrograma() {
+        return programa;
+    }
+
+    public void setPrograma(String programa) {
+        this.programa = programa;
+    }
+
+    public String getAvatar() {
+        return avatar == null || avatar.isBlank() ? "orbita" : avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 }

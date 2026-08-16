@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.algolab.backend_werb_mr.dtos.GuardarProgresoRequest;
 import com.algolab.backend_werb_mr.dtos.ProgresoUsuarioDTO;
 import com.algolab.backend_werb_mr.modelos.Usuario;
+import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.servicios.IProgresoServicio;
 
 @RestController
@@ -63,6 +65,19 @@ public class ProgresoControlador {
         return ResponseEntity.ok(progreso);
     }
 
+    @GetMapping("/usuario/{usuarioId}")
+    public ResponseEntity<?> consultarProgresoUsuario(@PathVariable Long usuarioId,
+            Authentication authentication) {
+        if (!tieneRol(authentication, Rol.DOCENTE) && !tieneRol(authentication, Rol.ADMINISTRADOR)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "Solo docentes y administradores pueden consultar este progreso"));
+        }
+
+        Usuario usuario = progresoServicio.buscarUsuarioPorId(usuarioId).orElse(null);
+        if (usuario == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(progresoServicio.consultarProgreso(usuario));
+    }
+
     private Usuario obtenerUsuario(Authentication authentication) {
         if (authentication == null) {
             logger.warn("No se encontro usuario autenticado al consultar progreso");
@@ -103,5 +118,10 @@ public class ProgresoControlador {
         }
 
         return null;
+    }
+
+    private boolean tieneRol(Authentication authentication, Rol rol) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_" + rol.name()));
     }
 }

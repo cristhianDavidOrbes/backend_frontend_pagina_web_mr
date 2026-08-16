@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.algolab.backend_werb_mr.dtos.ActualizarProgresoUsuarioRequest;
+import com.algolab.backend_werb_mr.dtos.ActualizarPerfilRequest;
 import com.algolab.backend_werb_mr.dtos.ActualizarUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.AuthRespuestaDTO;
 import com.algolab.backend_werb_mr.dtos.LoginRequest;
@@ -187,6 +188,58 @@ public class UsuarioControlador {
         }
 
         return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(usuario));
+    }
+
+    @GetMapping("/me/perfil")
+    public ResponseEntity<?> obtenerPerfilCompleto(Authentication authentication) {
+        Usuario usuario = usuarioAutenticado(authentication);
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "mensaje", "Usuario autenticado no encontrado"));
+        }
+        return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(usuario));
+    }
+
+    @PutMapping(value = "/me/perfil", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> actualizarPerfil(@RequestBody ActualizarPerfilRequest request,
+            Authentication authentication) {
+        Usuario usuario = usuarioAutenticado(authentication);
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "mensaje", "Usuario autenticado no encontrado"));
+        }
+        if (request == null || limpiar(request.getNombre()) == null) {
+            return ResponseEntity.badRequest().body(Map.of("mensaje", "El nombre es obligatorio"));
+        }
+
+        String nombreUsuario = limpiar(request.getNombreUsuario());
+        if (nombreUsuario != null) {
+            if (!nombreUsuario.matches("[A-Za-z0-9._-]{3,30}")) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "mensaje", "El nombre de usuario debe tener entre 3 y 30 caracteres sin espacios"));
+            }
+            Usuario existente = usuarioServicio.listar().stream()
+                    .filter(item -> nombreUsuario.equalsIgnoreCase(item.getNombreUsuario()))
+                    .findFirst().orElse(null);
+            if (existente != null && !existente.getId().equals(usuario.getId())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                        "mensaje", "El nombre de usuario ya está en uso"));
+            }
+        }
+
+        String avatar = limpiar(request.getAvatar());
+        if (avatar != null && !List.of("orbita", "codigo", "robot", "nucleo").contains(avatar)) {
+            return ResponseEntity.badRequest().body(Map.of("mensaje", "Avatar no válido"));
+        }
+
+        usuario.setNombre(limitarLongitud(request.getNombre(), 100));
+        if (nombreUsuario != null) usuario.setNombreUsuario(nombreUsuario.toLowerCase());
+        usuario.setBiografia(limitarLongitud(request.getBiografia(), 300));
+        usuario.setInstitucion(limitarLongitud(request.getInstitucion(), 120));
+        usuario.setPrograma(limitarLongitud(request.getPrograma(), 120));
+        usuario.setAvatar(avatar == null ? usuario.getAvatar() : avatar);
+
+        return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(usuarioServicio.actualizar(usuario)));
     }
 
     @GetMapping("/{id}")
@@ -402,12 +455,23 @@ public class UsuarioControlador {
         return valor.trim();
     }
 
+    private Usuario usuarioAutenticado(Authentication authentication) {
+        if (authentication == null) return null;
+        return usuarioServicio.buscarPorCorreo(authentication.getName()).orElse(null);
+    }
+
+    private String limitarLongitud(String valor, int maximo) {
+        String limpio = limpiar(valor);
+        if (limpio == null) return null;
+        return limpio.length() <= maximo ? limpio : limpio.substring(0, maximo);
+    }
+
     private ResponseEntity<Map<String, String>> validarYAsignarProgreso(Usuario usuario, Integer nivelActual,
             Integer puntaje) {
         if (nivelActual != null) {
-            if (nivelActual < 1 || nivelActual > 5) {
+            if (nivelActual < 1 || nivelActual > 6) {
                 return ResponseEntity.badRequest().body(Map.of(
-                        "mensaje", "El nivel actual debe ser un numero entero entre 1 y 5"));
+                        "mensaje", "El nivel actual debe ser un numero entero entre 1 y 6"));
             }
 
             usuario.setNivelActual(nivelActual);

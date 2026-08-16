@@ -19,10 +19,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.algolab.backend_werb_mr.dtos.ActualizarUsuarioRequest;
+import com.algolab.backend_werb_mr.dtos.ActualizarPerfilRequest;
 import com.algolab.backend_werb_mr.dtos.AuthRespuestaDTO;
 import com.algolab.backend_werb_mr.dtos.LoginRequest;
 import com.algolab.backend_werb_mr.dtos.RegistroUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.UsuarioRespuestaDTO;
+import com.algolab.backend_werb_mr.dtos.UsuarioSesionDTO;
 import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.seguridad.JwtServicio;
@@ -210,6 +212,35 @@ class UsuarioControladorTest {
                 autenticacion("admin@test.com", Rol.ADMINISTRADOR));
 
         assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
+    }
+
+    @Test
+    void cualquierUsuarioAutenticadoPuedeEditarSuPerfilSinAlterarRolNiPuntaje() {
+        Usuario estudiante = usuarioServicio.registrar(
+                new Usuario(null, "Ada", "ada@test.com", Rol.ESTUDIANTE, "123456"));
+        estudiante.setPuntaje(240);
+
+        ActualizarPerfilRequest request = new ActualizarPerfilRequest();
+        request.setNombre("Ada Lovelace");
+        request.setNombreUsuario("ada.codigo");
+        request.setBiografia("Aprendo POO con realidad mixta.");
+        request.setInstitucion("AlgoLab Academy");
+        request.setPrograma("Ingeniería de sistemas");
+        request.setAvatar("codigo");
+
+        ResponseEntity<?> respuesta = controlador.actualizarPerfil(
+                request,
+                autenticacion("ada@test.com", Rol.ESTUDIANTE));
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        UsuarioSesionDTO perfil = assertInstanceOf(UsuarioSesionDTO.class, respuesta.getBody());
+        assertEquals("Ada Lovelace", perfil.getNombre());
+        assertEquals("ada.codigo", perfil.getNombreUsuario());
+        assertEquals("AlgoLab Academy", perfil.getInstitucion());
+        assertEquals("Ingeniería de sistemas", perfil.getPrograma());
+        assertEquals("codigo", perfil.getAvatar());
+        assertEquals(Rol.ESTUDIANTE, perfil.getRol());
+        assertEquals(240, perfil.getPuntaje());
     }
 
     private static RegistroUsuarioRequest solicitudRegistro(String nombre, String correo, Rol rol, String contrasena) {

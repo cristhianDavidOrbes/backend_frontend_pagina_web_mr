@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,14 +25,25 @@ public class ProgresoServicio implements IProgresoServicio {
     private final IProgresoNivelRepositorio progresoNivelRepositorio;
     private final IUsuarioServicio usuarioServicio;
     private final IDescripcionNivelServicio descripcionNivelServicio;
+    private final ReporteNivelServicio reporteNivelServicio;
+
+    @Autowired
+    public ProgresoServicio(
+            IProgresoNivelRepositorio progresoNivelRepositorio,
+            IUsuarioServicio usuarioServicio,
+            IDescripcionNivelServicio descripcionNivelServicio,
+            ReporteNivelServicio reporteNivelServicio) {
+        this.progresoNivelRepositorio = progresoNivelRepositorio;
+        this.usuarioServicio = usuarioServicio;
+        this.descripcionNivelServicio = descripcionNivelServicio;
+        this.reporteNivelServicio = reporteNivelServicio;
+    }
 
     public ProgresoServicio(
             IProgresoNivelRepositorio progresoNivelRepositorio,
             IUsuarioServicio usuarioServicio,
             IDescripcionNivelServicio descripcionNivelServicio) {
-        this.progresoNivelRepositorio = progresoNivelRepositorio;
-        this.usuarioServicio = usuarioServicio;
-        this.descripcionNivelServicio = descripcionNivelServicio;
+        this(progresoNivelRepositorio, usuarioServicio, descripcionNivelServicio, null);
     }
 
     @Override
@@ -44,6 +56,12 @@ public class ProgresoServicio implements IProgresoServicio {
         }
 
         return usuario;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Usuario> buscarUsuarioPorId(Long id) {
+        return usuarioServicio.buscarPorId(id);
     }
 
     @Override
@@ -87,6 +105,9 @@ public class ProgresoServicio implements IProgresoServicio {
         }
 
         usuarioServicio.actualizar(usuario);
+        if (reporteNivelServicio != null) {
+            reporteNivelServicio.sincronizarDesdeProgreso(usuario, progreso);
+        }
         return construirRespuesta(usuario, progresos);
     }
 

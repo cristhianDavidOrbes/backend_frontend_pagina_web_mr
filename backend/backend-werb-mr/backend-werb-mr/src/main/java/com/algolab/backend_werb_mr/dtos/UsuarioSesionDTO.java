@@ -11,12 +11,17 @@ public class UsuarioSesionDTO {
     private Rol rol;
     private Integer nivelActual;
     private Integer puntaje;
+    private String biografia;
+    private String institucion;
+    private String programa;
+    private String avatar;
 
     public UsuarioSesionDTO() {
     }
 
     public UsuarioSesionDTO(Long id, String nombre, String correo, String nombreUsuario, Rol rol,
-            Integer nivelActual, Integer puntaje) {
+            Integer nivelActual, Integer puntaje, String biografia, String institucion,
+            String programa, String avatar) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
@@ -24,6 +29,10 @@ public class UsuarioSesionDTO {
         this.rol = rol;
         this.nivelActual = nivelActual;
         this.puntaje = puntaje;
+        this.biografia = biografia;
+        this.institucion = institucion;
+        this.programa = programa;
+        this.avatar = avatar;
     }
 
     public static UsuarioSesionDTO desdeUsuario(Usuario usuario) {
@@ -34,7 +43,11 @@ public class UsuarioSesionDTO {
                 usuario.getNombreUsuario(),
                 usuario.getRol(),
                 usuario.getNivelActual(),
-                usuario.getPuntaje());
+                usuario.getPuntaje(),
+                usuario.getBiografia(),
+                usuario.getInstitucion(),
+                usuario.getPrograma(),
+                usuario.getAvatar());
     }
 
     public Long getId() {
@@ -92,4 +105,13 @@ public class UsuarioSesionDTO {
     public void setPuntaje(Integer puntaje) {
         this.puntaje = puntaje;
     }
+
+    public String getBiografia() { return biografia; }
+    public void setBiografia(String biografia) { this.biografia = biografia; }
+    public String getInstitucion() { return institucion; }
+    public void setInstitucion(String institucion) { this.institucion = institucion; }
+    public String getPrograma() { return programa; }
+    public void setPrograma(String programa) { this.programa = programa; }
+    public String getAvatar() { return avatar; }
+    public void setAvatar(String avatar) { this.avatar = avatar; }
 }

@@ -9,6 +9,10 @@ import com.algolab.backend_werb_mr.modelos.Usuario;
 public interface IProgresoServicio {
     Optional<Usuario> buscarUsuarioAutenticado(String correo);
 
+    default Optional<Usuario> buscarUsuarioPorId(Long id) {
+        return Optional.empty();
+    }
+
     ProgresoUsuarioDTO consultarProgreso(Usuario usuario);
 
     ProgresoUsuarioDTO guardarProgreso(Usuario usuario, GuardarProgresoRequest request);
