@@ -1,158 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
 
-type EstadoEnvio = "idle" | "enviando" | "exito" | "error";
-
-type RegistroRespuesta = {
-  exitoso?: boolean;
-  mensaje?: string;
-  usuario?: {
-    id: number;
-    nombre: string;
-    correo: string;
-    rol: string;
-    nivelActual: number;
-    puntaje: number;
-  };
-};
+type RegistroRespuesta = { exitoso?: boolean; mensaje?: string };
 
 export default function RegistrarsePage() {
-  const [nombre, setNombre] = useState("");
-  const [correo, setCorreo] = useState("");
-  const [contrasena, setContrasena] = useState("");
-  const [estado, setEstado] = useState<EstadoEnvio>("idle");
-  const [mensaje, setMensaje] = useState("");
-
+  const router = useRouter();
+  const [nombre, setNombre] = useState(""); const [correo, setCorreo] = useState(""); const [contrasena, setContrasena] = useState("");
+  const [enviando, setEnviando] = useState(false); const [mensaje, setMensaje] = useState("");
   async function registrar(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setEstado("enviando");
-    setMensaje("");
-
+    event.preventDefault(); setEnviando(true); setMensaje("");
     try {
-      const respuesta = await fetch("/api/registrar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nombre,
-          correo,
-          rol: "ESTUDIANTE",
-          contrasena,
-        }),
-      });
-
-      const datos = (await respuesta.json()) as RegistroRespuesta;
-
-      if (!respuesta.ok || datos.exitoso === false) {
-        setEstado("error");
-        setMensaje(datos.mensaje ?? "No se pudo registrar el usuario.");
-        return;
-      }
-
-      setEstado("exito");
-      setMensaje(datos.mensaje ?? "Usuario registrado correctamente.");
-      setNombre("");
-      setCorreo("");
-      setContrasena("");
-    } catch {
-      setEstado("error");
-      setMensaje("No se pudo conectar con el backend.");
-    }
+      const response = await fetch("/api/registrar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre, correo, contrasena, rol: "ESTUDIANTE" }) });
+      const data = await response.json() as RegistroRespuesta;
+      if (!response.ok || data.exitoso === false) throw new Error(data.mensaje ?? "No se pudo crear la cuenta.");
+      router.push("/iniciar-sesion?registro=exitoso");
+    } catch (error) { setMensaje(error instanceof Error ? error.message : "No se pudo conectar con AlgoLab."); setEnviando(false); }
   }
-
-  return (
-    <main className="min-h-screen bg-neutral-100 px-4 py-8 text-neutral-950">
-      <section className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md items-center">
-        <div className="w-full rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-          <div className="mb-6">
-            <p className="text-sm font-medium text-teal-700">AlgoLab</p>
-            <h1 className="mt-2 text-2xl font-semibold">Crear cuenta</h1>
-            <p className="mt-2 text-sm leading-6 text-neutral-600">
-              Registra un estudiante para probar la conexion con el backend.
-            </p>
-          </div>
-
-          <form className="space-y-4" onSubmit={registrar}>
-            <div>
-              <label className="text-sm font-medium" htmlFor="nombre">
-                Nombre
-              </label>
-              <input
-                className="mt-2 h-11 w-full rounded-md border border-neutral-300 px-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                id="nombre"
-                name="nombre"
-                type="text"
-                value={nombre}
-                onChange={(event) => setNombre(event.target.value)}
-                placeholder="Cristhian David"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium" htmlFor="correo">
-                Correo
-              </label>
-              <input
-                className="mt-2 h-11 w-full rounded-md border border-neutral-300 px-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                id="correo"
-                name="correo"
-                type="email"
-                value={correo}
-                onChange={(event) => setCorreo(event.target.value)}
-                placeholder="usuario@email.com"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium" htmlFor="contrasena">
-                Contraseña
-              </label>
-              <input
-                className="mt-2 h-11 w-full rounded-md border border-neutral-300 px-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
-                id="contrasena"
-                name="contrasena"
-                type="password"
-                value={contrasena}
-                onChange={(event) => setContrasena(event.target.value)}
-                placeholder="Minimo 6 caracteres"
-                required
-              />
-            </div>
-
-            <button
-              className="flex h-11 w-full items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
-              type="submit"
-              disabled={estado === "enviando"}
-            >
-              {estado === "enviando" ? "Registrando..." : "Registrarse"}
-            </button>
-          </form>
-
-          {mensaje ? (
-            <div
-              className={`mt-4 rounded-md border px-3 py-2 text-sm ${
-                estado === "exito"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-red-200 bg-red-50 text-red-800"
-              }`}
-            >
-              {mensaje}
-            </div>
-          ) : null}
-
-          <p className="mt-6 text-center text-sm text-neutral-600">
-            ¿Ya tienes cuenta?{" "}
-            <Link className="font-semibold text-teal-700 hover:text-teal-800" href="/iniciar-sesion">
-              Iniciar sesion
-            </Link>
-          </p>
-        </div>
-      </section>
-    </main>
-  );
+  return <main className="auth-shell min-h-screen"><Link className="auth-brand" href="/"><span className="brand-mark">A</span><strong>AlgoLab</strong></Link><section className="auth-layout">
+    <div className="auth-story"><p className="section-kicker">Primera misión</p><h1>Crea una identidad que viajará contigo.</h1><p>Tu perfil conecta la página, el progreso pedagógico y la experiencia de realidad mixta. Después podrás personalizar alias, avatar, institución y programa.</p><div className="auth-code"><span>estudiante</span><strong>{".iniciarRuta();"}</strong><small>{"// 6 niveles · 4 pilares · 1 objetivo"}</small></div></div>
+    <div className="auth-card"><p className="section-kicker">Nuevo estudiante</p><h2>Crear cuenta</h2><p className="auth-copy">Empieza con tus datos esenciales. Tu perfil podrá evolucionar después.</p><form className="mt-7 space-y-5" onSubmit={registrar}><label className="field-label">Nombre completo<input autoComplete="name" className="field-input" onChange={(event) => setNombre(event.target.value)} placeholder="Tu nombre" required value={nombre} /></label><label className="field-label">Correo electrónico<input autoComplete="email" className="field-input" onChange={(event) => setCorreo(event.target.value)} placeholder="nombre@correo.com" required type="email" value={correo} /></label><label className="field-label">Contraseña<input autoComplete="new-password" className="field-input" minLength={6} onChange={(event) => setContrasena(event.target.value)} placeholder="Mínimo 6 caracteres" required type="password" value={contrasena} /></label><button className="primary-button flex w-full items-center justify-center" disabled={enviando} type="submit">{enviando ? "Creando perfil…" : "Crear mi perfil →"}</button></form>{mensaje ? <div className="alert-error mt-4">{mensaje}</div> : null}<p className="auth-switch">¿Ya tienes una cuenta? <Link href="/iniciar-sesion">Inicia sesión</Link></p></div>
+  </section></main>;
 }

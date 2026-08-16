@@ -9,6 +9,11 @@ export type UsuarioSesion = {
   rol: "ESTUDIANTE" | "DOCENTE" | "ADMINISTRADOR";
   nivelActual: number;
   puntaje: number;
+  nombreUsuario?: string;
+  biografia?: string;
+  institucion?: string;
+  programa?: string;
+  avatar?: "orbita" | "codigo" | "robot" | "nucleo";
 };
 
 function subscribe(callback: () => void) {
@@ -39,6 +44,17 @@ function useLocalStorageValue(key: string) {
 
 export function notifyAuthSessionChange() {
   window.dispatchEvent(new Event("auth-session-change"));
+}
+
+export function saveAuthUser(usuario: UsuarioSesion) {
+  window.localStorage.setItem("usuario", JSON.stringify(usuario));
+  notifyAuthSessionChange();
+}
+
+export function clearAuthSession() {
+  window.localStorage.removeItem("token");
+  window.localStorage.removeItem("usuario");
+  notifyAuthSessionChange();
 }
 
 export function useAuthSession() {

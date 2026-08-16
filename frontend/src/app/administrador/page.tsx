@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useAuthSession } from "@/lib/use-auth-session";
+import { ProfileEditor } from "@/components/profile-editor";
+import { saveAuthUser, useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
 type Rol = "ESTUDIANTE" | "DOCENTE" | "ADMINISTRADOR";
 
@@ -68,6 +69,7 @@ const nivelInicial: NivelForm = {
 
 export default function AdministradorPage() {
   const { hydrated, token, usuario: usuarioActual } = useAuthSession();
+  const [perfilActual, setPerfilActual] = useState<UsuarioSesion | null>(usuarioActual);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [niveles, setNiveles] = useState<Nivel[]>([]);
   const [busqueda, setBusqueda] = useState("");
@@ -286,6 +288,7 @@ export default function AdministradorPage() {
   }
 
   const accesoDenegado = usuarioActual && usuarioActual.rol !== "ADMINISTRADOR";
+  const perfilActivo = perfilActual ?? usuarioActual;
   const mensajeVisible =
     mensaje || (hydrated && !token ? "Inicia sesion como administrador para entrar." : "");
   const cargando = hydrated && Boolean(token) && !datosCargados;
@@ -466,7 +469,7 @@ export default function AdministradorPage() {
                     <input
                       className={inputClass}
                       id="usuario-nivel-actual"
-                      max="5"
+                      max="6"
                       min="1"
                       type="number"
                       value={usuarioForm.nivelActual}
@@ -651,6 +654,18 @@ export default function AdministradorPage() {
                 </div>
               </div>
             </section>
+            {perfilActivo && token ? (
+              <div className="xl:col-span-2">
+                <ProfileEditor
+                  token={token}
+                  usuario={perfilActivo}
+                  onSaved={(perfil) => {
+                    setPerfilActual(perfil);
+                    saveAuthUser(perfil);
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
         )}
       </section>

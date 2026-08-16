@@ -1,3 +1,4 @@
+import "server-only";
 import { NextResponse } from "next/server";
 
 const DEFAULT_API_BASE_URL = "https://backendfrontendpaginawebmr-production.up.railway.app";
@@ -24,6 +25,7 @@ export async function proxyBackend({ request, path, method }: ProxyOptions) {
       method,
       headers,
       body: method === "GET" || method === "DELETE" ? undefined : await request.text(),
+      cache: "no-store",
     });
 
     const texto = await respuesta.text();
@@ -34,7 +36,12 @@ export async function proxyBackend({ request, path, method }: ProxyOptions) {
       });
     }
 
-    const datos = JSON.parse(texto);
+    let datos: unknown;
+    try {
+      datos = JSON.parse(texto);
+    } catch {
+      datos = { mensaje: respuesta.ok ? texto : "El backend devolvió una respuesta no válida." };
+    }
 
     return NextResponse.json(datos, {
       status: respuesta.status,
