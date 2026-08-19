@@ -2,6 +2,8 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 
+import type { AvatarPreset } from "@/lib/avatar";
+
 export type UsuarioSesion = {
   id: number;
   nombre: string;
@@ -13,7 +15,9 @@ export type UsuarioSesion = {
   biografia?: string;
   institucion?: string;
   programa?: string;
-  avatar?: "orbita" | "codigo" | "robot" | "nucleo";
+  avatar?: AvatarPreset;
+  avatarUrl?: string | null;
+  avatarVersion?: string | null;
 };
 
 function subscribe(callback: () => void) {
