@@ -2,16 +2,9 @@ package com.algolab.backend_werb_mr.modelos;
 
 import java.time.Instant;
 
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -20,12 +13,6 @@ public class AvatarUsuario {
     @Id
     @Column(name = "usuario_id")
     private Long usuarioId;
-
-    @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "usuario_id", nullable = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    private Usuario usuario;
 
     @Column(nullable = false, columnDefinition = "bytea")
     private byte[] contenido;
@@ -43,7 +30,6 @@ public class AvatarUsuario {
     }
 
     public AvatarUsuario(Usuario usuario) {
-        this.usuario = usuario;
         this.usuarioId = usuario == null ? null : usuario.getId();
     }
 
@@ -51,13 +37,8 @@ public class AvatarUsuario {
         return usuarioId;
     }
 
-    public Usuario getUsuario() {
-        return usuario;
-    }
-
-    public void setUsuario(Usuario usuario) {
-        this.usuario = usuario;
-        this.usuarioId = usuario == null ? null : usuario.getId();
+    public void setUsuarioId(Long usuarioId) {
+        this.usuarioId = usuarioId;
     }
 
     public byte[] getContenido() {

@@ -106,7 +106,7 @@ public class AvatarServicio {
         AvatarUsuario avatar = avatarRepositorio.findById(usuario.getId())
                 .orElseGet(() -> new AvatarUsuario(usuario));
 
-        avatar.setUsuario(usuario);
+        avatar.setUsuarioId(usuario.getId());
         avatar.setContenido(imagen.contenido());
         avatar.setMimeType(imagen.mimeType());
         avatar.setEtag(etag);

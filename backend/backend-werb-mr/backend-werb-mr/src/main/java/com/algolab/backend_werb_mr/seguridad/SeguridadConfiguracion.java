@@ -32,6 +32,7 @@ public class SeguridadConfiguracion {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/usuarios/registrar").permitAll()
                         .requestMatchers("/api/usuarios/iniciar-sesion").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/*/avatar").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ranking", "/api/ranking/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/niveles", "/api/niveles/**").authenticated()

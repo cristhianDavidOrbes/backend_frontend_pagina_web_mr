@@ -23,6 +23,12 @@ type Props = {
 
 type BusyAction = "procesando" | "subiendo" | "eliminando" | "guardando" | null;
 
+function crearFormularioAvatar(avatar: AvatarNormalizado) {
+  const datos = new FormData();
+  datos.append("archivo", avatar.archivo, avatar.archivo.name);
+  return datos;
+}
+
 export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: Props) {
   const router = useRouter();
   const inputId = useId();
@@ -112,10 +118,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
     try {
       const updated = await apiRequest<UsuarioSesion>("/api/avatar", token, {
         method: "PUT",
-        body: JSON.stringify({
-          imagenBase64: avatarPendiente.base64,
-          mimeType: avatarPendiente.archivo.type || "image/jpeg",
-        }),
+        body: crearFormularioAvatar(avatarPendiente),
       });
 
       const fusionado: UsuarioSesion = {
@@ -200,10 +203,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
       if (avatarPendiente) {
         avatarRespuesta = await apiRequest<UsuarioSesion>("/api/avatar", token, {
           method: "PUT",
-          body: JSON.stringify({
-            imagenBase64: avatarPendiente.base64,
-            mimeType: avatarPendiente.archivo.type || "image/jpeg",
-          }),
+          body: crearFormularioAvatar(avatarPendiente),
         });
         setAvatarPendiente(null);
       } else if (eliminarAvatarAlGuardar && tieneAvatarPersonalizado) {
