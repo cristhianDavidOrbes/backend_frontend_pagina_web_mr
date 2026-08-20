@@ -1,42 +1,57 @@
 "use client";
 
 /**
- * Cache global de Object URLs para avatars descargados.
- * Evita N+1 peticiones HTTP cuando se renderiza una lista de estudiantes.
+ * Cache global en memoria para avatars descargados.
+ * Mantiene los Object URLs disponibles durante la sesión para evitar parpadeos,
+ * peticiones duplicadas y problemas al cambiar de pestañas o páginas.
  */
 
-type CacheEntry = {
-  objectUrl: string;
-  refCount: number;
-};
-
-const cache = new Map<string, CacheEntry>();
-const pending = new Map<string, Promise<string | null>>();
+const urlCache = new Map<string, string>();
+const pendingRequests = new Map<string, Promise<string | null>>();
 
 export function getCachedAvatarUrl(url: string): string | null {
-  return cache.get(url)?.objectUrl ?? null;
+  return urlCache.get(url) ?? null;
+}
+
+export function invalidateAvatarCache(url?: string) {
+  if (url) {
+    const existing = urlCache.get(url);
+    if (existing) {
+      URL.revokeObjectURL(existing);
+      urlCache.delete(url);
+    }
+  } else {
+    for (const objUrl of urlCache.values()) {
+      URL.revokeObjectURL(objUrl);
+    }
+    urlCache.clear();
+  }
 }
 
 export async function fetchAndCacheAvatar(
   url: string,
-  token: string,
+  token?: string,
   signal?: AbortSignal,
 ): Promise<string | null> {
-  const cached = cache.get(url);
+  const cached = urlCache.get(url);
   if (cached) {
-    cached.refCount++;
-    return cached.objectUrl;
+    return cached;
   }
 
-  const inflight = pending.get(url);
+  const inflight = pendingRequests.get(url);
   if (inflight) {
     return inflight;
+  }
+
+  const headers: HeadersInit = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const request = (async () => {
     try {
       const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
         signal,
         cache: "no-store",
       });
@@ -48,7 +63,7 @@ export async function fetchAndCacheAvatar(
         return null;
       }
       const objectUrl = URL.createObjectURL(blob);
-      cache.set(url, { objectUrl, refCount: 1 });
+      urlCache.set(url, objectUrl);
       return objectUrl;
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -56,22 +71,14 @@ export async function fetchAndCacheAvatar(
       }
       return null;
     } finally {
-      pending.delete(url);
+      pendingRequests.delete(url);
     }
   })();
 
-  pending.set(url, request);
+  pendingRequests.set(url, request);
   return request;
 }
 
-export function releaseAvatarUrl(url: string) {
-  const entry = cache.get(url);
-  if (!entry) {
-    return;
-  }
-  entry.refCount--;
-  if (entry.refCount <= 0) {
-    URL.revokeObjectURL(entry.objectUrl);
-    cache.delete(url);
-  }
+export function releaseAvatarUrl(_url: string) {
+  // Mantenemos los Object URLs en memoria durante la sesión para navegación instantánea
 }

@@ -158,7 +158,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
   return (
     <main className="app-surface min-h-screen overflow-x-hidden text-slate-100">
       <div className="mx-auto grid min-h-screen max-w-[1760px] lg:grid-cols-[292px_minmax(0,1fr)]">
-        <aside className="relative z-20 border-b border-white/10 bg-[#05100e]/90 px-4 py-4 shadow-[0_20px_70px_rgba(0,0,0,.18)] backdrop-blur-2xl lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+        <aside className="relative z-20 border-b border-white/10 bg-[#05100e]/95 px-4 py-4 shadow-[0_20px_70px_rgba(0,0,0,.18)] backdrop-blur-2xl lg:sticky lg:top-0 lg:flex lg:max-h-screen lg:flex-col lg:border-b-0 lg:border-r lg:px-5 lg:py-5 lg:overflow-y-auto scrollbar-none">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent"
@@ -179,11 +179,11 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
             </span>
           </Link>
 
-          <div className="mt-4 flex items-center justify-between px-2 lg:mt-9">
+          <div className="mt-3 flex items-center justify-between px-2 lg:mt-5">
             <span className="font-mono text-[9px] uppercase tracking-[.22em] text-slate-600">
               Navegación
             </span>
-            <span className="rounded-full border border-white/10 px-2 py-1 font-mono text-[8px] text-slate-500">
+            <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[8px] text-slate-500">
               WEB.02
             </span>
           </div>
@@ -202,7 +202,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
               return (
                 <Link
                   aria-current={active ? "page" : undefined}
-                  className={`group flex shrink-0 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition lg:w-full ${
+                  className={`group flex shrink-0 items-center gap-3 rounded-xl border px-3 py-2 text-sm transition lg:w-full ${
                     active
                       ? "border-emerald-300/25 bg-emerald-300/[.09] text-emerald-100 shadow-[inset_3px_0_0_#34d399]"
                       : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[.035] hover:text-white"
@@ -228,43 +228,43 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
             })}
           </nav>
 
-          <div className="mt-7 hidden overflow-hidden rounded-[1.35rem] border border-cyan-200/10 bg-gradient-to-br from-cyan-300/[.07] to-emerald-300/[.025] p-4 lg:block">
+          <div className="mt-4 hidden overflow-hidden rounded-[1.25rem] border border-cyan-200/10 bg-gradient-to-br from-cyan-300/[.07] to-emerald-300/[.025] p-3.5 lg:block">
             <div className="flex items-start justify-between gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-xl border border-cyan-200/15 bg-cyan-200/[.07] text-cyan-200">
-                <ShellIcon className="h-5 w-5" name="headset" />
+              <span className="grid h-8 w-8 place-items-center rounded-xl border border-cyan-200/15 bg-cyan-200/[.07] text-cyan-200">
+                <ShellIcon className="h-4 w-4" name="headset" />
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-2 py-1 font-mono text-[8px] uppercase tracking-wider text-emerald-200">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-emerald-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> En línea
               </span>
             </div>
-            <p className="mt-4 text-sm font-semibold text-slate-200">Puente con las gafas</p>
-            <p className="mt-1 text-[11px] leading-5 text-slate-500">
+            <p className="mt-3 text-xs font-semibold text-slate-200">Puente con las gafas</p>
+            <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
               Perfil, progreso e informes comparten el mismo estado de aprendizaje.
             </p>
           </div>
 
-          <div className="mt-7 hidden lg:mt-auto lg:block">
-            <div className="rounded-[1.35rem] border border-white/10 bg-white/[.035] p-3.5">
+          <div className="mt-4 hidden lg:mt-auto lg:block">
+            <div className="rounded-[1.25rem] border border-white/10 bg-white/[.035] p-3">
               <div className="flex min-w-0 items-center gap-3">
                 {usuario ? (
                   <AvatarDisplay
-                    className="relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-[.9rem] border border-white/15 text-sm font-extrabold text-white shadow-lg [&>img]:object-cover"
+                    className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-[.85rem] border border-white/15 text-sm font-extrabold text-white shadow-lg [&>img]:object-cover"
                     usuario={usuario}
                   />
                 ) : (
-                  <span className="h-11 w-11 animate-pulse rounded-[.9rem] bg-white/5" />
+                  <span className="h-10 w-10 animate-pulse rounded-[.85rem] bg-white/5" />
                 )}
                 <span className="min-w-0 flex-1">
-                  <strong className="block truncate text-sm text-slate-100">
+                  <strong className="block truncate text-xs font-bold text-slate-100">
                     {usuario?.nombre ?? "Sincronizando…"}
                   </strong>
-                  <small className="mt-0.5 block truncate text-[10px] text-emerald-300/80">
+                  <small className="mt-0.5 block truncate text-[9px] text-emerald-300/80">
                     {usuario ? config.descriptor : ""}
                   </small>
                 </span>
               </div>
               <button
-                className="mt-3 flex w-full items-center justify-between rounded-xl border border-white/5 bg-black/10 px-3 py-2 text-xs text-slate-500 transition hover:border-rose-300/15 hover:bg-rose-300/[.04] hover:text-rose-200"
+                className="mt-2.5 flex w-full items-center justify-between rounded-xl border border-white/5 bg-black/15 px-2.5 py-1.5 text-[11px] text-slate-400 transition hover:border-rose-300/20 hover:bg-rose-300/[.06] hover:text-rose-200"
                 onClick={salir}
                 type="button"
               >

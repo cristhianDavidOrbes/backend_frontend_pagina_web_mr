@@ -12,6 +12,7 @@ import {
 import { apiRequest } from "@/lib/client-api";
 import { saveAuthUser, type UsuarioSesion } from "@/lib/use-auth-session";
 import { useSecureAvatarUrl } from "@/lib/use-secure-avatar";
+import { invalidateAvatarCache } from "@/lib/use-avatar-cache";
 
 type Props = {
   usuario: UsuarioSesion;
@@ -21,17 +22,6 @@ type Props = {
 };
 
 type BusyAction = "procesando" | "subiendo" | "eliminando" | "guardando" | null;
-
-function fusionarAvatarEnBorrador(borrador: UsuarioSesion, actualizado: UsuarioSesion): UsuarioSesion {
-  return {
-    ...actualizado,
-    nombre: borrador.nombre,
-    nombreUsuario: borrador.nombreUsuario,
-    biografia: borrador.biografia,
-    institucion: borrador.institucion,
-    programa: borrador.programa,
-  };
-}
 
 export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: Props) {
   const inputId = useId();
@@ -43,9 +33,15 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
   const [tieneAvatarPersonalizado, setTieneAvatarPersonalizado] = useState(Boolean(usuario.avatarUrl));
   const [eliminarAvatarAlGuardar, setEliminarAvatarAlGuardar] = useState(false);
 
+  // Sync state if initial usuario prop changes
+  useEffect(() => {
+    setForm(usuario);
+    setTieneAvatarPersonalizado(Boolean(usuario.avatarUrl));
+  }, [usuario]);
+
   const preset = avatarPresetSeguro(form.avatar);
   const avatarRemotoUrl = useSecureAvatarUrl(form.avatarUrl, token);
-  const avatarUrl = avatarPendiente?.previewUrl ?? avatarRemotoUrl;
+  const avatarUrl = avatarPendiente?.previewUrl ?? (eliminarAvatarAlGuardar ? null : avatarRemotoUrl);
   const inicial = (form.nombre?.trim().charAt(0) || "A").toUpperCase();
   const estaOcupado = busy !== null;
 
@@ -71,12 +67,12 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
       avatarUrl: null,
       avatarVersion: null,
     }));
-    setEliminarAvatarAlGuardar(tieneAvatarPersonalizado);
-    setStatus(
-      tieneAvatarPersonalizado
-        ? "Guarda los cambios para reemplazar la foto por este avatar."
-        : "Avatar prediseñado seleccionado.",
-    );
+    if (tieneAvatarPersonalizado) {
+      setEliminarAvatarAlGuardar(true);
+      setStatus("Has elegido un avatar prediseñado. Guarda los cambios para aplicarlo.");
+    } else {
+      setStatus(`Avatar prediseñado '${avatar}' seleccionado.`);
+    }
   }
 
   async function seleccionarArchivo(event: ChangeEvent<HTMLInputElement>) {
@@ -87,13 +83,13 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
     }
 
     setBusy("procesando");
-    setStatus("Preparando una vista previa cuadrada…");
+    setStatus("Preparando vista previa...");
     try {
       const normalizado = await normalizarAvatar(archivo);
       setAvatarPendiente(normalizado);
       setEliminarAvatarAlGuardar(false);
       setStatus(
-        `Vista previa lista (${normalizado.dimension} × ${normalizado.dimension} px). Confirma para subirla.`,
+        `Foto lista (${normalizado.dimension}×${normalizado.dimension}px). Haz clic en 'Guardar cambios' para aplicarla.`,
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo procesar la imagen.");
@@ -102,13 +98,13 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
     }
   }
 
-  async function subirAvatar() {
+  async function subirAvatarInmediato() {
     if (!avatarPendiente) {
       return;
     }
 
     setBusy("subiendo");
-    setStatus("Subiendo tu avatar…");
+    setStatus("Subiendo foto de perfil...");
     try {
       const datos = new FormData();
       datos.append("archivo", avatarPendiente.archivo, avatarPendiente.archivo.name);
@@ -116,46 +112,75 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
         method: "PUT",
         body: datos,
       });
-      saveAuthUser(updated);
-      setForm((current) => fusionarAvatarEnBorrador(current, updated));
+
+      invalidateAvatarCache();
+      const fusionado: UsuarioSesion = {
+        ...updated,
+        nombre: form.nombre,
+        nombreUsuario: form.nombreUsuario,
+        biografia: form.biografia,
+        institucion: form.institucion,
+        programa: form.programa,
+      };
+
+      saveAuthUser(fusionado);
+      setForm(fusionado);
       setAvatarPendiente(null);
-      setTieneAvatarPersonalizado(Boolean(updated.avatarUrl));
+      setTieneAvatarPersonalizado(Boolean(fusionado.avatarUrl));
       setEliminarAvatarAlGuardar(false);
-      setStatus("Avatar personalizado sincronizado con AlgoLab.");
-      onSaved?.(updated);
+      setStatus("Foto de perfil subida y sincronizada con AlgoLab.");
+      onSaved?.(fusionado);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No se pudo subir el avatar.");
+      setStatus(error instanceof Error ? error.message : "No se pudo subir la foto.");
     } finally {
       setBusy(null);
     }
   }
 
   async function eliminarAvatarPersonalizado() {
-    if (!tieneAvatarPersonalizado) {
+    if (!tieneAvatarPersonalizado && !avatarPendiente) {
+      return;
+    }
+
+    if (avatarPendiente) {
       descartarPreview();
+    }
+
+    if (!tieneAvatarPersonalizado) {
       return;
     }
 
     setBusy("eliminando");
-    setStatus("Restableciendo el avatar…");
+    setStatus("Restableciendo avatar...");
     try {
       const respuesta = await apiRequest<UsuarioSesion | null>("/api/avatar", token, {
         method: "DELETE",
       });
+
+      invalidateAvatarCache();
       const updated: UsuarioSesion = respuesta ?? {
         ...form,
         avatarUrl: null,
         avatarVersion: null,
       };
-      saveAuthUser(updated);
-      setForm((current) => fusionarAvatarEnBorrador(current, updated));
-      setAvatarPendiente(null);
+
+      const fusionado: UsuarioSesion = {
+        ...updated,
+        nombre: form.nombre,
+        nombreUsuario: form.nombreUsuario,
+        biografia: form.biografia,
+        institucion: form.institucion,
+        programa: form.programa,
+      };
+
+      saveAuthUser(fusionado);
+      setForm(fusionado);
       setTieneAvatarPersonalizado(false);
       setEliminarAvatarAlGuardar(false);
-      setStatus("Foto eliminada. Volviste a tu avatar prediseñado.");
-      onSaved?.(updated);
+      setStatus("Foto eliminada. Se usará el avatar prediseñado.");
+      onSaved?.(fusionado);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No se pudo restablecer el avatar.");
+      setStatus(error instanceof Error ? error.message : "No se pudo eliminar la foto.");
     } finally {
       setBusy(null);
     }
@@ -164,13 +189,30 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy("guardando");
-    setStatus("Guardando…");
+    setStatus("Guardando cambios y sincronizando...");
     try {
-      if (eliminarAvatarAlGuardar && tieneAvatarPersonalizado) {
-        await apiRequest<UsuarioSesion | null>("/api/avatar", token, { method: "DELETE" });
+      let avatarRespuesta: UsuarioSesion | null = null;
+
+      // 1. Si hay una imagen seleccionada pendiente de subir, subirla primero
+      if (avatarPendiente) {
+        const datos = new FormData();
+        datos.append("archivo", avatarPendiente.archivo, avatarPendiente.archivo.name);
+        avatarRespuesta = await apiRequest<UsuarioSesion>("/api/avatar", token, {
+          method: "PUT",
+          body: datos,
+        });
+        invalidateAvatarCache();
+        setAvatarPendiente(null);
+      } else if (eliminarAvatarAlGuardar && tieneAvatarPersonalizado) {
+        // 2. Si el usuario eligió un preset para reemplazar su foto
+        avatarRespuesta = await apiRequest<UsuarioSesion | null>("/api/avatar", token, {
+          method: "DELETE",
+        });
+        invalidateAvatarCache();
       }
 
-      const updated = await apiRequest<UsuarioSesion>("/api/perfil", token, {
+      // 3. Guardar datos del perfil en backend
+      const perfilActualizado = await apiRequest<UsuarioSesion>("/api/perfil", token, {
         method: "PUT",
         body: JSON.stringify({
           nombre: form.nombre,
@@ -182,18 +224,25 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
         }),
       });
 
-      let perfilActualizado = updated;
-      if (eliminarAvatarAlGuardar && tieneAvatarPersonalizado) {
-        perfilActualizado = { ...updated, avatarUrl: null, avatarVersion: null };
-      }
-      saveAuthUser(perfilActualizado);
-      setForm(perfilActualizado);
-      setTieneAvatarPersonalizado(Boolean(perfilActualizado.avatarUrl));
+      // 4. Fusionar la respuesta del perfil con la URL de avatar más reciente
+      const perfilFinal: UsuarioSesion = {
+        ...perfilActualizado,
+        avatarUrl: avatarRespuesta !== null
+          ? avatarRespuesta.avatarUrl
+          : (eliminarAvatarAlGuardar ? null : (perfilActualizado.avatarUrl ?? form.avatarUrl)),
+        avatarVersion: avatarRespuesta !== null
+          ? avatarRespuesta.avatarVersion
+          : (eliminarAvatarAlGuardar ? null : (perfilActualizado.avatarVersion ?? form.avatarVersion)),
+      };
+
+      saveAuthUser(perfilFinal);
+      setForm(perfilFinal);
+      setTieneAvatarPersonalizado(Boolean(perfilFinal.avatarUrl));
       setEliminarAvatarAlGuardar(false);
-      setStatus("Perfil sincronizado con AlgoLab.");
-      onSaved?.(perfilActualizado);
+      setStatus("¡Perfil e imagen sincronizados exitosamente con AlgoLab!");
+      onSaved?.(perfilFinal);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No se pudo guardar.");
+      setStatus(error instanceof Error ? error.message : "Error al guardar el perfil.");
     } finally {
       setBusy(null);
     }
@@ -202,7 +251,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
   return (
     <section className="panel-card overflow-hidden" id="perfil">
       <button
-        className="flex w-full items-center justify-between p-5 text-left"
+        className="flex w-full items-center justify-between p-5 text-left transition hover:bg-white/[.02]"
         onClick={() => setOpen(!open)}
         type="button"
       >
@@ -210,13 +259,13 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
           <span className="section-kicker">Identidad AlgoLab</span>
           <strong className="mt-1 block text-lg">Tu perfil sincronizado</strong>
         </span>
-        <span className="text-emerald-300">{open ? "Cerrar" : "Editar"} ↗</span>
+        <span className="text-emerald-300 font-semibold">{open ? "Ocultar" : "Editar"} ↗</span>
       </button>
 
       {open ? (
-        <form className="grid gap-4 border-t border-white/10 p-5 sm:grid-cols-2" onSubmit={submit}>
+        <form className="grid gap-5 border-t border-white/10 p-5 sm:grid-cols-2" onSubmit={submit}>
           <label className="field-label">
-            Nombre
+            Nombre completo
             <input
               className="field-input"
               value={form.nombre ?? ""}
@@ -224,70 +273,77 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
               required
             />
           </label>
+
           <label className="field-label">
-            Alias
+            Alias / Nombre de usuario
             <input
               className="field-input"
               value={form.nombreUsuario ?? ""}
               onChange={(event) => setForm({ ...form, nombreUsuario: event.target.value })}
+              placeholder="ej: cristian_vr"
             />
           </label>
+
           <label className="field-label">
             Institución
             <input
               className="field-input"
               value={form.institucion ?? ""}
               onChange={(event) => setForm({ ...form, institucion: event.target.value })}
+              placeholder="ej: Universidad Cooperativa"
             />
           </label>
+
           <label className="field-label">
-            Programa
+            Programa académico
             <input
               className="field-input"
               value={form.programa ?? ""}
               onChange={(event) => setForm({ ...form, programa: event.target.value })}
+              placeholder="ej: Ingeniería de Software"
             />
           </label>
+
           <label className="field-label sm:col-span-2">
-            Presentación
+            Presentación / Biografía
             <textarea
               className="field-input min-h-24 py-3"
               maxLength={300}
               value={form.biografia ?? ""}
               onChange={(event) => setForm({ ...form, biografia: event.target.value })}
+              placeholder="Escribe una breve descripción de tu perfil..."
             />
           </label>
 
           <div className="sm:col-span-2">
-            <span className="field-label">Avatar en web y juego</span>
-            <div className="mt-3 flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4 sm:flex-row sm:items-center">
+            <span className="field-label">Avatar en web y gafas VR</span>
+            <div className="mt-3 flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4 sm:flex-row sm:items-center">
               <div
-                aria-label={avatarUrl ? "Vista previa del avatar personalizado" : `Avatar ${preset}`}
-                className={`avatar-token avatar-${preset} shrink-0 overflow-hidden`}
+                aria-label={avatarUrl ? "Vista previa del avatar" : `Avatar ${preset}`}
+                className={`avatar-token avatar-${preset} shrink-0 overflow-hidden shadow-xl ring-2 ring-emerald-400/20`}
                 role="img"
                 style={{
-                  width: "6rem",
-                  height: "6rem",
+                  width: "6.25rem",
+                  height: "6.25rem",
                   borderRadius: "1.75rem",
                   backgroundImage: avatarUrl ? `url("${avatarUrl.replaceAll('"', "%22")}")` : undefined,
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",
                   backgroundSize: "cover",
-                  fontSize: "1.75rem",
+                  fontSize: "2rem",
                 }}
               >
                 {avatarUrl ? null : inicial}
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-slate-100">Usa cualquier imagen que te represente</p>
+                <p className="text-sm font-semibold text-slate-100">Usa cualquier imagen o foto</p>
                 <p className="mt-1 text-xs leading-5 text-slate-400">
-                  Se recorta al centro y se normaliza automáticamente a un cuadrado de máximo 512 px.
-                  Archivo original: hasta 12 MB.
+                  Se optimiza al centro y se sincroniza con tus gafas de realidad virtual Meta Quest.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <label
-                    className="cursor-pointer rounded-xl border border-emerald-400/35 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-400/20"
+                    className="cursor-pointer rounded-xl border border-emerald-400/35 bg-emerald-400/10 px-3.5 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-400/20 active:scale-95"
                     htmlFor={inputId}
                   >
                     {busy === "procesando" ? "Procesando…" : "Elegir imagen"}
@@ -300,18 +356,19 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
                     onChange={seleccionarArchivo}
                     type="file"
                   />
+
                   {avatarPendiente ? (
                     <>
                       <button
-                        className="rounded-xl bg-emerald-400 px-3 py-2 text-xs font-bold text-slate-950 disabled:opacity-50"
+                        className="rounded-xl bg-emerald-400 px-3.5 py-2 text-xs font-bold text-slate-950 shadow-md transition hover:bg-emerald-300 disabled:opacity-50"
                         disabled={estaOcupado}
-                        onClick={subirAvatar}
+                        onClick={subirAvatarInmediato}
                         type="button"
                       >
-                        {busy === "subiendo" ? "Subiendo…" : "Usar esta imagen"}
+                        {busy === "subiendo" ? "Subiendo…" : "Subir foto ahora"}
                       </button>
                       <button
-                        className="rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 disabled:opacity-50"
+                        className="rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 transition hover:bg-white/[.06] disabled:opacity-50"
                         disabled={estaOcupado}
                         onClick={descartarPreview}
                         type="button"
@@ -320,9 +377,10 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
                       </button>
                     </>
                   ) : null}
-                  {tieneAvatarPersonalizado ? (
+
+                  {tieneAvatarPersonalizado || avatarUrl ? (
                     <button
-                      className="rounded-xl border border-rose-400/25 px-3 py-2 text-xs text-rose-200 disabled:opacity-50"
+                      className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/20 disabled:opacity-50"
                       disabled={estaOcupado}
                       onClick={eliminarAvatarPersonalizado}
                       type="button"
@@ -352,7 +410,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+          <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4 sm:col-span-2">
             <button
               className="primary-button disabled:cursor-not-allowed disabled:opacity-50"
               disabled={estaOcupado}
@@ -360,9 +418,11 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
             >
               {busy === "guardando" ? "Guardando…" : "Guardar cambios"}
             </button>
-            <span aria-live="polite" className="text-sm text-slate-400">
-              {status}
-            </span>
+            {status ? (
+              <span aria-live="polite" className="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-400/20 rounded-lg px-3 py-1.5">
+                {status}
+              </span>
+            ) : null}
           </div>
         </form>
       ) : null}
