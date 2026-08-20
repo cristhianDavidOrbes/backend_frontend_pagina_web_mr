@@ -1,9 +1,8 @@
 "use client";
 
-import { Component, Suspense, useMemo, useRef, type ReactNode } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Component, Suspense, useMemo, type ReactNode } from "react";
+import { Canvas } from "@react-three/fiber";
 import { Bounds, ContactShadows, OrbitControls, Sparkles, useGLTF } from "@react-three/drei";
-import type { Group } from "three";
 import { ShieldCheck } from "lucide-react";
 
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -31,16 +30,10 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 
 function RobotModel() {
   const { scene } = useGLTF("/models/algolab-robot.glb");
-  const group = useRef<Group>(null);
   const model = useMemo(() => scene.clone(true), [scene]);
 
-  useFrame((_, delta) => {
-    if (!group.current) return;
-    group.current.rotation.y += delta * 0.13;
-  });
-
   return (
-    <group ref={group} rotation={[0, -0.35, 0]}>
+    <group rotation={[0, -0.35, 0]}>
       <primitive object={model} />
     </group>
   );

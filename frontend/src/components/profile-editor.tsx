@@ -39,6 +39,8 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
     setPrevUsuario(usuario);
     setForm(usuario);
     setTieneAvatarPersonalizado(Boolean(usuario.avatarUrl));
+    setAvatarPendiente(null);
+    setEliminarAvatarAlGuardar(false);
   }
 
   const preset = avatarPresetSeguro(form.avatar);
@@ -109,7 +111,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
     setStatus("Subiendo foto de perfil al servidor...");
     try {
       const updated = await apiRequest<UsuarioSesion>("/api/avatar", token, {
-        method: "POST",
+        method: "PUT",
         body: JSON.stringify({
           imagenBase64: avatarPendiente.base64,
           mimeType: avatarPendiente.archivo.type || "image/jpeg",
@@ -197,7 +199,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
       // 1. Si hay una imagen seleccionada pendiente de subir, subirla primero
       if (avatarPendiente) {
         avatarRespuesta = await apiRequest<UsuarioSesion>("/api/avatar", token, {
-          method: "POST",
+          method: "PUT",
           body: JSON.stringify({
             imagenBase64: avatarPendiente.base64,
             mimeType: avatarPendiente.archivo.type || "image/jpeg",

@@ -107,18 +107,21 @@ export async function proxyBackendAvatar(request: Request, method: "POST" | "PUT
       payload = formData;
     }
 
-    // Intentar POST primero
+    // PUT es el contrato estable del backend. Las versiones anteriores del
+    // frontend enviaban POST, así que incluso esas peticiones se traducen a
+    // PUT aquí para que una pestaña con JavaScript en caché siga funcionando.
     let respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
-      method: "POST",
+      method: "PUT",
       headers,
       body: payload,
       cache: "no-store",
     });
 
-    // Si el backend en transición devuelve 404 o 405 en POST, reintentar con PUT
+    // Compatibilidad temporal con cualquier backend intermedio que solo
+    // expusiera POST. No se reintenta un 401: en ese caso el token sí es inválido.
     if (respuesta.status === 404 || respuesta.status === 405) {
       respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
-        method: "PUT",
+        method: "POST",
         headers,
         body: payload,
         cache: "no-store",
