@@ -5,14 +5,13 @@ import { ChangeEvent, FormEvent, useEffect, useId, useState } from "react";
 import {
   AVATAR_PRESETS,
   avatarPresetSeguro,
+  avatarUrlParaCliente,
   normalizarAvatar,
   type AvatarNormalizado,
   type AvatarPreset,
 } from "@/lib/avatar";
 import { apiRequest } from "@/lib/client-api";
 import { saveAuthUser, type UsuarioSesion } from "@/lib/use-auth-session";
-import { useSecureAvatarUrl } from "@/lib/use-secure-avatar";
-import { invalidateAvatarCache } from "@/lib/use-avatar-cache";
 
 type Props = {
   usuario: UsuarioSesion;
@@ -41,7 +40,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
   }
 
   const preset = avatarPresetSeguro(form.avatar);
-  const avatarRemotoUrl = useSecureAvatarUrl(form.avatarUrl, token);
+  const avatarRemotoUrl = avatarUrlParaCliente(form.avatarUrl);
   const avatarUrl = avatarPendiente?.previewUrl ?? (eliminarAvatarAlGuardar ? null : avatarRemotoUrl);
   const inicial = (form.nombre?.trim().charAt(0) || "A").toUpperCase();
   const estaOcupado = busy !== null;
@@ -70,7 +69,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
     }));
     if (tieneAvatarPersonalizado) {
       setEliminarAvatarAlGuardar(true);
-      setStatus("Has elegido un avatar prediseñado. Guarda los cambios para aplicarlo.");
+      setStatus("Has seleccionado un avatar prediseñado. Haz clic en 'Guardar cambios' para aplicarlo.");
     } else {
       setStatus(`Avatar prediseñado '${avatar}' seleccionado.`);
     }
@@ -105,7 +104,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
     }
 
     setBusy("subiendo");
-    setStatus("Subiendo foto de perfil...");
+    setStatus("Subiendo foto de perfil al servidor...");
     try {
       const datos = new FormData();
       datos.append("archivo", avatarPendiente.archivo, avatarPendiente.archivo.name);
@@ -114,7 +113,6 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
         body: datos,
       });
 
-      invalidateAvatarCache();
       const fusionado: UsuarioSesion = {
         ...updated,
         nombre: form.nombre,
@@ -158,7 +156,6 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
         method: "DELETE",
       });
 
-      invalidateAvatarCache();
       const updated: UsuarioSesion = respuesta ?? {
         ...form,
         avatarUrl: null,
@@ -202,14 +199,12 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
           method: "PUT",
           body: datos,
         });
-        invalidateAvatarCache();
         setAvatarPendiente(null);
       } else if (eliminarAvatarAlGuardar && tieneAvatarPersonalizado) {
         // 2. Si el usuario eligió un preset para reemplazar su foto
         avatarRespuesta = await apiRequest<UsuarioSesion | null>("/api/avatar", token, {
           method: "DELETE",
         });
-        invalidateAvatarCache();
       }
 
       // 3. Guardar datos del perfil en backend
@@ -240,7 +235,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
       setForm(perfilFinal);
       setTieneAvatarPersonalizado(Boolean(perfilFinal.avatarUrl));
       setEliminarAvatarAlGuardar(false);
-      setStatus("¡Perfil e imagen sincronizados exitosamente con AlgoLab!");
+      setStatus("¡Perfil e imagen guardados exitosamente en AlgoLab!");
       onSaved?.(perfilFinal);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Error al guardar el perfil.");

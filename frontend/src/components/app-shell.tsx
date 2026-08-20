@@ -164,90 +164,92 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
   }
 
   const navContent = (
-    <>
-      <Link
-        className="group flex items-center gap-3 rounded-2xl p-2 transition hover:bg-white/[.035]"
-        href="/"
-        onClick={() => setMobileMenuOpen(false)}
-      >
-        <span className="brand-mark transition duration-300 group-hover:rotate-3 group-hover:scale-105">
-          A
-        </span>
-        <span className="min-w-0">
-          <strong className="block text-lg tracking-[-.03em] text-white">AlgoLab</strong>
-          <small className="flex items-center gap-1.5 text-[9px] uppercase tracking-[.25em] text-emerald-300/75">
-            <span className="h-1 w-1 rounded-full bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" />{" "}
-            Portal MR activo
-          </small>
-        </span>
-      </Link>
-
-      <div className="mt-5 flex items-center justify-between px-2">
-        <span className="font-mono text-[9px] uppercase tracking-[.22em] text-slate-500">
-          Navegación
-        </span>
-        <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[8px] text-slate-400">
-          {config.label.split(" ")[1] ?? "WEB"}
-        </span>
-      </div>
-
-      <nav aria-label="Navegación principal" className="mt-2 flex flex-col gap-1.5">
-        {links.map((link) => {
-          const active =
-            "exact" in link && link.exact
-              ? pathname === link.href
-              : link.href === "/"
-              ? pathname === "/"
-              : pathname === link.href || pathname.startsWith(link.href + "/");
-
-          return (
-            <Link
-              aria-current={active ? "page" : undefined}
-              className={`group flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition ${
-                active
-                  ? "border-emerald-300/30 bg-emerald-300/[.12] text-emerald-100 shadow-[inset_3px_0_0_#34d399,0_0_20px_rgba(46,214,161,.1)]"
-                  : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[.04] hover:text-white"
-              }`}
-              href={link.href}
-              key={link.href}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <span
-                className={`grid h-8 w-8 place-items-center rounded-lg transition ${
-                  active
-                    ? "bg-emerald-300/15 text-emerald-300"
-                    : "bg-white/[.04] text-slate-400 group-hover:text-emerald-200"
-                }`}
-              >
-                <ShellIcon name={link.icon} />
-              </span>
-              <span>{link.label}</span>
-              {active ? (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" />
-              ) : null}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Puente con las gafas banner */}
-      <div className="mt-5 rounded-[1.25rem] border border-cyan-200/10 bg-gradient-to-br from-cyan-300/[.07] to-emerald-300/[.025] p-3.5">
-        <div className="flex items-start justify-between gap-3">
-          <span className="grid h-8 w-8 place-items-center rounded-xl border border-cyan-200/15 bg-cyan-200/[.07] text-cyan-200">
-            <Headphones size={16} />
+    <div className="flex h-full min-h-full flex-col justify-between">
+      <div>
+        <Link
+          className="group flex items-center gap-3 rounded-2xl p-2 transition hover:bg-white/[.035]"
+          href="/"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <span className="brand-mark transition duration-300 group-hover:rotate-3 group-hover:scale-105">
+            A
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-emerald-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> En línea
+          <span className="min-w-0">
+            <strong className="block text-lg tracking-[-.03em] text-white">AlgoLab</strong>
+            <small className="flex items-center gap-1.5 text-[9px] uppercase tracking-[.25em] text-emerald-300/75">
+              <span className="h-1 w-1 rounded-full bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" />{" "}
+              Portal MR activo
+            </small>
+          </span>
+        </Link>
+
+        <div className="mt-5 flex items-center justify-between px-2">
+          <span className="font-mono text-[9px] uppercase tracking-[.22em] text-slate-500">
+            Navegación
+          </span>
+          <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[8px] text-slate-400">
+            {config.label.split(" ")[1] ?? "WEB"}
           </span>
         </div>
-        <p className="mt-3 text-xs font-semibold text-slate-200">Puente con las gafas</p>
-        <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
-          Perfil, progreso e informes comparten el mismo estado de aprendizaje en tiempo real.
-        </p>
+
+        <nav aria-label="Navegación principal" className="mt-2 flex flex-col gap-1.5">
+          {links.map((link) => {
+            const active =
+              "exact" in link && link.exact
+                ? pathname === link.href
+                : link.href === "/"
+                ? pathname === "/"
+                : pathname === link.href || pathname.startsWith(link.href + "/");
+
+            return (
+              <Link
+                aria-current={active ? "page" : undefined}
+                className={`group flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition ${
+                  active
+                    ? "border-emerald-300/30 bg-emerald-300/[.12] text-emerald-100 shadow-[inset_3px_0_0_#34d399,0_0_20px_rgba(46,214,161,.1)]"
+                    : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[.04] hover:text-white"
+                }`}
+                href={link.href}
+                key={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span
+                  className={`grid h-8 w-8 place-items-center rounded-lg transition ${
+                    active
+                      ? "bg-emerald-300/15 text-emerald-300"
+                      : "bg-white/[.04] text-slate-400 group-hover:text-emerald-200"
+                  }`}
+                >
+                  <ShellIcon name={link.icon} />
+                </span>
+                <span>{link.label}</span>
+                {active ? (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" />
+                ) : null}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Puente con las gafas banner */}
+        <div className="mt-5 rounded-[1.25rem] border border-cyan-200/10 bg-gradient-to-br from-cyan-300/[.07] to-emerald-300/[.025] p-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="grid h-8 w-8 place-items-center rounded-xl border border-cyan-200/15 bg-cyan-200/[.07] text-cyan-200">
+              <Headphones size={16} />
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-emerald-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> En línea
+            </span>
+          </div>
+          <p className="mt-3 text-xs font-semibold text-slate-200">Puente con las gafas</p>
+          <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
+            Perfil, progreso e informes sincronizados en tiempo real con Meta Quest.
+          </p>
+        </div>
       </div>
 
-      {/* User profile widget at bottom of sidebar */}
-      <div className="mt-auto pt-4">
+      {/* User card at bottom */}
+      <div className="pt-4">
         <div className="rounded-[1.25rem] border border-white/10 bg-white/[.035] p-3 backdrop-blur-md">
           <div className="flex min-w-0 items-center gap-3">
             {usuario ? (
@@ -262,7 +264,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
               <strong className="block truncate text-xs font-bold text-slate-100">
                 {usuario?.nombre ?? "Sincronizando…"}
               </strong>
-              <small className="mt-0.5 block truncate text-[10px] text-emerald-300/80">
+              <small className="mt-0.5 block truncate text-[9px] text-emerald-300/80">
                 {usuario ? config.descriptor : ""}
               </small>
             </div>
@@ -277,24 +279,24 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 
   return (
-    <main className="app-surface min-h-screen text-slate-100">
-      {/* Mobile Top Header (only visible on screens < lg) */}
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-[#05100e]/95 px-4 backdrop-blur-xl lg:hidden">
-        <div className="flex items-center gap-2.5">
+    <div className="app-surface min-h-screen text-slate-100">
+      {/* Mobile Sticky Top Header (< md screens) */}
+      <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/10 bg-[#05100e]/95 px-4 backdrop-blur-xl md:hidden">
+        <div className="flex items-center gap-3">
           <button
             aria-label="Abrir menú de navegación"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-300 transition hover:bg-white/[.08] hover:text-white"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-300 transition hover:bg-white/[.08] hover:text-white active:scale-95"
             onClick={() => setMobileMenuOpen(true)}
             type="button"
           >
             <Menu size={20} />
           </button>
           <Link className="flex items-center gap-2" href="/">
-            <span className="brand-mark h-8 w-8 text-sm">A</span>
+            <span className="brand-mark h-8 w-8 text-sm font-bold">A</span>
             <strong className="text-base font-bold text-white">AlgoLab</strong>
           </Link>
         </div>
@@ -312,20 +314,20 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
         </div>
       </header>
 
-      {/* Mobile Drawer (Slide-over overlay) */}
+      {/* Mobile Slide-Over Drawer with Animated Backdrop */}
       <AnimatePresence>
         {mobileMenuOpen ? (
           <>
             <motion.div
               animate={{ opacity: 1 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm md:hidden"
               exit={{ opacity: 0 }}
               initial={{ opacity: 0 }}
               onClick={() => setMobileMenuOpen(false)}
             />
             <motion.aside
               animate={{ x: 0 }}
-              className="fixed inset-y-0 left-0 z-50 flex w-[290px] max-w-[85vw] flex-col border-r border-white/10 bg-[#05100e] p-5 shadow-2xl overflow-y-auto scrollbar-none lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-[290px] max-w-[85vw] flex-col border-r border-white/10 bg-[#05100e] p-5 shadow-2xl overflow-y-auto scrollbar-none md:hidden"
               exit={{ x: "-100%" }}
               initial={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
@@ -343,7 +345,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
                   <X size={18} />
                 </button>
               </div>
-              <div className="mt-4 flex flex-1 flex-col">
+              <div className="mt-4 flex-1">
                 {navContent}
               </div>
             </motion.aside>
@@ -351,8 +353,8 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
         ) : null}
       </AnimatePresence>
 
-      {/* Desktop Fixed Left Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] flex-col border-r border-white/10 bg-[#05100e]/95 p-5 shadow-[0_20px_70px_rgba(0,0,0,.25)] backdrop-blur-2xl overflow-y-auto scrollbar-none lg:flex">
+      {/* Desktop & Tablet 100% FIXED Left Sidebar (>= md screens) */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] xl:w-[285px] flex-col border-r border-white/10 bg-[#05100e]/98 p-5 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-2xl overflow-y-auto scrollbar-none md:flex">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent"
@@ -360,9 +362,9 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
         {navContent}
       </aside>
 
-      {/* Main Content Area (Offset with left padding on desktop) */}
-      <div className="min-w-0 w-full lg:pl-[280px]">
-        <section className="relative z-10 mx-auto max-w-[1480px] px-4 py-5 sm:px-7 lg:px-9 lg:py-8 xl:px-12">
+      {/* Main Content Area: Offset with padding-left on >= md */}
+      <div className="w-full min-h-screen md:pl-[260px] xl:pl-[285px]">
+        <main className="mx-auto max-w-[1480px] px-4 py-5 sm:px-7 lg:px-9 lg:py-8 xl:px-12">
           {/* Main Top Header Banner */}
           <header className="relative mb-7 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#071713]/70 p-5 shadow-[0_26px_80px_rgba(0,0,0,.2)] backdrop-blur-xl sm:p-6 lg:mb-8">
             <div
@@ -403,11 +405,11 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           </header>
 
           {/* Subpage Children Content */}
-          <div className="min-w-0 w-full">
+          <div className="w-full">
             {children}
           </div>
-        </section>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }

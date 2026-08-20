@@ -84,8 +84,12 @@ export async function proxyBackendAvatar(request: Request, method: "PUT" | "DELE
       if (archivo.size > 10 * 1024 * 1024) {
         return NextResponse.json({ mensaje: "La imagen procesada no puede superar 10 MB." }, { status: 413 });
       }
+
+      // Convertir el File a un Blob con buffer completo para asegurar que Node/undici no envíe un archivo vacío
+      const arrayBuffer = await archivo.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: archivo.type || "image/jpeg" });
       body = new FormData();
-      body.append("archivo", archivo, archivo.name || "avatar.jpg");
+      body.append("archivo", blob, archivo.name || "avatar.jpg");
     }
 
     const respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
@@ -111,14 +115,21 @@ export async function proxyBackendAvatarPublico(
       headers: authorizationHeaders(request),
       cache: "no-store",
     });
-    const headers = new Headers();
-    for (const header of ["content-type", "cache-control", "etag", "last-modified"]) {
-      const value = respuesta.headers.get(header);
-      if (value) {
-        headers.set(header, value);
-      }
+
+    if (!respuesta.ok) {
+      return new Response(null, { status: respuesta.status });
     }
-    return new Response(respuesta.body, { status: respuesta.status, headers });
+
+    const arrayBuffer = await respuesta.arrayBuffer();
+    const headers = new Headers();
+    const contentType = respuesta.headers.get("content-type") || "image/jpeg";
+    headers.set("Content-Type", contentType);
+    headers.set("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    if (version) {
+      headers.set("ETag", `"${version}"`);
+    }
+
+    return new Response(arrayBuffer, { status: 200, headers });
   } catch {
     return NextResponse.json({ mensaje: "No se pudo cargar el avatar" }, { status: 502 });
   }

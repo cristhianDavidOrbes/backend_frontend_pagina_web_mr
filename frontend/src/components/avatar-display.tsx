@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { avatarPresetSeguro } from "@/lib/avatar";
-import { useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
+import { type UsuarioSesion } from "@/lib/use-auth-session";
 import { useSecureAvatarUrl } from "@/lib/use-secure-avatar";
 
 type Props = {
@@ -12,8 +12,7 @@ type Props = {
 };
 
 export function AvatarDisplay({ usuario, className = "", decorative = false }: Props) {
-  const { token } = useAuthSession();
-  const url = useSecureAvatarUrl(usuario.avatarUrl, token);
+  const url = useSecureAvatarUrl(usuario.avatarUrl);
   const preset = avatarPresetSeguro(usuario.avatar);
   const initial = usuario.nombre?.trim().charAt(0).toUpperCase() || "A";
 
