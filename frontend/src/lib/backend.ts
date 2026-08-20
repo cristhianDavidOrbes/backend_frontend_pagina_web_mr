@@ -70,32 +70,51 @@ export async function proxyBackend({ request, path, method }: ProxyOptions) {
   }
 }
 
-export async function proxyBackendAvatar(request: Request, method: "PUT" | "DELETE") {
+export async function proxyBackendAvatar(request: Request, method: "POST" | "PUT" | "DELETE") {
   try {
     const headers = authorizationHeaders(request);
-    let body: FormData | undefined;
+    const contentType = request.headers.get("content-type") || "";
 
-    if (method === "PUT") {
-      const entrada = await request.formData();
-      const archivo = entrada.get("archivo");
-      if (!(archivo instanceof File) || !archivo.type.startsWith("image/")) {
-        return NextResponse.json({ mensaje: "Debe seleccionar una imagen válida." }, { status: 400 });
-      }
-      if (archivo.size > 10 * 1024 * 1024) {
-        return NextResponse.json({ mensaje: "La imagen procesada no puede superar 10 MB." }, { status: 413 });
-      }
-
-      // Convertir el File a un Blob con buffer completo para asegurar que Node/undici no envíe un archivo vacío
-      const arrayBuffer = await archivo.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: archivo.type || "image/jpeg" });
-      body = new FormData();
-      body.append("archivo", blob, archivo.name || "avatar.jpg");
+    if (method === "DELETE") {
+      const respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
+        method: "DELETE",
+        headers,
+        cache: "no-store",
+      });
+      return respuestaJson(respuesta);
     }
 
+    if (contentType.includes("application/json")) {
+      const body = await request.text();
+      headers.set("Content-Type", "application/json");
+      const respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
+        method: "POST",
+        headers,
+        body,
+        cache: "no-store",
+      });
+      return respuestaJson(respuesta);
+    }
+
+    // Multipart
+    const entrada = await request.formData();
+    const archivo = entrada.get("archivo");
+    if (!(archivo instanceof File) || !archivo.type.startsWith("image/")) {
+      return NextResponse.json({ mensaje: "Debe seleccionar una imagen válida." }, { status: 400 });
+    }
+    if (archivo.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ mensaje: "La imagen procesada no puede superar 10 MB." }, { status: 413 });
+    }
+
+    const arrayBuffer = await archivo.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: archivo.type || "image/jpeg" });
+    const formData = new FormData();
+    formData.append("archivo", blob, archivo.name || "avatar.jpg");
+
     const respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
-      method,
+      method: "POST",
       headers,
-      body,
+      body: formData,
       cache: "no-store",
     });
     return respuestaJson(respuesta);

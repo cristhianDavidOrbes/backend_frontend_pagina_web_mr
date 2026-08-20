@@ -12,6 +12,7 @@ export type AvatarNormalizado = {
   archivo: File;
   previewUrl: string;
   dimension: number;
+  base64: string;
 };
 
 export function isAvatarPreset(value: unknown): value is AvatarPreset {
@@ -173,9 +174,12 @@ export async function normalizarAvatar(archivo: File): Promise<AvatarNormalizado
     lastModified: Date.now(),
   });
 
+  const base64 = canvas.toDataURL(mimeType, 0.85);
+
   return {
     archivo: archivoNormalizado,
     previewUrl: URL.createObjectURL(blob),
     dimension,
+    base64,
   };
 }

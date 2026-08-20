@@ -83,7 +83,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
     }
 
     setBusy("procesando");
-    setStatus("Preparando vista previa...");
+    setStatus("Preparando imagen...");
     try {
       const normalizado = await normalizarAvatar(archivo);
       setAvatarPendiente(normalizado);
@@ -106,11 +106,12 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
     setBusy("subiendo");
     setStatus("Subiendo foto de perfil al servidor...");
     try {
-      const datos = new FormData();
-      datos.append("archivo", avatarPendiente.archivo, avatarPendiente.archivo.name);
       const updated = await apiRequest<UsuarioSesion>("/api/avatar", token, {
-        method: "PUT",
-        body: datos,
+        method: "POST",
+        body: JSON.stringify({
+          imagenBase64: avatarPendiente.base64,
+          mimeType: avatarPendiente.archivo.type || "image/jpeg",
+        }),
       });
 
       const fusionado: UsuarioSesion = {
@@ -127,7 +128,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
       setAvatarPendiente(null);
       setTieneAvatarPersonalizado(Boolean(fusionado.avatarUrl));
       setEliminarAvatarAlGuardar(false);
-      setStatus("Foto de perfil subida y sincronizada con AlgoLab.");
+      setStatus("¡Foto de perfil subida y sincronizada con AlgoLab!");
       onSaved?.(fusionado);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo subir la foto.");
@@ -193,11 +194,12 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
 
       // 1. Si hay una imagen seleccionada pendiente de subir, subirla primero
       if (avatarPendiente) {
-        const datos = new FormData();
-        datos.append("archivo", avatarPendiente.archivo, avatarPendiente.archivo.name);
         avatarRespuesta = await apiRequest<UsuarioSesion>("/api/avatar", token, {
-          method: "PUT",
-          body: datos,
+          method: "POST",
+          body: JSON.stringify({
+            imagenBase64: avatarPendiente.base64,
+            mimeType: avatarPendiente.archivo.type || "image/jpeg",
+          }),
         });
         setAvatarPendiente(null);
       } else if (eliminarAvatarAlGuardar && tieneAvatarPersonalizado) {

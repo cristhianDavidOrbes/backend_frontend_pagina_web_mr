@@ -12,6 +12,10 @@ export async function GET(request: Request) {
   return proxyBackendAvatarPublico(request, usuarioId, version);
 }
 
+export async function POST(request: Request) {
+  return proxyBackendAvatar(request, "POST");
+}
+
 export async function PUT(request: Request) {
   return proxyBackendAvatar(request, "PUT");
 }

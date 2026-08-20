@@ -61,7 +61,7 @@ class AvatarControladorTest {
             return null;
         }).when(avatarServicio).guardar(usuario, archivo);
 
-        ResponseEntity<?> respuesta = controlador.actualizarAvatar(archivo, autenticacion);
+        ResponseEntity<?> respuesta = controlador.actualizarAvatarPostMultipart(archivo, null, autenticacion);
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
         UsuarioSesionDTO sesion = assertInstanceOf(UsuarioSesionDTO.class, respuesta.getBody());
@@ -127,7 +127,7 @@ class AvatarControladorTest {
         MockMultipartFile archivo = new MockMultipartFile(
                 "archivo", "avatar.png", "image/png", new byte[] { 1 });
 
-        ResponseEntity<?> respuesta = controlador.actualizarAvatar(archivo, null);
+        ResponseEntity<?> respuesta = controlador.actualizarAvatarPostMultipart(archivo, null, null);
 
         assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
         Map<?, ?> cuerpo = assertInstanceOf(Map.class, respuesta.getBody());

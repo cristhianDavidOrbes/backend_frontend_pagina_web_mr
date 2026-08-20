@@ -58,7 +58,50 @@ public class AvatarServicio {
             throw new AvatarInvalidoException("La imagen no puede superar 10 MB");
         }
 
-        ImagenNormalizada imagen = normalizar(archivo);
+        byte[] entrada;
+        try {
+            entrada = archivo.getBytes();
+        } catch (IOException error) {
+            throw new AvatarInvalidoException("No se pudo leer la imagen", error);
+        }
+
+        return guardarBytes(usuario, entrada);
+    }
+
+    @Transactional
+    public AvatarUsuario guardarBase64(Usuario usuario, String base64Data, String mimeType) {
+        if (usuario == null || usuario.getId() == null) {
+            throw new AvatarInvalidoException("Usuario no válido");
+        }
+        if (base64Data == null || base64Data.isBlank()) {
+            throw new AvatarInvalidoException("Debe seleccionar una imagen");
+        }
+
+        String dataLimpia = base64Data.trim();
+        if (dataLimpia.contains(",")) {
+            dataLimpia = dataLimpia.substring(dataLimpia.indexOf(",") + 1);
+        }
+
+        byte[] bytes;
+        try {
+            bytes = java.util.Base64.getDecoder().decode(dataLimpia);
+        } catch (IllegalArgumentException e) {
+            throw new AvatarInvalidoException("La imagen en base64 no tiene un formato válido", e);
+        }
+
+        if (bytes.length > TAMANO_MAXIMO_ENTRADA) {
+            throw new AvatarInvalidoException("La imagen no puede superar 10 MB");
+        }
+
+        return guardarBytes(usuario, bytes);
+    }
+
+    @Transactional
+    public AvatarUsuario guardarBytes(Usuario usuario, byte[] entrada) {
+        if (entrada == null || entrada.length == 0) {
+            throw new AvatarInvalidoException("Debe seleccionar una imagen");
+        }
+        ImagenNormalizada imagen = normalizarBytes(entrada);
         String etag = calcularSha256(imagen.contenido());
         AvatarUsuario avatar = avatarRepositorio.findById(usuario.getId())
                 .orElseGet(() -> new AvatarUsuario(usuario));
@@ -93,12 +136,9 @@ public class AvatarServicio {
         usuarioServicio.actualizar(usuario);
     }
 
-    private ImagenNormalizada normalizar(MultipartFile archivo) {
-        byte[] entrada;
-        try {
-            entrada = archivo.getBytes();
-        } catch (IOException error) {
-            throw new AvatarInvalidoException("No se pudo leer la imagen", error);
+    private ImagenNormalizada normalizarBytes(byte[] entrada) {
+        if (entrada == null || entrada.length == 0) {
+            throw new AvatarInvalidoException("Debe seleccionar una imagen");
         }
 
         try (ImageInputStream flujo = ImageIO.createImageInputStream(new ByteArrayInputStream(entrada))) {

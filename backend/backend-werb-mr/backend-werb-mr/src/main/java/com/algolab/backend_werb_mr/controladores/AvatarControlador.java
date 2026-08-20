@@ -37,9 +37,41 @@ public class AvatarControlador {
         this.usuarioServicio = usuarioServicio;
     }
 
-    @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> actualizarAvatar(@RequestPart("archivo") MultipartFile archivo,
+    public record AvatarBase64Request(String imagenBase64, String mimeType) {}
+
+    @org.springframework.web.bind.annotation.PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> actualizarAvatarPostMultipart(
+            @org.springframework.web.bind.annotation.RequestParam(value = "archivo", required = false) MultipartFile archivoParam,
+            @RequestPart(value = "archivo", required = false) MultipartFile archivoPart,
             Authentication authentication) {
+        MultipartFile archivo = archivoParam != null ? archivoParam : archivoPart;
+        return procesarGuardadoMultipart(archivo, authentication);
+    }
+
+    @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> actualizarAvatarPutMultipart(
+            @org.springframework.web.bind.annotation.RequestParam(value = "archivo", required = false) MultipartFile archivoParam,
+            @RequestPart(value = "archivo", required = false) MultipartFile archivoPart,
+            Authentication authentication) {
+        MultipartFile archivo = archivoParam != null ? archivoParam : archivoPart;
+        return procesarGuardadoMultipart(archivo, authentication);
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping(value = "/me/avatar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> actualizarAvatarPostJson(
+            @org.springframework.web.bind.annotation.RequestBody AvatarBase64Request request,
+            Authentication authentication) {
+        return procesarGuardadoJson(request, authentication);
+    }
+
+    @PutMapping(value = "/me/avatar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> actualizarAvatarPutJson(
+            @org.springframework.web.bind.annotation.RequestBody AvatarBase64Request request,
+            Authentication authentication) {
+        return procesarGuardadoJson(request, authentication);
+    }
+
+    private ResponseEntity<?> procesarGuardadoMultipart(MultipartFile archivo, Authentication authentication) {
         Usuario usuario = usuarioAutenticado(authentication);
         if (usuario == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
@@ -48,6 +80,25 @@ public class AvatarControlador {
 
         try {
             avatarServicio.guardar(usuario, archivo);
+            Usuario actualizado = usuarioServicio.buscarPorId(usuario.getId()).orElse(usuario);
+            return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(actualizado));
+        } catch (AvatarInvalidoException error) {
+            return ResponseEntity.badRequest().body(Map.of("mensaje", error.getMessage()));
+        }
+    }
+
+    private ResponseEntity<?> procesarGuardadoJson(AvatarBase64Request request, Authentication authentication) {
+        Usuario usuario = usuarioAutenticado(authentication);
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "mensaje", "Usuario autenticado no encontrado"));
+        }
+        if (request == null || request.imagenBase64() == null || request.imagenBase64().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("mensaje", "Debe incluir una imagen"));
+        }
+
+        try {
+            avatarServicio.guardarBase64(usuario, request.imagenBase64(), request.mimeType());
             Usuario actualizado = usuarioServicio.buscarPorId(usuario.getId()).orElse(usuario);
             return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(actualizado));
         } catch (AvatarInvalidoException error) {
