@@ -3,23 +3,20 @@
 import { useEffect, useState } from "react";
 
 import { avatarUrlParaCliente } from "@/lib/avatar";
-import { fetchAndCacheAvatar, getCachedAvatarUrl, releaseAvatarUrl } from "@/lib/use-avatar-cache";
+import { fetchAndCacheAvatar, getCachedAvatarUrl } from "@/lib/use-avatar-cache";
 
 /**
  * Descarga la imagen a través del BFF usando el JWT de la sesión y expone un
- * object URL temporal. Usa un cache global para evitar N+1 peticiones en listas.
+ * object URL temporal. Usa un cache global para evitar N+1 peticiones y parpadeos.
  */
-export function useSecureAvatarUrl(avatarUrl: string | null | undefined, token: string) {
+export function useSecureAvatarUrl(avatarUrl: string | null | undefined, token?: string | null) {
   const url = avatarUrlParaCliente(avatarUrl);
   const isInline = !!url && (url.startsWith("blob:") || url.startsWith("data:image/"));
 
-  const [remoteObjectUrl, setRemoteObjectUrl] = useState<string | null>(() => {
-    if (!url || isInline) return null;
-    return getCachedAvatarUrl(url);
-  });
+  const [remoteObjectUrl, setRemoteObjectUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!url || !token || isInline) {
+    if (!url || isInline) {
       return;
     }
 
@@ -28,31 +25,26 @@ export function useSecureAvatarUrl(avatarUrl: string | null | undefined, token: 
       return;
     }
 
+    let active = true;
     const controller = new AbortController();
-    let usedUrl: string | null = null;
 
-    void fetchAndCacheAvatar(url, token, controller.signal).then((objectUrl) => {
-      if (objectUrl) {
-        usedUrl = url;
+    void fetchAndCacheAvatar(url, token ?? undefined, controller.signal).then((objectUrl) => {
+      if (active && objectUrl) {
         setRemoteObjectUrl(objectUrl);
-      } else {
-        setRemoteObjectUrl(null);
       }
     });
 
     return () => {
+      active = false;
       controller.abort();
-      if (usedUrl) {
-        releaseAvatarUrl(usedUrl);
-      }
     };
   }, [url, token, isInline]);
 
-  if (!url || !token) {
+  if (!url) {
     return null;
   }
   if (isInline) {
     return url;
   }
-  return remoteObjectUrl;
+  return getCachedAvatarUrl(url) ?? remoteObjectUrl;
 }
