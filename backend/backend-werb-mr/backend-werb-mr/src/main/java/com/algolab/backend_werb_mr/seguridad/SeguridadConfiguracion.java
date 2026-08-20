@@ -24,6 +24,11 @@ public class SeguridadConfiguracion {
                 .logout(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"mensaje\":\"Sesión expirada o no autorizada. Por favor, inicia sesión nuevamente.\"}");
+                }))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/usuarios/registrar").permitAll()
                         .requestMatchers("/api/usuarios/iniciar-sesion").permitAll()

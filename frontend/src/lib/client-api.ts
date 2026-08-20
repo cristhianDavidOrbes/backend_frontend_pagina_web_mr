@@ -21,7 +21,12 @@ export async function apiRequest<T>(path: string, token: string, init?: RequestI
       data = { mensaje: text };
     }
   }
+
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("Tu sesión ha expirado. Por favor, cierra sesión e inicia sesión nuevamente para guardar cambios.");
+    }
+
     let mensaje = `Error del servidor (HTTP ${response.status})`;
     if (typeof data === "object" && data !== null) {
       const record = data as Record<string, unknown>;
