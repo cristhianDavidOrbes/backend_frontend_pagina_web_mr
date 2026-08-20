@@ -61,6 +61,11 @@ export function clearAuthSession() {
   notifyAuthSessionChange();
 }
 
+export function saveAuthToken(token: string) {
+  window.localStorage.setItem("token", token);
+  notifyAuthSessionChange();
+}
+
 export function useAuthSession() {
   const token = useLocalStorageValue("token") ?? "";
   const usuarioTexto = useLocalStorageValue("usuario");

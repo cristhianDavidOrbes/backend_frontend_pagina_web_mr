@@ -2,19 +2,35 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useAuthSession } from "@/lib/use-auth-session";
 
 type RegistroRespuesta = { exitoso?: boolean; mensaje?: string };
 
 export default function RegistrarsePage() {
   const router = useRouter();
+  const { hydrated, token: existingToken, usuario } = useAuthSession();
   const [nombre, setNombre] = useState(""); const [correo, setCorreo] = useState(""); const [contrasena, setContrasena] = useState("");
   const [enviando, setEnviando] = useState(false); const [mensaje, setMensaje] = useState("");
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (existingToken && usuario) {
+      const ruta = usuario.rol === "ADMINISTRADOR" ? "/administrador" : usuario.rol === "DOCENTE" ? "/docente" : "/estudiante";
+      router.replace(ruta);
+    }
+  }, [hydrated, existingToken, usuario, router]);
+
   async function registrar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setEnviando(true); setMensaje("");
     try {
       const response = await fetch("/api/registrar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre, correo, contrasena, rol: "ESTUDIANTE" }) });
-      const data = await response.json() as RegistroRespuesta;
+      let data: RegistroRespuesta;
+      try {
+        data = await response.json() as RegistroRespuesta;
+      } catch {
+        throw new Error("El servidor respondió con un formato inesperado. Intenta de nuevo.");
+      }
       if (!response.ok || data.exitoso === false) throw new Error(data.mensaje ?? "No se pudo crear la cuenta.");
       router.push("/iniciar-sesion?registro=exitoso");
     } catch (error) { setMensaje(error instanceof Error ? error.message : "No se pudo conectar con AlgoLab."); setEnviando(false); }

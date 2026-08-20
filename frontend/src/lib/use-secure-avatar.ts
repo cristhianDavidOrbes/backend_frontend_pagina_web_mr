@@ -3,58 +3,56 @@
 import { useEffect, useState } from "react";
 
 import { avatarUrlParaCliente } from "@/lib/avatar";
+import { fetchAndCacheAvatar, getCachedAvatarUrl, releaseAvatarUrl } from "@/lib/use-avatar-cache";
 
 /**
  * Descarga la imagen a través del BFF usando el JWT de la sesión y expone un
- * object URL temporal. Así la foto nunca necesita ser pública ni enumerable.
+ * object URL temporal. Usa un cache global para evitar N+1 peticiones en listas.
  */
 export function useSecureAvatarUrl(avatarUrl: string | null | undefined, token: string) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const url = avatarUrlParaCliente(avatarUrl);
+  const isInline = !!url && (url.startsWith("blob:") || url.startsWith("data:image/"));
+
+  const [remoteObjectUrl, setRemoteObjectUrl] = useState<string | null>(() => {
+    if (!url || isInline) return null;
+    return getCachedAvatarUrl(url);
+  });
 
   useEffect(() => {
-    const url = avatarUrlParaCliente(avatarUrl);
-    if (!url || !token) {
-      setObjectUrl(null);
+    if (!url || !token || isInline) {
       return;
     }
 
-    if (url.startsWith("blob:") || url.startsWith("data:image/")) {
-      setObjectUrl(url);
+    const cached = getCachedAvatarUrl(url);
+    if (cached) {
       return;
     }
 
     const controller = new AbortController();
-    let createdUrl: string | null = null;
+    let usedUrl: string | null = null;
 
-    void fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-      cache: "no-store",
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("No se pudo cargar el avatar");
-        }
-        const blob = await response.blob();
-        if (!blob.type.startsWith("image/")) {
-          throw new Error("El avatar no es una imagen válida");
-        }
-        createdUrl = URL.createObjectURL(blob);
-        setObjectUrl(createdUrl);
-      })
-      .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setObjectUrl(null);
-        }
-      });
+    void fetchAndCacheAvatar(url, token, controller.signal).then((objectUrl) => {
+      if (objectUrl) {
+        usedUrl = url;
+        setRemoteObjectUrl(objectUrl);
+      } else {
+        setRemoteObjectUrl(null);
+      }
+    });
 
     return () => {
       controller.abort();
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
+      if (usedUrl) {
+        releaseAvatarUrl(usedUrl);
       }
     };
-  }, [avatarUrl, token]);
+  }, [url, token, isInline]);
 
-  return objectUrl;
+  if (!url || !token) {
+    return null;
+  }
+  if (isInline) {
+    return url;
+  }
+  return remoteObjectUrl;
 }

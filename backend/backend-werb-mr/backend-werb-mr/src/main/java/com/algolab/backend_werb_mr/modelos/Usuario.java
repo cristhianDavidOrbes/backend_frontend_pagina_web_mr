@@ -51,6 +51,9 @@ public class Usuario {
     @Column(nullable = false, length = 32, columnDefinition = "varchar(32) default 'orbita'")
     private String avatar = "orbita";
 
+    @Column(length = 64)
+    private String avatarVersion;
+
     public Usuario() {
     }
 
@@ -178,5 +181,13 @@ public class Usuario {
 
     public void setAvatar(String avatar) {
         this.avatar = avatar;
+    }
+
+    public String getAvatarVersion() {
+        return avatarVersion;
+    }
+
+    public void setAvatarVersion(String avatarVersion) {
+        this.avatarVersion = avatarVersion;
     }
 }

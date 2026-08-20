@@ -15,6 +15,8 @@ public class UsuarioRespuestaDTO {
     private String institucion;
     private String programa;
     private String avatar;
+    private String avatarUrl;
+    private String avatarVersion;
 
     public UsuarioRespuestaDTO() {
     }
@@ -31,7 +33,7 @@ public class UsuarioRespuestaDTO {
 
     public UsuarioRespuestaDTO(Long id, String nombre, String correo, String nombreUsuario, Rol rol,
             Integer nivelActual, Integer puntaje, String biografia, String institucion,
-            String programa, String avatar) {
+            String programa, String avatar, String avatarUrl, String avatarVersion) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
@@ -43,6 +45,8 @@ public class UsuarioRespuestaDTO {
         this.institucion = institucion;
         this.programa = programa;
         this.avatar = avatar;
+        this.avatarUrl = avatarUrl;
+        this.avatarVersion = avatarVersion;
     }
 
     public static UsuarioRespuestaDTO desdeUsuario(Usuario usuario) {
@@ -57,7 +61,16 @@ public class UsuarioRespuestaDTO {
                 usuario.getBiografia(),
                 usuario.getInstitucion(),
                 usuario.getPrograma(),
-                usuario.getAvatar());
+                usuario.getAvatar(),
+                construirAvatarUrl(usuario),
+                usuario.getAvatarVersion());
+    }
+
+    private static String construirAvatarUrl(Usuario usuario) {
+        if (usuario.getId() == null || usuario.getAvatarVersion() == null || usuario.getAvatarVersion().isBlank()) {
+            return null;
+        }
+        return "/api/usuarios/" + usuario.getId() + "/avatar?v=" + usuario.getAvatarVersion();
     }
 
     public Long getId() {
@@ -124,4 +137,8 @@ public class UsuarioRespuestaDTO {
     public void setPrograma(String programa) { this.programa = programa; }
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public String getAvatarVersion() { return avatarVersion; }
+    public void setAvatarVersion(String avatarVersion) { this.avatarVersion = avatarVersion; }
 }

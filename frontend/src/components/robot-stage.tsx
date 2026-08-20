@@ -1,9 +1,33 @@
 "use client";
 
-import { Suspense, useMemo, useRef } from "react";
+import { Component, Suspense, useMemo, useRef, type ReactNode } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bounds, ContactShadows, OrbitControls, Sparkles, useGLTF } from "@react-three/drei";
 import type { Group } from "three";
+import { ShieldCheck } from "lucide-react";
+
+class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="grid h-full w-full place-items-center text-center">
+          <div>
+            <ShieldCheck className="mx-auto text-emerald-300/40" size={48} />
+            <p className="mt-3 text-sm text-slate-500">Visualización 3D no disponible</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function RobotModel() {
   const { scene } = useGLTF("/models/algolab-robot.glb");
@@ -42,14 +66,15 @@ function StageContent() {
 export function RobotStage() {
   return (
     <div className="robot-stage" role="img" aria-label="Robot del taller de encapsulamiento de AlgoLab en tres dimensiones">
-      <Canvas camera={{ fov: 34, position: [0, 1, 7] }} dpr={[1, 1.55]} gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}>
-        <Suspense fallback={null}>
-          <StageContent />
-        </Suspense>
-      </Canvas>
+      <WebGLErrorBoundary>
+        <Canvas camera={{ fov: 34, position: [0, 1, 7] }} dpr={[1, 1.55]} gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}>
+          <Suspense fallback={null}>
+            <StageContent />
+          </Suspense>
+        </Canvas>
+      </WebGLErrorBoundary>
     </div>
   );
 }
 
 useGLTF.preload("/models/algolab-robot.glb");
-

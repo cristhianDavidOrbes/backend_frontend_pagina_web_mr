@@ -17,6 +17,7 @@ type Props = {
   usuario: UsuarioSesion;
   token: string;
   onSaved?: (usuario: UsuarioSesion) => void;
+  defaultOpen?: boolean;
 };
 
 type BusyAction = "procesando" | "subiendo" | "eliminando" | "guardando" | null;
@@ -32,9 +33,9 @@ function fusionarAvatarEnBorrador(borrador: UsuarioSesion, actualizado: UsuarioS
   };
 }
 
-export function ProfileEditor({ usuario, token, onSaved }: Props) {
+export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: Props) {
   const inputId = useId();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [form, setForm] = useState(usuario);
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState<BusyAction>(null);
@@ -180,12 +181,17 @@ export function ProfileEditor({ usuario, token, onSaved }: Props) {
           avatar: form.avatar,
         }),
       });
-      saveAuthUser(updated);
-      setForm(updated);
-      setTieneAvatarPersonalizado(Boolean(updated.avatarUrl));
+
+      let perfilActualizado = updated;
+      if (eliminarAvatarAlGuardar && tieneAvatarPersonalizado) {
+        perfilActualizado = { ...updated, avatarUrl: null, avatarVersion: null };
+      }
+      saveAuthUser(perfilActualizado);
+      setForm(perfilActualizado);
+      setTieneAvatarPersonalizado(Boolean(perfilActualizado.avatarUrl));
       setEliminarAvatarAlGuardar(false);
       setStatus("Perfil sincronizado con AlgoLab.");
-      onSaved?.(updated);
+      onSaved?.(perfilActualizado);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo guardar.");
     } finally {

@@ -2,25 +2,39 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { saveAuthUser, type UsuarioSesion } from "@/lib/use-auth-session";
+import { useEffect, useState, type FormEvent } from "react";
+import { saveAuthToken, saveAuthUser, useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
 type LoginRespuesta = { exitoso?: boolean; mensaje?: string; token?: string; usuario?: UsuarioSesion };
 
 export default function IniciarSesionPage() {
   const router = useRouter();
+  const { hydrated, token: existingToken, usuario } = useAuthSession();
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (existingToken && usuario) {
+      const ruta = usuario.rol === "ADMINISTRADOR" ? "/administrador" : usuario.rol === "DOCENTE" ? "/docente" : "/estudiante";
+      router.replace(ruta);
+    }
+  }, [hydrated, existingToken, usuario, router]);
+
   async function iniciarSesion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setEnviando(true); setMensaje("");
     try {
       const response = await fetch("/api/iniciar-sesion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correo, contrasena }) });
-      const data = await response.json() as LoginRespuesta;
+      let data: LoginRespuesta;
+      try {
+        data = await response.json() as LoginRespuesta;
+      } catch {
+        throw new Error("El servidor respondió con un formato inesperado. Intenta de nuevo.");
+      }
       if (!response.ok || !data.token || !data.usuario) throw new Error(data.mensaje ?? "No se pudo iniciar sesión.");
-      localStorage.setItem("token", data.token); saveAuthUser(data.usuario);
+      saveAuthToken(data.token); saveAuthUser(data.usuario);
       const ruta = data.usuario.rol === "ADMINISTRADOR" ? "/administrador" : data.usuario.rol === "DOCENTE" ? "/docente" : "/estudiante";
       router.replace(ruta);
     } catch (error) { setMensaje(error instanceof Error ? error.message : "No se pudo conectar con AlgoLab."); setEnviando(false); }

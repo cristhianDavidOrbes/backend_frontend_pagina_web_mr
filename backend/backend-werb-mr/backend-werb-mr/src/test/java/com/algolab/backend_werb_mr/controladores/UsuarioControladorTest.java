@@ -243,6 +243,22 @@ class UsuarioControladorTest {
         assertEquals(240, perfil.getPuntaje());
     }
 
+    @Test
+    void sesionExponeAvatarPersonalizadoSinReemplazarElPreset() {
+        Usuario estudiante = usuarioServicio.registrar(
+                new Usuario(null, "Ada", "ada-avatar@test.com", Rol.ESTUDIANTE, "123456"));
+        estudiante.setAvatar("codigo");
+        estudiante.setAvatarVersion("version123");
+
+        ResponseEntity<?> respuesta = controlador.obtenerUsuarioAutenticado(
+                autenticacion(estudiante.getCorreo(), Rol.ESTUDIANTE));
+
+        UsuarioSesionDTO perfil = assertInstanceOf(UsuarioSesionDTO.class, respuesta.getBody());
+        assertEquals("codigo", perfil.getAvatar());
+        assertEquals("version123", perfil.getAvatarVersion());
+        assertEquals("/api/usuarios/" + estudiante.getId() + "/avatar?v=version123", perfil.getAvatarUrl());
+    }
+
     private static RegistroUsuarioRequest solicitudRegistro(String nombre, String correo, Rol rol, String contrasena) {
         RegistroUsuarioRequest request = new RegistroUsuarioRequest();
         request.setNombre(nombre);

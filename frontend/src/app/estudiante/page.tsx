@@ -12,11 +12,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { AppShell } from "@/components/app-shell";
-import { ProfileEditor } from "@/components/profile-editor";
 import { apiRequest } from "@/lib/client-api";
-import type { Nivel, ProgresoUsuario, Ranking, ReporteNivel, UsuarioSesion } from "@/lib/types";
-import { saveAuthUser, useAuthSession } from "@/lib/use-auth-session";
+import type { Nivel, ProgresoUsuario, Ranking, ReporteNivel } from "@/lib/types";
+import { useAuthSession } from "@/lib/use-auth-session";
 
 const conceptos = ["Clases y objetos", "Atributos y métodos", "Encapsulamiento", "Abstracción", "Herencia", "Polimorfismo"];
 
@@ -31,7 +29,6 @@ const objetosPorNivel: { nombre: string; pista: string; icono: LucideIcon; color
 
 export default function EstudiantePage() {
   const { hydrated, token, usuario: sesion } = useAuthSession();
-  const [usuario, setUsuario] = useState<UsuarioSesion | null>(sesion);
   const [progreso, setProgreso] = useState<ProgresoUsuario | null>(null);
   const [reportes, setReportes] = useState<ReporteNivel[]>([]);
   const [niveles, setNiveles] = useState<Nivel[]>([]);
@@ -40,17 +37,13 @@ export default function EstudiantePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!hydrated) return;
-    if (!token) return;
+    if (!hydrated || !token) return;
     Promise.all([
-      apiRequest<UsuarioSesion>("/api/me", token),
       apiRequest<ProgresoUsuario>("/api/progreso", token),
       apiRequest<ReporteNivel[]>("/api/reportes", token),
       apiRequest<Nivel[]>("/api/niveles", token),
       apiRequest<Ranking>("/api/ranking", token),
-    ]).then(([perfil, avance, reportesData, nivelesData, rankingData]) => {
-      setUsuario(perfil);
-      saveAuthUser(perfil);
+    ]).then(([avance, reportesData, nivelesData, rankingData]) => {
       setProgreso(avance);
       setReportes(reportesData);
       setNiveles([...nivelesData].sort((a, b) => a.nivel - b.nivel));
@@ -58,7 +51,7 @@ export default function EstudiantePage() {
     }).catch((reason: Error) => setError(reason.message)).finally(() => setLoading(false));
   }, [hydrated, token]);
 
-  const usuarioActivo = usuario ?? sesion;
+  const usuarioActivo = sesion;
   const ultimoReporte = reportes.length ? reportes[reportes.length - 1] : null;
   const completados = progreso?.niveles.filter((nivel) => nivel.completado).length ?? 0;
   const posicion = ranking?.estudiantes.find((item) => item.usuarioId === usuarioActivo?.id)?.posicion;
@@ -70,13 +63,12 @@ export default function EstudiantePage() {
     [reportes],
   );
 
-  if (!usuarioActivo) {
-    return <main className="app-surface grid min-h-screen place-items-center p-6"><div className="loading-card">{hydrated && !token ? "Inicia sesión para consultar tu ruta de aprendizaje." : loading ? "Sincronizando tu cabina…" : error || "Sesión no disponible."}</div></main>;
-  }
+  if (!usuarioActivo) return null; // Let the layout handle it
+  if (loading) return <div className="loading-card">Sincronizando tus métricas…</div>;
 
   return (
-    <AppShell eyebrow="Cabina del estudiante" title={`Hola, ${usuarioActivo.nombre.split(" ")[0]}`} usuario={usuarioActivo}>
-      {error ? <div className="alert-error">{error}</div> : null}
+    <>
+      {error ? <div className="alert-error mb-5">{error}</div> : null}
       <section className="hero-dashboard">
         <div className="relative z-10">
           <p className="section-kicker flex items-center gap-2"><ScanLine className="animate-pulse" size={14} /> Ruta POO activa</p>
@@ -152,11 +144,7 @@ export default function EstudiantePage() {
           </div> : <div className="empty-state mt-5"><span>AI</span><p>Completa un nivel en las gafas para activar tu primer diagnóstico.</p></div>}
         </article>
       </section>
-
-      {reportes.length ? <section className="mt-5 panel-card p-5 sm:p-6"><p className="section-kicker">Bitácora inteligente</p><h2 className="mt-2 text-xl font-semibold">Fortalezas y oportunidades por nivel</h2><div className="mt-5 grid gap-4 lg:grid-cols-2">{[...reportes].reverse().map((reporte) => <article className="report-card" key={reporte.id}><div className="flex items-start justify-between gap-4"><div><span>Nivel {reporte.nivel}</span><h3>{reporte.tituloNivel}</h3></div><strong>{reporte.dominio}%</strong></div><p>{reporte.resumen}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><Insight label="Lo que destacas" items={reporte.fortalezas} tone="positive" /><Insight label="Para mejorar" items={reporte.aspectosMejora} tone="growth" /></div></article>)}</div></section> : null}
-
-      <div className="mt-5"><ProfileEditor onSaved={setUsuario} token={token} usuario={usuarioActivo} /></div>
-    </AppShell>
+    </>
   );
 }
 
@@ -164,6 +152,3 @@ function Metric({ label, value, note, tone }: { label: string; value: string | n
   return <article className={`metric-card metric-${tone}`}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>;
 }
 
-function Insight({ label, items, tone }: { label: string; items: string[]; tone: string }) {
-  return <div className={`insight insight-${tone}`}><span>{label}</span><ul>{(items.length ? items : ["Sin observaciones todavía."]).slice(0, 2).map((item) => <li key={item}>{item}</li>)}</ul></div>;
-}
