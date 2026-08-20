@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useId, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   AVATAR_PRESETS,
@@ -11,7 +12,7 @@ import {
   type AvatarPreset,
 } from "@/lib/avatar";
 import { apiRequest } from "@/lib/client-api";
-import { saveAuthUser, type UsuarioSesion } from "@/lib/use-auth-session";
+import { clearAuthSession, saveAuthUser, type UsuarioSesion } from "@/lib/use-auth-session";
 
 type Props = {
   usuario: UsuarioSesion;
@@ -23,6 +24,7 @@ type Props = {
 type BusyAction = "procesando" | "subiendo" | "eliminando" | "guardando" | null;
 
 export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: Props) {
+  const router = useRouter();
   const inputId = useId();
   const [open, setOpen] = useState(defaultOpen);
   const [form, setForm] = useState(usuario);
@@ -417,9 +419,23 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
               {busy === "guardando" ? "Guardando…" : "Guardar cambios"}
             </button>
             {status ? (
-              <span aria-live="polite" className="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-400/20 rounded-lg px-3 py-1.5">
-                {status}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span aria-live="polite" className={`text-xs rounded-lg px-3 py-1.5 border ${status.includes("expirado") || status.includes("Error") ? "bg-rose-950/50 border-rose-500/30 text-rose-200" : "bg-emerald-950/40 border-emerald-400/20 text-emerald-300"}`}>
+                  {status}
+                </span>
+                {status.includes("expirado") || status.includes("sesión") ? (
+                  <button
+                    className="rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:bg-emerald-300"
+                    onClick={() => {
+                      clearAuthSession();
+                      router.push("/iniciar-sesion");
+                    }}
+                    type="button"
+                  >
+                    Ir a Iniciar Sesión ↗
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </form>

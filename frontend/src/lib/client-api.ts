@@ -1,3 +1,5 @@
+import { clearAuthSession } from "@/lib/use-auth-session";
+
 export async function apiRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (!(init?.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -24,7 +26,10 @@ export async function apiRequest<T>(path: string, token: string, init?: RequestI
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      throw new Error("Tu sesión ha expirado. Por favor, cierra sesión e inicia sesión nuevamente para guardar cambios.");
+      if (typeof window !== "undefined") {
+        clearAuthSession();
+      }
+      throw new Error("Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.");
     }
 
     let mensaje = `Error del servidor (HTTP ${response.status})`;

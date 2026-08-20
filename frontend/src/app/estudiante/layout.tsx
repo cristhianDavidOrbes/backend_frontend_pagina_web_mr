@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { apiRequest } from "@/lib/client-api";
-import { saveAuthUser, useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
+import { clearAuthSession, saveAuthUser, useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
 export default function EstudianteLayout({ children }: { children: React.ReactNode }) {
   const { hydrated, token, usuario: sesion } = useAuthSession();
@@ -27,6 +27,7 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
         saveAuthUser(perfil);
       })
       .catch(() => {
+        clearAuthSession();
         router.replace("/iniciar-sesion");
       });
   }, [hydrated, token, router]);
