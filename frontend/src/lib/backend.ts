@@ -32,7 +32,7 @@ async function respuestaJson(respuesta: Response) {
   try {
     datos = JSON.parse(texto);
   } catch {
-    datos = { mensaje: respuesta.ok ? texto : "El backend devolvió una respuesta no válida." };
+    datos = { mensaje: respuesta.ok ? texto : (texto || `Error HTTP ${respuesta.status}`) };
   }
 
   return NextResponse.json(datos, { status: respuesta.status });
@@ -58,10 +58,11 @@ export async function proxyBackend({ request, path, method }: ProxyOptions) {
     });
 
     return respuestaJson(respuesta);
-  } catch {
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Error de red";
     return NextResponse.json(
       {
-        mensaje: "No se pudo conectar con el backend",
+        mensaje: `No se pudo conectar con el backend (${msg})`,
       },
       {
         status: 502,
@@ -84,42 +85,50 @@ export async function proxyBackendAvatar(request: Request, method: "POST" | "PUT
       return respuestaJson(respuesta);
     }
 
+    let payload: string | FormData;
+
     if (contentType.includes("application/json")) {
-      const body = await request.text();
+      payload = await request.text();
       headers.set("Content-Type", "application/json");
-      const respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
-        method: "POST",
-        headers,
-        body,
-        cache: "no-store",
-      });
-      return respuestaJson(respuesta);
+    } else {
+      const entrada = await request.formData();
+      const archivo = entrada.get("archivo");
+      if (!(archivo instanceof File) || !archivo.type.startsWith("image/")) {
+        return NextResponse.json({ mensaje: "Debe seleccionar una imagen válida." }, { status: 400 });
+      }
+      if (archivo.size > 10 * 1024 * 1024) {
+        return NextResponse.json({ mensaje: "La imagen procesada no puede superar 10 MB." }, { status: 413 });
+      }
+
+      const arrayBuffer = await archivo.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: archivo.type || "image/jpeg" });
+      const formData = new FormData();
+      formData.append("archivo", blob, archivo.name || "avatar.jpg");
+      payload = formData;
     }
 
-    // Multipart
-    const entrada = await request.formData();
-    const archivo = entrada.get("archivo");
-    if (!(archivo instanceof File) || !archivo.type.startsWith("image/")) {
-      return NextResponse.json({ mensaje: "Debe seleccionar una imagen válida." }, { status: 400 });
-    }
-    if (archivo.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ mensaje: "La imagen procesada no puede superar 10 MB." }, { status: 413 });
-    }
-
-    const arrayBuffer = await archivo.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: archivo.type || "image/jpeg" });
-    const formData = new FormData();
-    formData.append("archivo", blob, archivo.name || "avatar.jpg");
-
-    const respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
+    // Intentar POST primero
+    let respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
       method: "POST",
       headers,
-      body: formData,
+      body: payload,
       cache: "no-store",
     });
+
+    // Si el backend en transición devuelve 404 o 405 en POST, reintentar con PUT
+    if (respuesta.status === 404 || respuesta.status === 405) {
+      respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
+        method: "PUT",
+        headers,
+        body: payload,
+        cache: "no-store",
+      });
+    }
+
     return respuestaJson(respuesta);
-  } catch {
-    return NextResponse.json({ mensaje: "No se pudo conectar con el backend" }, { status: 502 });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Error de red";
+    return NextResponse.json({ mensaje: `No se pudo conectar con el backend (${msg})` }, { status: 502 });
   }
 }
 
@@ -149,7 +158,8 @@ export async function proxyBackendAvatarPublico(
     }
 
     return new Response(arrayBuffer, { status: 200, headers });
-  } catch {
-    return NextResponse.json({ mensaje: "No se pudo cargar el avatar" }, { status: 502 });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Error de red";
+    return NextResponse.json({ mensaje: `No se pudo cargar el avatar (${msg})` }, { status: 502 });
   }
 }

@@ -22,10 +22,21 @@ export async function apiRequest<T>(path: string, token: string, init?: RequestI
     }
   }
   if (!response.ok) {
-    const mensaje =
-      typeof data === "object" && data !== null && "mensaje" in data
-        ? String(data.mensaje)
-        : "No fue posible completar la solicitud.";
+    let mensaje = `Error del servidor (HTTP ${response.status})`;
+    if (typeof data === "object" && data !== null) {
+      const record = data as Record<string, unknown>;
+      if (typeof record.mensaje === "string" && record.mensaje) {
+        mensaje = record.mensaje;
+      } else if (typeof record.message === "string" && record.message) {
+        mensaje = record.message;
+      } else if (typeof record.error === "string" && record.error) {
+        mensaje = record.error;
+      } else if (typeof record.detail === "string" && record.detail) {
+        mensaje = record.detail;
+      }
+    } else if (typeof data === "string" && data) {
+      mensaje = data;
+    }
     throw new Error(mensaje);
   }
   return data as T;
