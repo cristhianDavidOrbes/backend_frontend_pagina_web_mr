@@ -33,11 +33,12 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
   const [tieneAvatarPersonalizado, setTieneAvatarPersonalizado] = useState(Boolean(usuario.avatarUrl));
   const [eliminarAvatarAlGuardar, setEliminarAvatarAlGuardar] = useState(false);
 
-  // Sync state if initial usuario prop changes
-  useEffect(() => {
+  const [prevUsuario, setPrevUsuario] = useState(usuario);
+  if (usuario !== prevUsuario) {
+    setPrevUsuario(usuario);
     setForm(usuario);
     setTieneAvatarPersonalizado(Boolean(usuario.avatarUrl));
-  }, [usuario]);
+  }
 
   const preset = avatarPresetSeguro(form.avatar);
   const avatarRemotoUrl = useSecureAvatarUrl(form.avatarUrl, token);

@@ -79,6 +79,8 @@ export async function fetchAndCacheAvatar(
   return request;
 }
 
-export function releaseAvatarUrl(_url: string) {
-  // Mantenemos los Object URLs en memoria durante la sesión para navegación instantánea
+export function releaseAvatarUrl(url?: string) {
+  if (url) {
+    // Mantenemos los Object URLs en memoria durante la sesión para navegación instantánea
+  }
 }
