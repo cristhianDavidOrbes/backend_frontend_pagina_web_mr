@@ -33,7 +33,7 @@ import com.algolab.backend_werb_mr.repositorio.IAvatarUsuarioRepositorio;
 
 @Service
 public class AvatarServicio {
-    public static final long TAMANO_MAXIMO_ENTRADA = 1024L * 1024L;
+    public static final long TAMANO_MAXIMO_ENTRADA = 10L * 1024L * 1024L;
     public static final int DIMENSION_MAXIMA_ENTRADA = 2048;
     public static final int DIMENSION_MAXIMA_SALIDA = 512;
     private static final float CALIDAD_JPEG = 0.88f;
@@ -55,7 +55,7 @@ public class AvatarServicio {
             throw new AvatarInvalidoException("Debe seleccionar una imagen");
         }
         if (archivo.getSize() > TAMANO_MAXIMO_ENTRADA) {
-            throw new AvatarInvalidoException("La imagen no puede superar 1 MB");
+            throw new AvatarInvalidoException("La imagen no puede superar 10 MB");
         }
 
         ImagenNormalizada imagen = normalizar(archivo);

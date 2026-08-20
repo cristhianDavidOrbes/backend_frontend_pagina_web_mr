@@ -111,7 +111,7 @@ class AvatarServicioTest {
                 AvatarInvalidoException.class,
                 () -> servicio.guardar(usuario, archivo));
 
-        assertEquals("La imagen no puede superar 1 MB", error.getMessage());
+        assertEquals("La imagen no puede superar 10 MB", error.getMessage());
         verify(avatarRepositorio, never()).save(any());
     }
 

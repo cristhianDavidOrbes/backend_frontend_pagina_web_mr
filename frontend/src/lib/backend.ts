@@ -81,8 +81,8 @@ export async function proxyBackendAvatar(request: Request, method: "PUT" | "DELE
       if (!(archivo instanceof File) || !archivo.type.startsWith("image/")) {
         return NextResponse.json({ mensaje: "Debe seleccionar una imagen válida." }, { status: 400 });
       }
-      if (archivo.size > 1024 * 1024) {
-        return NextResponse.json({ mensaje: "La imagen procesada no puede superar 1 MB." }, { status: 413 });
+      if (archivo.size > 10 * 1024 * 1024) {
+        return NextResponse.json({ mensaje: "La imagen procesada no puede superar 10 MB." }, { status: 413 });
       }
       body = new FormData();
       body.append("archivo", archivo, archivo.name || "avatar.jpg");
