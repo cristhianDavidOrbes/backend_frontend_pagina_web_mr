@@ -2227,10 +2227,36 @@ button, a {
 .oop-docs-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: .875rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(50,230,161,.3) rgba(255,255,255,.02);
+}
+
+.oop-docs-content::-webkit-scrollbar,
+.oop-code-block::-webkit-scrollbar,
+.oop-right-panel::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.oop-docs-content::-webkit-scrollbar-track,
+.oop-code-block::-webkit-scrollbar-track,
+.oop-right-panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+.oop-docs-content::-webkit-scrollbar-thumb,
+.oop-code-block::-webkit-scrollbar-thumb,
+.oop-right-panel::-webkit-scrollbar-thumb {
+  background: rgba(50, 230, 161, 0.25);
+  border-radius: 4px;
+}
+.oop-docs-content::-webkit-scrollbar-thumb:hover,
+.oop-code-block::-webkit-scrollbar-thumb:hover,
+.oop-right-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(50, 230, 161, 0.5);
 }
 
 .oop-intro {

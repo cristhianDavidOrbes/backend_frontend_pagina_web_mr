@@ -1,7 +1,12 @@
 // Módulo de datos para los niveles y subniveles de OOP
-// Los códigos iniciales vienen limpios para que el estudiante escriba su solución desde cero.
+// Contiene documentación detallada, ejemplos, glosario interactivo de sintaxis y retos prácticos.
 
 export type LenguajeOOP = "python" | "java";
+
+export type TerminoGlosario = {
+  termino: string;
+  explicacion: string;
+};
 
 export type MiniNivel = {
   id: number;
@@ -19,6 +24,8 @@ export type MiniNivel = {
     concepto: string;
     ejemploPython: string;
     ejemploJava: string;
+    glosarioPython: TerminoGlosario[];
+    glosarioJava: TerminoGlosario[];
     tip: string;
   };
   practica: {
@@ -67,11 +74,60 @@ print(f"{nombre} tiene {edad} años y pesa {peso} kg")`,
         System.out.println(nombre + " tiene " + edad + " años y pesa " + peso + " kg");
     }
 }`,
-      tip: "💡 En Python las variables son flexibles (tipado dinámico). En Java debes declarar el tipo de variable (tipado estático).",
+      glosarioPython: [
+        {
+          termino: "print(...)",
+          explicacion:
+            "Función nativa de Python que muestra texto, números o variables en la pantalla (consola).",
+        },
+        {
+          termino: 'f"..." (f-string)',
+          explicacion:
+            "La letra 'f' antes de las comillas indica un 'formato de cadena'. Permite incrustar variables directamente dentro del texto sin concatenar manualmente.",
+        },
+        {
+          termino: "{variable} (llaves)",
+          explicacion:
+            "Dentro de un f-string, todo lo que coloques dentro de las llaves '{}' se evalúa como código Python y se reemplaza por el valor actual de esa variable.",
+        },
+        {
+          termino: 'nombre = "Luna"',
+          explicacion:
+            "El signo '=' es el operador de asignación: guarda el valor de la derecha (\"Luna\") dentro del nombre de variable a la izquierda.",
+        },
+      ],
+      glosarioJava: [
+        {
+          termino: "public class Main",
+          explicacion:
+            "En Java TODO el código debe vivir dentro de una clase. 'Main' es el nombre de la clase contenedora principal.",
+        },
+        {
+          termino: "public static void main(String[] args)",
+          explicacion:
+            "Es el 'Punto de Entrada' (entry point) obligatorio de cualquier aplicación Java. La máquina virtual siempre empieza a ejecutar aquí.",
+        },
+        {
+          termino: "System.out.println(...)",
+          explicacion:
+            "Comando de Java para imprimir una línea de texto en la consola y saltar automáticamente a la siguiente línea.",
+        },
+        {
+          termino: '+ (Operador de concatenación)',
+          explicacion:
+            "Une cadenas de texto con variables. Por ejemplo: \"Hola \" + nombre crea una sola frase unificada.",
+        },
+        {
+          termino: "String / int / double / boolean",
+          explicacion:
+            "Tipos de datos estáticos: le dicen a Java exactamente qué clase de información va a almacenar la variable en memoria.",
+        },
+      ],
+      tip: "💡 En Python las variables son dinámicas (no especificas el tipo). En Java debes declarar el tipo de variable (String, int, double) desde el inicio.",
     },
     practica: {
       enunciado:
-        "Crea tres variables: `nombre` con el valor `\"Ana\"`, `edad` con `20`, y `lenguaje` con `\"Python\"` (o `\"Java\"` si estás en Java). Luego imprime exactamente:\n\n`Hola, soy Ana, tengo 20 años y aprendo Python`\n\n*(o aprendo Java según el lenguaje)*",
+        "Crea tres variables: `nombre` con el valor `\"Ana\"`, `edad` con `20`, y `lenguaje` con `\"Python\"` (o `\"Java\"` en Java). Luego imprime exactamente:\n\n`Hola, soy Ana, tengo 20 años y aprendo Python`\n\n*(o aprendo Java según el lenguaje)*",
       salidaEsperada: "Hola, soy Ana, tengo 20 años y aprendo Python",
     },
     codigoBasePython: `# Escribe tu código Python aquí\n`,
@@ -87,8 +143,8 @@ nombre = "Ana"
 edad = 20
 lenguaje = "Python"
 
-# Completa la línea del print:
-print(f"Hola, soy {nombre}, tengo ... y aprendo {lenguaje}")
+# Completa la línea del print usando f-strings:
+print(f"Hola, soy {nombre}, tengo {edad} años y aprendo {lenguaje}")
 `,
     pistaJava: `public class Main {
     public static void main(String[] args) {
@@ -133,7 +189,7 @@ print(f"Hola, soy {nombre}, tengo {edad} años y aprendo {lenguaje}")
       intro:
         "Una función es como un botón mágico: le pones un nombre, defines qué hace, y cada vez que lo necesitas, ¡solo llamas a ese nombre!",
       concepto:
-        "**¿Por qué usar funciones?**\n- **Evitar repetición**: escribes el código una vez y lo reutilizas\n- **Organización**: divides problemas grandes en pequeños\n- **Parámetros**: les pasas información para operar\n- **Retorno**: devuelven un resultado procesado",
+        "**¿Por qué usar funciones?**\n- **Evitar repetición**: escribes el código una vez y lo reutilizas\n- **Organización**: divides problemas grandes en pequeños\n- **Parámetros**: les pasas información para operar\n- **Retorno**: devuelven un resultado procesado con `return`",
       ejemploPython: `# Función sin parámetros
 def saludar():
     print("¡Hola AlgoLab!")
@@ -160,7 +216,50 @@ print(resultado)       # 8`,
         System.out.println(resultado);
     }
 }`,
-      tip: "💡 En Python usas `def` para definir funciones. En Java declaras el tipo de retorno (o `void` si no devuelve nada).",
+      glosarioPython: [
+        {
+          termino: "def",
+          explicacion:
+            "Palabra clave que significa 'definir'. Le indica a Python que estás creando una nueva función reutilizable.",
+        },
+        {
+          termino: "(a, b) (Parámetros)",
+          explicacion:
+            "Son las variables receptoras entre paréntesis que la función necesita recibir desde afuera para trabajar con ellas.",
+        },
+        {
+          termino: "return",
+          explicacion:
+            "Instrucción que envía el valor resultante del cálculo hacia quien llamó la función, terminando su ejecución.",
+        },
+        {
+          termino: "* (Operador)",
+          explicacion: "Operador de multiplicación matemática (ej: ancho * alto).",
+        },
+      ],
+      glosarioJava: [
+        {
+          termino: "static",
+          explicacion:
+            "Significa que el método pertenece a la clase y puede llamarse directamente desde 'main' sin tener que instanciar un objeto.",
+        },
+        {
+          termino: "int (Tipo de retorno)",
+          explicacion:
+            "Declara qué tipo de dato devolverá este método cuando termine. Si no devuelve nada, se usa 'void'.",
+        },
+        {
+          termino: "(int a, int b)",
+          explicacion:
+            "Parámetros que recibe el método, especificando obligatoriamente el tipo de cada variable recibida.",
+        },
+        {
+          termino: "return",
+          explicacion:
+            "Devuelve el resultado del cálculo al lugar donde fue invocado el método.",
+        },
+      ],
+      tip: "💡 En Python usas `def` para definir funciones. En Java declaras el tipo de retorno (`int`, `String`, o `void` si no devuelve nada).",
     },
     practica: {
       enunciado:
@@ -263,6 +362,54 @@ public class Main {
         luna.ladrar();
     }
 }`,
+      glosarioPython: [
+        {
+          termino: "class Perro:",
+          explicacion:
+            "Declara una nueva Clase llamada 'Perro', que servirá como molde para crear todos los objetos de ese tipo.",
+        },
+        {
+          termino: "__init__(self, ...)",
+          explicacion:
+            "El Constructor especial de Python. Se ejecuta automáticamente cada vez que creas un nuevo objeto para inicializar sus datos.",
+        },
+        {
+          termino: "self",
+          explicacion:
+            "Representa al objeto específico que está ejecutando el código. 'self.nombre' almacena el atributo dentro de ESE perro en particular.",
+        },
+        {
+          termino: 'rex = Perro("Rex", ...)',
+          explicacion:
+            "Instanciación: crea un objeto real e independiente en memoria a partir del plano 'Perro'.",
+        },
+        {
+          termino: "rex.ladrar()",
+          explicacion:
+            "Invocación de método: le pide al objeto 'rex' que ejecute su comportamiento 'ladrar'.",
+        },
+      ],
+      glosarioJava: [
+        {
+          termino: "class Perro { ... }",
+          explicacion: "Estructura que define la plantilla y miembros del objeto Perro.",
+        },
+        {
+          termino: "Perro(String nombre, ...)",
+          explicacion:
+            "El Constructor de Java. Tiene exactamente el mismo nombre de la clase y no lleva tipo de retorno.",
+        },
+        {
+          termino: "this",
+          explicacion:
+            "Palabra clave que apunta al objeto actual. 'this.nombre' hace referencia al campo de la clase para no confundirlo con el parámetro recibido.",
+        },
+        {
+          termino: 'new Perro(...)',
+          explicacion:
+            "El operador 'new' reserva espacio en la memoria y llama al constructor para dar vida al nuevo objeto.",
+        },
+      ],
       tip: "💡 En Java usa siempre `this.campo` dentro de los métodos para referirte a los atributos del objeto. En Python usas `self.campo`.",
     },
     practica: {
@@ -284,10 +431,9 @@ public class Main {
         self.color = color
 
     def presentarse(self):
-        # Completa el print:
         print(f"Soy {self.nombre}, un gato de color {self.color}")
 
-# Instancia el gato:
+# Instancia el gato y llama al método:
 michi = Gato("Michi", "naranja")
 michi.presentarse()
 `,
@@ -398,6 +544,50 @@ public class Main {
         System.out.println(cuenta.getSaldo());
     }
 }`,
+      glosarioPython: [
+        {
+          termino: "__saldo (Doble guion bajo)",
+          explicacion:
+            "En Python, anteponer '__' al nombre del atributo lo convierte en privado (Name Mangling), impidiendo que se modifique o acceda directamente desde afuera del objeto.",
+        },
+        {
+          termino: "get_saldo(self) (Getter)",
+          explicacion:
+            "Método de lectura: permite a otros códigos consultar el valor del atributo privado de forma controlada.",
+        },
+        {
+          termino: "set_nota(self, valor) (Setter)",
+          explicacion:
+            "Método de escritura: recibe un nuevo valor y aplica reglas de validación (ej: notas entre 0 y 100) antes de guardarlo.",
+        },
+        {
+          termino: "if 0 <= valor <= 100:",
+          explicacion:
+            "Condicional encadenado en Python para comprobar que un número se encuentre dentro de un rango numérico válido.",
+        },
+      ],
+      glosarioJava: [
+        {
+          termino: "private",
+          explicacion:
+            "Modificador de visibilidad estricto de Java: el campo solo puede ser leído o modificado por código dentro de la misma clase.",
+        },
+        {
+          termino: "public int getNota() (Getter)",
+          explicacion:
+            "Método público que devuelve el valor del campo privado al exterior.",
+        },
+        {
+          termino: "public void setNota(int valor) (Setter)",
+          explicacion:
+            "Método público que valida y asigna un nuevo valor a la variable privada.",
+        },
+        {
+          termino: "void",
+          explicacion:
+            "Tipo de retorno que indica que el método setter realiza una acción (modificar) sin devolver ningún resultado.",
+        },
+      ],
       tip: "💡 En Python usas `__nombre` (doble guion bajo) para hacer privado. En Java usas la palabra clave `private`. Accede siempre con `this.campo` en los métodos.",
     },
     practica: {
@@ -567,6 +757,40 @@ public class Main {
         rex.ladrar();
     }
 }`,
+      glosarioPython: [
+        {
+          termino: "class Moto(Vehiculo):",
+          explicacion:
+            "Los paréntesis indican Herencia. 'Moto' es la clase hija que adquiere automáticamente todo lo que tiene 'Vehiculo'.",
+        },
+        {
+          termino: "super().__init__(...)",
+          explicacion:
+            "Invoca el constructor de la clase padre (Vehiculo) para que inicialice los atributos comunes sin tener que reescribir código.",
+        },
+        {
+          termino: "Método propio vs heredado",
+          explicacion:
+            "'arrancar()' es un método heredado de Vehiculo, mientras que 'wheelie()' es un método nuevo exclusivo de Moto.",
+        },
+      ],
+      glosarioJava: [
+        {
+          termino: "extends",
+          explicacion:
+            "Palabra reservada de Java para indicar que una clase hereda de otra ('class Moto extends Vehiculo').",
+        },
+        {
+          termino: "super(marca);",
+          explicacion:
+            "Llama al constructor de la superclase (Vehiculo). En Java debe situarse obligatoriamente en la primera línea del constructor hijo.",
+        },
+        {
+          termino: "Superclase y Subclase",
+          explicacion:
+            "Superclase es la clase padre (Vehiculo). Subclase es la clase hija (Moto) que amplía sus capacidades.",
+        },
+      ],
       tip: "💡 En Python heredas con paréntesis: `class Perro(Animal)`. En Java usas `extends`. El `super()` SIEMPRE va primero en el constructor hijo.",
     },
     practica: {
@@ -735,6 +959,45 @@ public class Main {
         c.describir();
     }
 }`,
+      glosarioPython: [
+        {
+          termino: "from abc import ABC, abstractmethod",
+          explicacion:
+            "Importa las herramientas estándar de Python para Abstract Base Classes (ABC) y el decorador de métodos abstractos.",
+        },
+        {
+          termino: "class Forma(ABC):",
+          explicacion:
+            "Define una clase abstracta: no se puede instanciar directamente con Forma(), sirve como base para sus hijas.",
+        },
+        {
+          termino: "@abstractmethod",
+          explicacion:
+            "Decorador que marca un método como obligatorio: cualquier clase hija debe implementarlo con su propio código o Python dará error.",
+        },
+        {
+          termino: "pass",
+          explicacion:
+            "Instrucción vacía en Python. Se usa en el método abstracto porque no tiene lógica en el padre.",
+        },
+      ],
+      glosarioJava: [
+        {
+          termino: "abstract class",
+          explicacion:
+            "Declara una clase abstracta en Java que define una estructura base y no permite crear instancias directas con 'new'.",
+        },
+        {
+          termino: "abstract double area();",
+          explicacion:
+            "Método abstracto sin cuerpo (termina con punto y coma). Exige a las subclases hijas implementar su lógica.",
+        },
+        {
+          termino: "Método concreto en clase abstracta",
+          explicacion:
+            "Las clases abstractas también pueden contener métodos normales con código (como 'describir()') que sus hijas reutilizan.",
+        },
+      ],
       tip: "💡 En Python importas `ABC` y `abstractmethod`. En Java usas `abstract` antes de la clase y el método. Siempre llama `super()` en el constructor hijo.",
     },
     practica: {
@@ -907,6 +1170,40 @@ public class Main {
         }
     }
 }`,
+      glosarioPython: [
+        {
+          termino: "Polimorfismo ('Muchas Formas')",
+          explicacion:
+            "Capacidad de tratar objetos distintos (Perro, Gato) de manera uniforme mediante una misma llamada (sonido()), respondiendo cada uno con su propia acción.",
+        },
+        {
+          termino: "Sobreescritura (Method Override)",
+          explicacion:
+            "Cuando la clase hija vuelve a definir un método con el mismo nombre exacto que el padre para personalizar su comportamiento.",
+        },
+        {
+          termino: "for animal in animales:",
+          explicacion:
+            "Bucle iterador que recorre la lista polimórfica elemento por elemento sin importar de qué subclase específica sea cada uno.",
+        },
+      ],
+      glosarioJava: [
+        {
+          termino: "Instrumento[] (Arreglo polimórfico)",
+          explicacion:
+            "Arreglo que puede almacenar instancias de cualquier clase hija (Guitarra, Piano) porque todas derivan del tipo común Instrumento.",
+        },
+        {
+          termino: "for (Instrumento inst : instrumentos)",
+          explicacion:
+            "Bucle 'for-each' de Java que recorre la colección polimórfica tratando cada elemento como un Instrumento genérico.",
+        },
+        {
+          termino: "Sobreescritura en tiempo de ejecución",
+          explicacion:
+            "Java determina dinámicamente qué método ejecutar según el tipo real del objeto en memoria en el momento de la llamada.",
+        },
+      ],
       tip: "💡 El polimorfismo te permite tratar objetos de distintas clases de forma uniforme. `a.sonido()` llamará al método correcto según el tipo real del objeto.",
     },
     practica: {
@@ -1073,6 +1370,42 @@ class Libro extends Publicacion {
         System.out.println("📚 Libro: " + this.getTitulo() + " por " + this.autor);
     }
 }`,
+      glosarioPython: [
+        {
+          termino: "🔐 Encapsulamiento (Pilar 1)",
+          explicacion: "Protege 'self.__titulo' con getter 'get_titulo()' para acceso controlado.",
+        },
+        {
+          termino: "🎭 Abstracción (Pilar 2)",
+          explicacion: "Clase 'Publicacion(ABC)' que no se instancia y define el contrato '@abstractmethod def describir(self)'.",
+        },
+        {
+          termino: "🌳 Herencia (Pilar 3)",
+          explicacion: "Libro(Publicacion) y Revista(Publicacion) reutilizan el constructor padre con 'super().__init__(titulo)'.",
+        },
+        {
+          termino: "🔮 Polimorfismo (Pilar 4)",
+          explicacion: "Cada subclase responde a 'describir()' con su propio formato diferenciado (📚 vs 📰).",
+        },
+      ],
+      glosarioJava: [
+        {
+          termino: "🔐 Encapsulamiento (Pilar 1)",
+          explicacion: "Atributo 'private String titulo;' con su método de lectura 'public String getTitulo()'.",
+        },
+        {
+          termino: "🎭 Abstracción (Pilar 2)",
+          explicacion: "'abstract class Publicacion' con el método obligatorio 'abstract void describir();'.",
+        },
+        {
+          termino: "🌳 Herencia (Pilar 3)",
+          explicacion: "Libro y Revista extienden Publicacion usando 'extends' e invocan 'super(titulo)'.",
+        },
+        {
+          termino: "🔮 Polimorfismo (Pilar 4)",
+          explicacion: "Ambas subclases implementan 'void describir()' con comportamientos personalizados.",
+        },
+      ],
       tip: "🏆 Este desafío vale 50 puntos. Usa `this.getTitulo()` para acceder al título privado desde las clases hijas.",
     },
     practica: {
