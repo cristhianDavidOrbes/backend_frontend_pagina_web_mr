@@ -230,26 +230,26 @@ export default function CodigoPage() {
         </span>
       </div>
 
-      {/* Modules and Sublevels list */}
-      <div className="space-y-8">
+      {/* Modules and Sublevels list in 2-column grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {modulos.map((mod) => {
           const subnivelesCompletados = mod.niveles.filter((n) => progreso.niveles[String(n.id)]?.completado).length;
 
           return (
-            <section key={mod.numero} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+            <section key={mod.numero} className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-lg">
               {/* Module Header */}
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
                 <div className="flex items-center gap-2">
                   <BookOpen size={18} className="text-emerald-400" />
                   <h2 className="text-base font-bold text-white">{mod.nombre}</h2>
                 </div>
-                <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">
-                  {subnivelesCompletados} de {mod.niveles.length} subniveles superados
+                <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs text-slate-300">
+                  {subnivelesCompletados} de {mod.niveles.length} completados
                 </span>
               </div>
 
-              {/* Sublevels Grid */}
-              <div className="oop-nivel-grid">
+              {/* Sublevels Grid (2 sub-levels side by side) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 flex-1">
                 {mod.niveles.map((nivel) => {
                   const nivelIdx = OOP_NIVELES.findIndex((n) => n.id === nivel.id);
                   const nivelProgreso = progreso.niveles[String(nivel.id)];
@@ -259,53 +259,55 @@ export default function CodigoPage() {
                   return (
                     <div
                       key={nivel.id}
-                      className={`oop-nivel-card border ${BG_MAP[nivel.color]} ${bloqueado ? "opacity-50" : ""}`}
+                      className={`oop-nivel-card flex flex-col justify-between border ${BG_MAP[nivel.color]} ${bloqueado ? "opacity-50" : ""}`}
                     >
-                      <div className="oop-nivel-card-top">
-                        <div className="flex items-center gap-2">
-                          <span className="oop-nivel-emoji">{nivel.emoji}</span>
-                          <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-xs font-bold text-emerald-300">
-                            Subnivel {nivel.subnivel}
-                          </span>
+                      <div className="space-y-2.5">
+                        <div className="oop-nivel-card-top">
+                          <div className="flex items-center gap-2">
+                            <span className="oop-nivel-emoji">{nivel.emoji}</span>
+                            <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300">
+                              Subnivel {nivel.subnivel}
+                            </span>
+                          </div>
+                          <div className="oop-nivel-status">
+                            {completado ? (
+                              <CheckCircle2 size={18} className="text-emerald-400" />
+                            ) : bloqueado ? (
+                              <Lock size={15} className="text-slate-500" />
+                            ) : (
+                              <Circle size={18} className="text-slate-600" />
+                            )}
+                          </div>
                         </div>
-                        <div className="oop-nivel-status">
-                          {completado ? (
-                            <CheckCircle2 size={20} className="text-emerald-400" />
-                          ) : bloqueado ? (
-                            <Lock size={16} className="text-slate-500" />
-                          ) : (
-                            <Circle size={20} className="text-slate-600" />
-                          )}
+
+                        <div className="oop-nivel-info">
+                          <p className={`oop-nivel-num text-[11px] ${COLOR_MAP[nivel.color]}`}>
+                            {nivel.concepto}
+                          </p>
+                          <h3 className="oop-nivel-title text-sm font-bold">{nivel.titulo}</h3>
+                          <p className="oop-nivel-desc text-xs text-slate-400 line-clamp-2">{nivel.descripcionCorta}</p>
                         </div>
                       </div>
 
-                      <div className="oop-nivel-info">
-                        <p className={`oop-nivel-num ${COLOR_MAP[nivel.color]}`}>
-                          {nivel.concepto}
-                        </p>
-                        <h3 className="oop-nivel-title">{nivel.titulo}</h3>
-                        <p className="oop-nivel-desc">{nivel.descripcionCorta}</p>
-                      </div>
-
-                      <div className="oop-nivel-footer">
-                        <div className="oop-nivel-pts">
+                      <div className="oop-nivel-footer mt-4 pt-3 border-t border-white/5">
+                        <div className="oop-nivel-pts text-xs">
                           <span className="text-yellow-400">⭐</span>
                           <span>
                             {completado
-                              ? `${nivelProgreso.puntos} pts ganados`
-                              : `hasta ${nivel.puntaje} pts`}
+                              ? `${nivelProgreso.puntos} pts`
+                              : `${nivel.puntaje} pts`}
                           </span>
                         </div>
 
                         {bloqueado ? (
-                          <span className="oop-locked-text">Completa el anterior</span>
+                          <span className="oop-locked-text text-[11px]">Bloqueado</span>
                         ) : (
                           <Link
                             href={`/estudiante/codigo/${nivel.id}?lang=${lenguaje}`}
-                            className="oop-nivel-btn"
+                            className="oop-nivel-btn text-xs py-1 px-2.5"
                           >
                             {completado ? "Repasar" : "Empezar"}
-                            <ChevronRight size={14} />
+                            <ChevronRight size={13} />
                           </Link>
                         )}
                       </div>
