@@ -9,7 +9,7 @@ import { Menu, X, Sparkles, LogOut, Headphones } from "lucide-react";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { clearAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
-type IconName = "route" | "reports" | "students" | "levels" | "profile" | "world" | "logout" | "headset" | "spark";
+type IconName = "route" | "reports" | "students" | "levels" | "profile" | "world" | "logout" | "headset" | "spark" | "code";
 
 type NavLink = {
   href: string;
@@ -31,6 +31,7 @@ const roleConfig: Record<UsuarioSesion["rol"], RoleConfig> = {
     links: [
       { href: "/estudiante", label: "Mi ruta", icon: "route", exact: true },
       { href: "/estudiante/reportes", label: "Recomendaciones IA", icon: "reports" },
+      { href: "/estudiante/codigo", label: "Programar OOP", icon: "code" },
       { href: "/estudiante/perfil", label: "Mi perfil", icon: "profile" },
       { href: "/", label: "Explorar AlgoLab", icon: "world", exact: true },
     ],
@@ -140,6 +141,14 @@ function ShellIcon({ name, className }: { name: IconName; className?: string }) 
     return (
       <svg {...common}>
         <path d="M4 13v-2a8 8 0 0 1 16 0v2M5.5 12H7a1 1 0 0 1 1 1v5H6.5A2.5 2.5 0 0 1 4 15.5v-1A2.5 2.5 0 0 1 6.5 12ZM18.5 12H17a1 1 0 0 0-1 1v5h1.5a2.5 2.5 0 0 0 2.5-2.5v-1a2.5 2.5 0 0 0-2.5-2.5Z" />
+      </svg>
+    );
+  }
+  if (name === "code") {
+    return (
+      <svg {...common}>
+        <polyline points="16 18 22 12 16 6" />
+        <polyline points="8 6 2 12 8 18" />
       </svg>
     );
   }
