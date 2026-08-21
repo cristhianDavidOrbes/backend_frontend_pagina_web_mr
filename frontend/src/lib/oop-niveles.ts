@@ -1,11 +1,13 @@
-// Módulo de datos para los 8 mini-niveles de OOP
-// IMPORTANTE: Los ejemplos Java usan `this.campo` explícitamente para ser compatibles
-// con el transpilador local Java→JS que ejecuta el código en el navegador.
+// Módulo de datos para los niveles y subniveles de OOP
+// Los códigos iniciales vienen limpios para que el estudiante escriba su solución desde cero.
 
 export type LenguajeOOP = "python" | "java";
 
 export type MiniNivel = {
   id: number;
+  moduloNumero: number;
+  moduloNombre: string;
+  subnivel: string;
   titulo: string;
   concepto: string;
   descripcionCorta: string;
@@ -25,6 +27,8 @@ export type MiniNivel = {
   };
   codigoBasePython: string;
   codigoBaseJava: string;
+  pistaPython: string;
+  pistaJava: string;
   solucionPython: string;
   solucionJava: string;
 };
@@ -32,6 +36,9 @@ export type MiniNivel = {
 export const OOP_NIVELES: MiniNivel[] = [
   {
     id: 1,
+    moduloNumero: 1,
+    moduloNombre: "Módulo 1: Fundamentos Básicos",
+    subnivel: "1.1",
     titulo: "Variables y Tipos",
     concepto: "Fundamentos",
     descripcionCorta: "Los bloques básicos de cualquier programa",
@@ -60,22 +67,32 @@ print(f"{nombre} tiene {edad} años y pesa {peso} kg")`,
         System.out.println(nombre + " tiene " + edad + " años y pesa " + peso + " kg");
     }
 }`,
-      tip: "💡 En Python las variables son flexibles (tipado dinámico). En Java debes decir qué tipo es cada variable desde el inicio (tipado estático).",
+      tip: "💡 En Python las variables son flexibles (tipado dinámico). En Java debes declarar el tipo de variable (tipado estático).",
     },
     practica: {
       enunciado:
-        "Crea tres variables: `nombre` con tu nombre, `edad` con tu edad, y `lenguaje` con el lenguaje que estás aprendiendo. Luego imprime:\n\n`Hola, soy Ana, tengo 20 años y aprendo Python`\n\n*(reemplaza los valores con los tuyos)*",
+        "Crea tres variables: `nombre` con el valor `\"Ana\"`, `edad` con `20`, y `lenguaje` con `\"Python\"` (o `\"Java\"` si estás en Java). Luego imprime exactamente:\n\n`Hola, soy Ana, tengo 20 años y aprendo Python`\n\n*(o aprendo Java según el lenguaje)*",
       salidaEsperada: "Hola, soy Ana, tengo 20 años y aprendo Python",
     },
-    codigoBasePython: `# Nivel 1: Variables y Tipos
+    codigoBasePython: `# Escribe tu código Python aquí\n`,
+    codigoBaseJava: `public class Main {
+    public static void main(String[] args) {
+        // Escribe tu código Java aquí
+        
+    }
+}
+`,
+    pistaPython: `# Pista: Declara las variables y usa un f-string para imprimir
 nombre = "Ana"
 edad = 20
 lenguaje = "Python"
 
-print(f"Hola, soy {nombre}, tengo {edad} años y aprendo {lenguaje}")
+# Completa la línea del print:
+print(f"Hola, soy {nombre}, tengo ... y aprendo {lenguaje}")
 `,
-    codigoBaseJava: `public class Main {
+    pistaJava: `public class Main {
     public static void main(String[] args) {
+        // Pista: Declara las 3 variables y concatena con +
         String nombre = "Ana";
         int edad = 20;
         String lenguaje = "Java";
@@ -103,9 +120,12 @@ print(f"Hola, soy {nombre}, tengo {edad} años y aprendo {lenguaje}")
   },
   {
     id: 2,
+    moduloNumero: 1,
+    moduloNombre: "Módulo 1: Fundamentos Básicos",
+    subnivel: "1.2",
     titulo: "Funciones y Métodos",
     concepto: "Reutilización",
-    descripcionCorta: "Bloques de código que puedes llamar cuando quieras",
+    descripcionCorta: "Bloques de código que puedes invocar cuando quieras",
     puntaje: 15,
     emoji: "⚙️",
     color: "amber",
@@ -113,7 +133,7 @@ print(f"Hola, soy {nombre}, tengo {edad} años y aprendo {lenguaje}")
       intro:
         "Una función es como un botón mágico: le pones un nombre, defines qué hace, y cada vez que lo necesitas, ¡solo llamas a ese nombre!",
       concepto:
-        "**¿Por qué usar funciones?**\n- **Evitar repetición**: escribes el código una vez y lo reutilizas\n- **Organización**: divides problemas grandes en pequeños\n- **Parámetros**: les pasas información para que trabajen con ella\n- **Retorno**: pueden devolverte un resultado",
+        "**¿Por qué usar funciones?**\n- **Evitar repetición**: escribes el código una vez y lo reutilizas\n- **Organización**: divides problemas grandes en pequeños\n- **Parámetros**: les pasas información para operar\n- **Retorno**: devuelven un resultado procesado",
       ejemploPython: `# Función sin parámetros
 def saludar():
     print("¡Hola AlgoLab!")
@@ -144,17 +164,27 @@ print(resultado)       # 8`,
     },
     practica: {
       enunciado:
-        "Crea una función `calcular_area` que reciba `ancho` y `alto` y retorne el área. Prueba con ancho=6 y alto=4.\n\nSalida esperada:\n`El área del rectángulo es: 24`",
+        "Crea una función llamada `calcular_area` (o `calcularArea` en Java) que reciba `ancho` y `alto` y retorne el área (ancho * alto). Llama la función con 6 y 4 e imprime:\n\n`El área del rectángulo es: 24`",
       salidaEsperada: "El área del rectángulo es: 24",
     },
-    codigoBasePython: `# Nivel 2: Funciones
+    codigoBasePython: `# Escribe tu código Python aquí\n`,
+    codigoBaseJava: `public class Main {
+    public static void main(String[] args) {
+        // Escribe tu código Java aquí
+        
+    }
+}
+`,
+    pistaPython: `# Pista: Define la función con def y usa return
 def calcular_area(ancho, alto):
     return ancho * alto
 
+# Llama la función y muestra el resultado:
 area = calcular_area(6, 4)
 print(f"El área del rectángulo es: {area}")
 `,
-    codigoBaseJava: `public class Main {
+    pistaJava: `public class Main {
+    // Pista: define el método estático arriba de main
     static int calcularArea(int ancho, int alto) {
         return ancho * alto;
     }
@@ -185,6 +215,9 @@ print(f"El área del rectángulo es: {area}")
   },
   {
     id: 3,
+    moduloNumero: 2,
+    moduloNombre: "Módulo 2: Objetos y Protección",
+    subnivel: "2.1",
     titulo: "Clases y Objetos",
     concepto: "1er Pilar: Identidad",
     descripcionCorta: "Crea tus propios tipos de datos con moldes",
@@ -193,9 +226,9 @@ print(f"El área del rectángulo es: {area}")
     color: "emerald",
     docs: {
       intro:
-        "Una **Clase** es como el plano de un edificio. Un **Objeto** es el edificio ya construido. Puedes construir muchos edificios con el mismo plano.",
+        "Una **Clase** es como el plano de una casa. Un **Objeto** es la casa ya construida en la vida real. Puedes construir muchas casas con el mismo plano.",
       concepto:
-        "**Clase** = molde / plantilla\n**Objeto** = instancia del molde\n\nCada objeto tiene:\n- **Atributos**: características (el color, el nombre, la edad)\n- **Métodos**: acciones que puede hacer (hablar, correr, calcular)\n- **`this`**: dentro de un método, `this` se refiere al objeto actual",
+        "**Clase** = molde / plantilla\n**Objeto** = instancia creada a partir del molde\n\nCada objeto tiene:\n- **Atributos**: características (nombre, color, edad)\n- **Métodos**: acciones que sabe hacer (hablar, correr, presentarse)\n- **`this` / `self`**: referencia al objeto actual",
       ejemploPython: `class Perro:
     def __init__(self, nombre, raza):
         self.nombre = nombre  # atributo
@@ -234,22 +267,31 @@ public class Main {
     },
     practica: {
       enunciado:
-        "Crea una clase `Gato` con atributos `nombre` y `color`. Agrega un método `presentarse()` que imprima:\n\n`Soy Michi, un gato de color naranja`\n\nCrea un objeto con nombre `Michi` y color `naranja`.",
+        "Crea una clase `Gato` con atributos `nombre` y `color`. Agrega un método `presentarse()` que imprima:\n\n`Soy Michi, un gato de color naranja`\n\nCrea un objeto con nombre `\"Michi\"` y color `\"naranja\"` y llama a su método.",
       salidaEsperada: "Soy Michi, un gato de color naranja",
     },
-    codigoBasePython: `# Nivel 3: Clases y Objetos
-class Gato:
+    codigoBasePython: `# Escribe tu código Python aquí\n`,
+    codigoBaseJava: `public class Main {
+    public static void main(String[] args) {
+        // Escribe tu código Java aquí
+        
+    }
+}
+`,
+    pistaPython: `class Gato:
     def __init__(self, nombre, color):
         self.nombre = nombre
         self.color = color
 
     def presentarse(self):
+        # Completa el print:
         print(f"Soy {self.nombre}, un gato de color {self.color}")
 
+# Instancia el gato:
 michi = Gato("Michi", "naranja")
 michi.presentarse()
 `,
-    codigoBaseJava: `class Gato {
+    pistaJava: `class Gato {
     String nombre;
     String color;
 
@@ -259,7 +301,6 @@ michi.presentarse()
     }
 
     void presentarse() {
-        // Usa this.nombre y this.color
         System.out.println("Soy " + this.nombre + ", un gato de color " + this.color);
     }
 }
@@ -306,9 +347,12 @@ public class Main {
   },
   {
     id: 4,
+    moduloNumero: 2,
+    moduloNombre: "Módulo 2: Objetos y Protección",
+    subnivel: "2.2",
     titulo: "Encapsulamiento",
     concepto: "2do Pilar: Protección",
-    descripcionCorta: "Controla el acceso a los datos de tu objeto",
+    descripcionCorta: "Controla el acceso y modificación a los datos",
     puntaje: 25,
     emoji: "🔐",
     color: "violet",
@@ -316,7 +360,7 @@ public class Main {
       intro:
         "El encapsulamiento es como tener una caja fuerte: guardas datos importantes dentro del objeto y controlas exactamente quién puede verlos o cambiarlos.",
       concepto:
-        "**¿Para qué sirve?**\n- Protege datos de modificaciones accidentales\n- Da control sobre cómo se leen o cambian los valores\n- Oculta detalles internos innecesarios\n\n**Getters**: métodos para *leer* un atributo privado\n**Setters**: métodos para *modificar* con validación",
+        "**¿Para qué sirve?**\n- Protege datos de modificaciones accidentales\n- Valida los datos antes de guardarlos\n- Oculta detalles internos innecesarios\n\n**Getters**: métodos para *leer* un atributo privado\n**Setters**: métodos para *modificar* con validación",
       ejemploPython: `class CuentaBancaria:
     def __init__(self, saldo):
         self.__saldo = saldo  # privado con __
@@ -358,11 +402,18 @@ public class Main {
     },
     practica: {
       enunciado:
-        "Crea `Estudiante` con atributo privado `nota`. Getter `get_nota()` y setter `set_nota(valor)` que valide entre 0 y 100. Si no es válida imprime `Nota inválida`. Prueba:\n```\nest = Estudiante(75)\nest.set_nota(110)  → Nota inválida\nest.set_nota(90)\nprint(est.get_nota())  → 90\n```\nSalida esperada:\n`Nota inválida\n90`",
+        "Crea `Estudiante` con atributo privado `nota`. Agrega getter `get_nota()` (o `getNota()`) y setter `set_nota(valor)` que valide que la nota esté entre 0 y 100. Si no es válida imprime `Nota inválida`. Prueba con:\n```\nest = Estudiante(75)\nest.set_nota(110)  → imprime Nota inválida\nest.set_nota(90)\nprint(est.get_nota())  → imprime 90\n```\nSalida esperada:\n`Nota inválida\n90`",
       salidaEsperada: "Nota inválida\n90",
     },
-    codigoBasePython: `# Nivel 4: Encapsulamiento
-class Estudiante:
+    codigoBasePython: `# Escribe tu código Python aquí\n`,
+    codigoBaseJava: `public class Main {
+    public static void main(String[] args) {
+        // Escribe tu código Java aquí
+        
+    }
+}
+`,
+    pistaPython: `class Estudiante:
     def __init__(self, nota):
         self.__nota = nota
 
@@ -380,7 +431,7 @@ est.set_nota(110)
 est.set_nota(90)
 print(est.get_nota())
 `,
-    codigoBaseJava: `class Estudiante {
+    pistaJava: `class Estudiante {
     private int nota;
 
     Estudiante(int nota) {
@@ -459,9 +510,12 @@ public class Main {
   },
   {
     id: 5,
+    moduloNumero: 3,
+    moduloNombre: "Módulo 3: Herencia y Abstracción",
+    subnivel: "3.1",
     titulo: "Herencia",
     concepto: "3er Pilar: Reutilización",
-    descripcionCorta: "Crea nuevas clases basándose en otras existentes",
+    descripcionCorta: "Crea nuevas clases basándote en clases existentes",
     puntaje: 30,
     emoji: "🌳",
     color: "sky",
@@ -469,7 +523,7 @@ public class Main {
       intro:
         "La herencia es como la biología: los hijos heredan características de sus padres. En POO una clase hija hereda atributos y métodos de la clase padre.",
       concepto:
-        "**Clase padre (base)**: tiene lo común\n**Clase hija (derivada)**: hereda lo del padre y agrega lo suyo\n\n**`super()`**: llama al constructor del padre. En Java y JavaScript siempre debes llamarlo primero en el constructor de la clase hija.",
+        "**Clase padre (base)**: contiene los campos y comportamientos comunes\n**Clase hija (derivada)**: hereda lo del padre y agrega cosas específicas\n\n**`super()`**: llama al constructor del padre. En Java y JavaScript siempre debes llamarlo primero en el constructor hijo.",
       ejemploPython: `class Animal:
     def __init__(self, nombre):
         self.nombre = nombre
@@ -482,8 +536,8 @@ class Perro(Animal):  # Hereda de Animal
         print(f"{self.nombre} dice: ¡Guau!")
 
 rex = Perro("Rex")
-rex.respirar()  # heredado
-rex.ladrar()    # propio`,
+rex.respirar()  # heredado del padre
+rex.ladrar()    # propio del Perro`,
       ejemploJava: `class Animal {
     String nombre;
 
@@ -498,7 +552,7 @@ rex.ladrar()    # propio`,
 
 class Perro extends Animal {
     Perro(String nombre) {
-        super(nombre);  // SIEMPRE primero
+        super(nombre);  // Llama al padre PRIMERO
     }
 
     void ladrar() {
@@ -517,11 +571,18 @@ public class Main {
     },
     practica: {
       enunciado:
-        "Crea `Vehiculo` con `marca` y método `arrancar()` que imprima `{marca} arrancando...`. Crea `Moto` que herede y agregue `wheelie()` que imprima `{marca} hace un caballito! 🏍️`.\n\nSalida esperada:\n`Yamaha arrancando...\nYamaha hace un caballito! 🏍️`",
+        "Crea `Vehiculo` con atributo `marca` y método `arrancar()` que imprima `{marca} arrancando...`. Crea `Moto` que herede de `Vehiculo` y agregue `wheelie()` que imprima `{marca} hace un caballito! 🏍️`.\n\nSalida esperada:\n`Yamaha arrancando...\nYamaha hace un caballito! 🏍️`",
       salidaEsperada: "Yamaha arrancando...\nYamaha hace un caballito! 🏍️",
     },
-    codigoBasePython: `# Nivel 5: Herencia
-class Vehiculo:
+    codigoBasePython: `# Escribe tu código Python aquí\n`,
+    codigoBaseJava: `public class Main {
+    public static void main(String[] args) {
+        // Escribe tu código Java aquí
+        
+    }
+}
+`,
+    pistaPython: `class Vehiculo:
     def __init__(self, marca):
         self.marca = marca
 
@@ -536,7 +597,7 @@ moto = Moto("Yamaha")
 moto.arrancar()
 moto.wheelie()
 `,
-    codigoBaseJava: `class Vehiculo {
+    pistaJava: `class Vehiculo {
     String marca;
 
     Vehiculo(String marca) {
@@ -550,7 +611,7 @@ moto.wheelie()
 
 class Moto extends Vehiculo {
     Moto(String marca) {
-        super(marca);  // Llama al constructor padre PRIMERO
+        super(marca);
     }
 
     void wheelie() {
@@ -614,6 +675,9 @@ public class Main {
   },
   {
     id: 6,
+    moduloNumero: 3,
+    moduloNombre: "Módulo 3: Herencia y Abstracción",
+    subnivel: "3.2",
     titulo: "Abstracción",
     concepto: "Simplificación",
     descripcionCorta: "Muestra solo lo esencial, oculta lo complejo",
@@ -624,7 +688,7 @@ public class Main {
       intro:
         "La abstracción es como usar un control remoto: sabes que el botón sube el volumen, pero no necesitas saber cómo funciona el circuito interno.",
       concepto:
-        "**Abstracción en POO:**\n- Define *qué* hace un objeto, no *cómo* lo hace\n- Se implementa con **clases abstractas**\n- Las clases hijas implementan los detalles\n- Una clase abstracta **no puede** instanciarse directamente\n- `super()` es necesario en los constructores hijos",
+        "**Abstracción en POO:**\n- Define *qué* hace un objeto, no *cómo* lo hace\n- Se implementa con **clases abstractas**\n- Las clases hijas completan los detalles concretos\n- Una clase abstracta **no puede** instanciarse directamente",
       ejemploPython: `from abc import ABC, abstractmethod
 
 class Forma(ABC):
@@ -656,7 +720,7 @@ class Circulo extends Forma {
     double radio;
 
     Circulo(double radio) {
-        super();         // Llama al padre primero
+        super();
         this.radio = radio;
     }
 
@@ -678,7 +742,15 @@ public class Main {
         "Crea clase abstracta `Figura` con método abstracto `perimetro()` y método concreto `mostrar()` que imprima `Perímetro: {valor}`. Crea `Cuadrado` con `lado` que implemente `perimetro()` como `lado * 4`.\n\nSalida esperada:\n`Perímetro: 20`",
       salidaEsperada: "Perímetro: 20",
     },
-    codigoBasePython: `from abc import ABC, abstractmethod
+    codigoBasePython: `# Escribe tu código Python aquí\n`,
+    codigoBaseJava: `public class Main {
+    public static void main(String[] args) {
+        // Escribe tu código Java aquí
+        
+    }
+}
+`,
+    pistaPython: `from abc import ABC, abstractmethod
 
 class Figura(ABC):
     @abstractmethod
@@ -698,7 +770,7 @@ class Cuadrado(Figura):
 cuadrado = Cuadrado(5)
 cuadrado.mostrar()
 `,
-    codigoBaseJava: `abstract class Figura {
+    pistaJava: `abstract class Figura {
     abstract int perimetro();
 
     void mostrar() {
@@ -710,7 +782,7 @@ class Cuadrado extends Figura {
     int lado;
 
     Cuadrado(int lado) {
-        super();          // Requerido al extender
+        super();
         this.lado = lado;
     }
 
@@ -777,6 +849,9 @@ public class Main {
   },
   {
     id: 7,
+    moduloNumero: 4,
+    moduloNombre: "Módulo 4: Polimorfismo y Desafío",
+    subnivel: "4.1",
     titulo: "Polimorfismo",
     concepto: "4to Pilar: Muchas Formas",
     descripcionCorta: "Un mismo mensaje, muchas respuestas distintas",
@@ -787,7 +862,7 @@ public class Main {
       intro:
         'Poli = muchos, morfismo = formas. El polimorfismo permite que objetos de diferentes clases respondan al mismo mensaje de formas distintas.',
       concepto:
-        "**Override (Sobreescritura)**: la clase hija redefine un método del padre\n- Una misma llamada, diferente comportamiento según el objeto\n- Permite escribir código más flexible y genérico\n- En Java se marca con `@Override` (es opcional pero recomendado)",
+        "**Override (Sobreescritura)**: la clase hija redefine un método del padre\n- Una misma llamada, diferente comportamiento según el objeto real\n- Permite escribir código más genérico y reutilizable",
       ejemploPython: `class Animal:
     def __init__(self, nombre):
         self.nombre = nombre
@@ -832,15 +907,22 @@ public class Main {
         }
     }
 }`,
-      tip: "💡 El polimorfismo te permite tratar objetos de distintas clases de forma uniforme. `a.sonido()` llama al método correcto según el tipo real del objeto.",
+      tip: "💡 El polimorfismo te permite tratar objetos de distintas clases de forma uniforme. `a.sonido()` llamará al método correcto según el tipo real del objeto.",
     },
     practica: {
       enunciado:
-        "Crea clase base `Instrumento` con método `tocar()` que retorne `'...'`. Crea `Guitarra` y `Piano` que lo sobreescriban. Crea un arreglo e imprime cada sonido.\n\nSalida esperada:\n`Guitarra: ¡Tachán!\nPiano: ¡Plonk!`",
+        "Crea clase base `Instrumento` con método `tocar()` que retorne `'...'`. Crea `Guitarra` y `Piano` que lo sobreescriban retornando `\"¡Tachán!\"` y `\"¡Plonk!\"`. Crea un arreglo e imprime cada sonido.\n\nSalida esperada:\n`Guitarra: ¡Tachán!\nPiano: ¡Plonk!`",
       salidaEsperada: "Guitarra: ¡Tachán!\nPiano: ¡Plonk!",
     },
-    codigoBasePython: `# Nivel 7: Polimorfismo
-class Instrumento:
+    codigoBasePython: `# Escribe tu código Python aquí\n`,
+    codigoBaseJava: `public class Main {
+    public static void main(String[] args) {
+        // Escribe tu código Java aquí
+        
+    }
+}
+`,
+    pistaPython: `class Instrumento:
     def __init__(self, nombre):
         self.nombre = nombre
 
@@ -859,7 +941,7 @@ instrumentos = [Guitarra("Guitarra"), Piano("Piano")]
 for inst in instrumentos:
     print(f"{inst.nombre}: {inst.tocar()}")
 `,
-    codigoBaseJava: `class Instrumento {
+    pistaJava: `class Instrumento {
     String nombre;
     Instrumento(String nombre) { this.nombre = nombre; }
     String tocar() { return "..."; }
@@ -931,6 +1013,9 @@ public class Main {
   },
   {
     id: 8,
+    moduloNumero: 4,
+    moduloNombre: "Módulo 4: Polimorfismo y Desafío",
+    subnivel: "4.2",
     titulo: "Desafío Final OOP",
     concepto: "Los 4 Pilares Unidos",
     descripcionCorta: "Aplica todo lo aprendido en un sistema completo",
@@ -939,9 +1024,9 @@ public class Main {
     color: "yellow",
     docs: {
       intro:
-        "¡Llegaste al nivel final! Aquí combinarás los 4 pilares: **Encapsulamiento**, **Abstracción**, **Herencia** y **Polimorfismo** en un mini sistema de biblioteca.",
+        "¡Llegaste al nivel final! Aquí combinarás los 4 pilares: **Encapsulamiento**, **Abstracción**, **Herencia** y **Polimorfismo** en un sistema de biblioteca.",
       concepto:
-        "**Los 4 pilares en acción:**\n- 🔐 **Encapsulamiento**: dato privado `titulo` con getter\n- 🎭 **Abstracción**: clase abstracta `Publicacion` con `describir()` abstracto\n- 🌳 **Herencia**: `Libro` y `Revista` extienden `Publicacion`\n- 🔮 **Polimorfismo**: cada uno implementa `describir()` diferente",
+        "**Los 4 pilares en acción:**\n- 🔐 **Encapsulamiento**: dato privado `titulo` con getter `get_titulo()`\n- 🎭 **Abstracción**: clase abstracta `Publicacion` con `describir()` abstracto\n- 🌳 **Herencia**: `Libro` y `Revista` extienden `Publicacion`\n- 🔮 **Polimorfismo**: cada uno implementa `describir()` con su propio formato",
       ejemploPython: `from abc import ABC, abstractmethod
 
 class Publicacion(ABC):
@@ -995,7 +1080,15 @@ class Libro extends Publicacion {
         "Crea el sistema completo:\n1. Clase abstracta `Publicacion`: titulo privado + getter + `describir()` abstracto\n2. Clase `Libro`: hereda, añade `autor`, `describir()` imprime: `📚 Libro: {titulo} por {autor}`\n3. Clase `Revista`: hereda, añade `edicion`, `describir()` imprime: `📰 Revista: {titulo} - Edición {edicion}`\n\nSalida esperada:\n`📚 Libro: El Principito por Saint-Exupéry\n📰 Revista: Tech Monthly - Edición 42`",
       salidaEsperada: "📚 Libro: El Principito por Saint-Exupéry\n📰 Revista: Tech Monthly - Edición 42",
     },
-    codigoBasePython: `from abc import ABC, abstractmethod
+    codigoBasePython: `# Escribe tu código Python aquí\n`,
+    codigoBaseJava: `public class Main {
+    public static void main(String[] args) {
+        // Escribe tu código Java aquí
+        
+    }
+}
+`,
+    pistaPython: `from abc import ABC, abstractmethod
 
 class Publicacion(ABC):
     def __init__(self, titulo):
@@ -1029,7 +1122,7 @@ revista = Revista("Tech Monthly", 42)
 libro.describir()
 revista.describir()
 `,
-    codigoBaseJava: `abstract class Publicacion {
+    pistaJava: `abstract class Publicacion {
     private String titulo;
 
     Publicacion(String titulo) {
@@ -1052,7 +1145,6 @@ class Libro extends Publicacion {
     }
 
     void describir() {
-        // Usa this.getTitulo() para el titulo y this.autor
         System.out.println("📚 Libro: " + this.getTitulo() + " por " + this.autor);
     }
 }
@@ -1066,7 +1158,6 @@ class Revista extends Publicacion {
     }
 
     void describir() {
-        // Usa this.getTitulo() para el titulo y this.edicion
         System.out.println("📰 Revista: " + this.getTitulo() + " - Edición " + this.edicion);
     }
 }

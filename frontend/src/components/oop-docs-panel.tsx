@@ -72,7 +72,12 @@ export function OopDocsPanel({
       <div className="oop-docs-header">
         <span className="oop-docs-emoji">{nivel.emoji}</span>
         <div>
-          <p className="section-kicker">{nivel.concepto}</p>
+          <div className="flex items-center gap-1.5">
+            <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300">
+              Subnivel {nivel.subnivel}
+            </span>
+            <p className="section-kicker">{nivel.concepto}</p>
+          </div>
           <h2 className="oop-docs-title">{nivel.titulo}</h2>
         </div>
         <div className="oop-pts-badge">

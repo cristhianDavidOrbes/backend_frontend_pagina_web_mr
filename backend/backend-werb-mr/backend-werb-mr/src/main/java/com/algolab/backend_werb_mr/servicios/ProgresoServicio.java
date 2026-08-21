@@ -26,24 +26,27 @@ public class ProgresoServicio implements IProgresoServicio {
     private final IUsuarioServicio usuarioServicio;
     private final IDescripcionNivelServicio descripcionNivelServicio;
     private final ReporteNivelServicio reporteNivelServicio;
+    private final com.algolab.backend_werb_mr.repositorio.IProgresoOopRepositorio progresoOopRepositorio;
 
     @Autowired
     public ProgresoServicio(
             IProgresoNivelRepositorio progresoNivelRepositorio,
             IUsuarioServicio usuarioServicio,
             IDescripcionNivelServicio descripcionNivelServicio,
-            ReporteNivelServicio reporteNivelServicio) {
+            ReporteNivelServicio reporteNivelServicio,
+            com.algolab.backend_werb_mr.repositorio.IProgresoOopRepositorio progresoOopRepositorio) {
         this.progresoNivelRepositorio = progresoNivelRepositorio;
         this.usuarioServicio = usuarioServicio;
         this.descripcionNivelServicio = descripcionNivelServicio;
         this.reporteNivelServicio = reporteNivelServicio;
+        this.progresoOopRepositorio = progresoOopRepositorio;
     }
 
     public ProgresoServicio(
             IProgresoNivelRepositorio progresoNivelRepositorio,
             IUsuarioServicio usuarioServicio,
             IDescripcionNivelServicio descripcionNivelServicio) {
-        this(progresoNivelRepositorio, usuarioServicio, descripcionNivelServicio, null);
+        this(progresoNivelRepositorio, usuarioServicio, descripcionNivelServicio, null, null);
     }
 
     @Override
@@ -97,7 +100,9 @@ public class ProgresoServicio implements IProgresoServicio {
         progresoNivelRepositorio.save(progreso);
 
         List<ProgresoNivel> progresos = progresoNivelRepositorio.findByUsuarioOrderByNivelAsc(usuario);
-        int puntajeTotal = calcularPuntajeTotal(progresos);
+        int puntajePrincipal = calcularPuntajeTotal(progresos);
+        int puntajeOop = progresoOopRepositorio != null ? progresoOopRepositorio.calcularPuntajeTotalOop(usuario) : 0;
+        int puntajeTotal = puntajePrincipal + puntajeOop;
         usuario.setPuntaje(puntajeTotal);
 
         if (completadoNuevo) {
@@ -161,10 +166,13 @@ public class ProgresoServicio implements IProgresoServicio {
                 .map(ProgresoNivelDTO::desdeModelo)
                 .toList();
 
+        int puntajePrincipal = calcularPuntajeTotal(progresos);
+        int puntajeOop = progresoOopRepositorio != null ? progresoOopRepositorio.calcularPuntajeTotalOop(usuario) : 0;
+
         return new ProgresoUsuarioDTO(
                 usuario.getId(),
                 usuario.getNivelActual(),
-                calcularPuntajeTotal(progresos),
+                puntajePrincipal + puntajeOop,
                 niveles);
     }
 }
