@@ -16,6 +16,7 @@ import {
   Layers,
 } from "lucide-react";
 import { OOP_NIVELES, type LenguajeOOP } from "@/lib/oop-niveles";
+import { validarEstructuraCodigo } from "@/lib/oop-validador";
 import { ejecutarCodigo, preCargaPyodide, type ResultadoEjecucion } from "@/lib/judge0";
 import { CodeEditor } from "@/components/code-editor";
 import { CodeTerminal, type TerminalLine } from "@/components/code-terminal";
@@ -222,12 +223,14 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
       if (!completado) {
         const coincide = salidaCoincide(resultado.salida, nivel.practica.salidaEsperada);
-        if (coincide) {
+        const validacion = validarEstructuraCodigo(nivelId, codigo, lenguaje);
+
+        if (coincide && validacion.valido) {
           const puntosGanados = mostroPista ? Math.floor(nivel.puntaje / 2) : nivel.puntaje;
 
           lines.push({
             type: "success",
-            text: `✅ ¡Correcto! Ganaste ${puntosGanados} puntos para tu perfil global.`,
+            text: `✅ ¡Excelente! Tu código cumple la estructura y la salida. Ganaste ${puntosGanados} puntos para tu perfil global.`,
           });
 
           // Actualizar estado local y backend
@@ -249,7 +252,30 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           setTimeout(() => setCelebrando(false), 3500);
 
           sincronizarProgresoBackend(true, puntosGanados, nuevosIntentos, mostroPista);
+        } else if (coincide && !validacion.valido) {
+          // El print coincide pero no usó las variables/funciones/clases requeridas
+          lines.push({
+            type: "error",
+            text:
+              validacion.mensaje ??
+              "⚠️ Tu salida es correcta, pero no estás utilizando los conceptos requeridos de este nivel.",
+          });
+          lines.push({
+            type: "info",
+            text: `Intento ${nuevosIntentos} de ${MAX_INTENTOS}`,
+          });
+
+          if (nuevosIntentos >= MAX_INTENTOS && !mostroPista) {
+            setModalAyudaAbierto(true);
+          }
         } else {
+          // Salida no coincide
+          if (!validacion.valido && validacion.mensaje) {
+            lines.push({
+              type: "error",
+              text: validacion.mensaje,
+            });
+          }
           lines.push({
             type: "info",
             text: `Resultado esperado: "${normalizarSalida(nivel.practica.salidaEsperada)}"`,
