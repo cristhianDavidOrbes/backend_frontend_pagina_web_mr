@@ -2,7 +2,10 @@ package com.algolab.backend_werb_mr.servicios;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +25,16 @@ import com.algolab.backend_werb_mr.repositorio.IProgresoOopRepositorio;
 @Service
 public class ProgresoOopServicio implements IProgresoOopServicio {
     private static final Logger logger = LoggerFactory.getLogger(ProgresoOopServicio.class);
+    private static final Map<Integer, Integer> PUNTAJES_POR_NIVEL = Map.of(
+            1, 10,
+            2, 15,
+            3, 20,
+            4, 25,
+            5, 30,
+            6, 25,
+            7, 30,
+            8, 50);
+    private static final Set<String> LENGUAJES_PERMITIDOS = Set.of("python", "java");
 
     private final IProgresoOopRepositorio progresoOopRepositorio;
     private final IProgresoNivelRepositorio progresoNivelRepositorio;
@@ -55,6 +68,7 @@ public class ProgresoOopServicio implements IProgresoOopServicio {
     @Transactional
     public ProgresoOopUsuarioDTO guardarProgreso(Usuario usuario, GuardarProgresoOopRequest request) {
         logger.info("Guardando progreso OOP del usuario {} en nivel {}", usuario.getId(), request.getNivel());
+        validarProgreso(usuario, request);
 
         ProgresoOop progreso = progresoOopRepositorio
                 .findByUsuarioAndNivel(usuario, request.getNivel())
@@ -69,9 +83,7 @@ public class ProgresoOopServicio implements IProgresoOopServicio {
         if (request.getUsoPista() != null && request.getUsoPista()) {
             progreso.setUsoPista(true);
         }
-        if (request.getLenguaje() != null && !request.getLenguaje().isBlank()) {
-            progreso.setLenguaje(request.getLenguaje());
-        }
+        progreso.setLenguaje(request.getLenguaje().trim().toLowerCase(Locale.ROOT));
         progreso.setFechaUltimoIntento(LocalDateTime.now());
 
         if (!yaCompletado && completadoNuevo) {
@@ -110,15 +122,46 @@ public class ProgresoOopServicio implements IProgresoOopServicio {
         return progreso;
     }
 
+    private void validarProgreso(Usuario usuario, GuardarProgresoOopRequest request) {
+        if (request == null || request.getNivel() == null || !PUNTAJES_POR_NIVEL.containsKey(request.getNivel())) {
+            throw new IllegalArgumentException("El nivel OOP debe estar entre 1 y 8");
+        }
+
+        String lenguaje = request.getLenguaje() == null
+                ? "python"
+                : request.getLenguaje().trim().toLowerCase(Locale.ROOT);
+        if (!LENGUAJES_PERMITIDOS.contains(lenguaje)) {
+            throw new IllegalArgumentException("El lenguaje debe ser python o java");
+        }
+        request.setLenguaje(lenguaje);
+
+        int puntaje = request.getPuntaje() == null ? 0 : request.getPuntaje();
+        int puntajeMaximo = PUNTAJES_POR_NIVEL.get(request.getNivel());
+        int puntajeEsperado = Boolean.TRUE.equals(request.getUsoPista())
+                ? puntajeMaximo / 2
+                : puntajeMaximo;
+        if (Boolean.TRUE.equals(request.getCompletado()) && puntaje != 0 && puntaje != puntajeEsperado) {
+            throw new IllegalArgumentException("El puntaje no corresponde al nivel y al uso de pista");
+        }
+        if (!Boolean.TRUE.equals(request.getCompletado()) && puntaje != 0) {
+            throw new IllegalArgumentException("Un nivel incompleto no puede otorgar puntaje");
+        }
+
+        if (request.getNivel() > 1) {
+            boolean anteriorCompletado = progresoOopRepositorio
+                    .findByUsuarioAndNivel(usuario, request.getNivel() - 1)
+                    .map(ProgresoOop::getCompletado)
+                    .orElse(false);
+            if (!anteriorCompletado) {
+                throw new IllegalArgumentException("Debe completar el nivel anterior antes de continuar");
+            }
+        }
+    }
+
     private int calcularIntentos(Integer intentosActuales, Integer intentosRequest) {
         int actuales = intentosActuales == null ? 0 : intentosActuales;
         int enviados = intentosRequest == null ? 0 : intentosRequest;
-
-        if (actuales == 0) {
-            return enviados;
-        }
-
-        return Math.max(actuales + 1, enviados);
+        return Math.max(actuales, enviados);
     }
 
     private int calcularPuntajeTotalOop(List<ProgresoOop> progresos) {

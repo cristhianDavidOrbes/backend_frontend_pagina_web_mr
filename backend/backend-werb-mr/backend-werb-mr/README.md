@@ -10,11 +10,15 @@ El backend expone una API REST bajo `/api`. La autenticacion se hace con JWT:
 Authorization: Bearer <token>
 ```
 
-El token solo se devuelve al iniciar sesion en:
+El token solo se devuelve despues de verificar el segundo factor en:
 
 ```http
-POST /api/usuarios/iniciar-sesion
+POST /api/usuarios/segundo-factor/verificar
 ```
+
+Todas las cuentas deben usar un correo cuyo dominio sea exactamente
+`@campusucc.edu.co`. El inicio de sesion crea un desafio de un solo uso y nunca
+devuelve el JWT junto con la respuesta de credenciales.
 
 El registro publico solo permite crear usuarios con rol `ESTUDIANTE`. Los usuarios `DOCENTE` y `ADMINISTRADOR` se crean desde el CRUD de usuarios usando una cuenta administradora.
 
@@ -24,7 +28,7 @@ Al arrancar la aplicacion se crea un administrador inicial si no existe:
 
 ```txt
 Nombre: Cristhian David
-Correo: cristhian.david@admin.com
+Correo: administrador@campusucc.edu.co
 Contrasena: la definida localmente en `ADMIN_CONTRASENA`
 Rol: ADMINISTRADOR
 ```
@@ -62,6 +66,8 @@ Reglas principales:
 | Metodo | Endpoint | Acceso | Body |
 |---|---|---|---|
 | `POST` | `/api/usuarios/iniciar-sesion` | Publico | Si |
+| `POST` | `/api/usuarios/segundo-factor/verificar` | Publico | Si |
+| `POST` | `/api/usuarios/segundo-factor/reenviar` | Publico | Si |
 | `POST` | `/api/usuarios/registrar` | Publico, solo crea `ESTUDIANTE` | Si |
 | `GET` | `/api/usuarios/me` | Usuario autenticado | No |
 | `GET` | `/api/usuarios/perfil` | Usuario autenticado | No |
@@ -72,44 +78,84 @@ Reglas principales:
 | `PATCH` | `/api/usuarios/{id}` | `ADMINISTRADOR`, o el mismo usuario | Si |
 | `DELETE` | `/api/usuarios/{id}` | `ADMINISTRADOR`, excepto su propia cuenta | No |
 
-Body para iniciar sesion con correo:
+Body para iniciar sesion (correo institucional obligatorio):
 
 ```json
 {
-  "correo": "cristhian.david@admin.com",
-  "contrasena": "tu-contrasena-segura"
+  "correo": "estudiante@campusucc.edu.co",
+  "contrasena": "tu-contrasena-segura",
+  "canal": "CORREO"
 }
 ```
 
-Body para iniciar sesion con nombre de usuario:
+`canal` es opcional y por defecto usa `CORREO`. Puede ser `SMS` solamente si la
+cuenta tiene un celular E.164 registrado y las credenciales reales de Twilio
+estan configuradas. No existe un modo SMS simulado.
 
-```json
-{
-  "correo": "cristhian.david",
-  "contrasena": "tu-contrasena-segura"
-}
-```
-
-Nota: el campo se sigue llamando `correo` por compatibilidad con Unity y el frontend, pero el backend lo usa como identificador de inicio de sesion. Puede contener correo o `nombreUsuario`.
-
-Respuesta exitosa de inicio de sesion:
+Respuesta `202 Accepted` (todavia sin JWT):
 
 ```json
 {
   "exitoso": true,
-  "mensaje": "Inicio de sesion exitoso",
+  "requiereSegundoFactor": true,
+  "mensaje": "Enviamos un codigo de acceso a tu correo institucional",
+  "desafioId": "uuid-del-desafio",
+  "canal": "CORREO",
+  "destinoEnmascarado": "es***e@campusucc.edu.co",
+  "expiraEnSegundos": 300,
+  "reenvioDisponibleEnSegundos": 60
+}
+```
+
+Verificar el codigo:
+
+```http
+POST /api/usuarios/segundo-factor/verificar
+Content-Type: application/json
+```
+
+```json
+{
+  "desafioId": "uuid-del-desafio",
+  "codigo": "123456"
+}
+```
+
+Solo esta verificacion correcta devuelve el JWT:
+
+```json
+{
+  "exitoso": true,
+  "mensaje": "Inicio de sesion verificado correctamente",
   "token": "jwt-generado",
   "usuario": {
     "id": 1,
-    "nombre": "Cristhian David",
-    "correo": "cristhian.david@admin.com",
-    "nombreUsuario": "cristhian.david",
-    "rol": "ADMINISTRADOR",
+    "nombre": "Estudiante",
+    "correo": "estudiante@campusucc.edu.co",
+    "nombreUsuario": "estudiante",
+    "rol": "ESTUDIANTE",
     "nivelActual": 1,
     "puntaje": 0
   }
 }
 ```
+
+El codigo se guarda solo como hash BCrypt, expira en cinco minutos, permite
+cinco intentos, es de un solo uso e invalida desafios anteriores. Para reenviar:
+
+```http
+POST /api/usuarios/segundo-factor/reenviar
+Content-Type: application/json
+```
+
+```json
+{
+  "desafioId": "uuid-del-desafio"
+}
+```
+
+El reenvio tiene un cooldown predeterminado de 60 segundos, conserva el mismo
+`desafioId` e invalida inmediatamente el codigo anterior.
 
 Respuesta de usuario autenticado:
 
@@ -122,7 +168,7 @@ Authorization: Bearer <token>
 {
   "id": 1,
   "nombre": "Cristhian David",
-  "correo": "cristhian.david@admin.com",
+  "correo": "estudiante@campusucc.edu.co",
   "nombreUsuario": "cristhian.david",
   "rol": "ESTUDIANTE",
   "nivelActual": 1,
@@ -135,22 +181,24 @@ Body para registro publico:
 ```json
 {
   "nombre": "Juan Perez",
-  "correo": "juan@email.com",
+  "correo": "juan@campusucc.edu.co",
   "rol": "ESTUDIANTE",
-  "contrasena": "123456"
+  "contrasena": "123456",
+  "celular": "+573001234567"
 }
 ```
 
 Nota: este endpoint no devuelve token. El usuario debe iniciar sesion despues de registrarse.
 
-Al registrar usuarios nuevos, el backend genera `nombreUsuario` automaticamente a partir de la parte inicial del correo. Por ejemplo, `juan@email.com` genera `juan`. Si ya existe, agrega un numero al final para mantenerlo unico.
+`celular` es opcional, pero si se envia debe usar formato internacional E.164.
+Al registrar usuarios nuevos, el backend genera `nombreUsuario` automaticamente a partir de la parte inicial del correo. Por ejemplo, `juan@campusucc.edu.co` genera `juan`. Si ya existe, agrega un numero al final para mantenerlo unico.
 
 Body para crear usuario como administrador:
 
 ```json
 {
   "nombre": "Maria Docente",
-  "correo": "maria@email.com",
+  "correo": "maria@campusucc.edu.co",
   "rol": "DOCENTE",
   "contrasena": "123456"
 }
@@ -161,7 +209,7 @@ Body para actualizar usuario:
 ```json
 {
   "nombre": "Maria Actualizada",
-  "correo": "maria.actualizada@email.com",
+  "correo": "maria.actualizada@campusucc.edu.co",
   "rol": "ADMINISTRADOR",
   "nivelActual": 1,
   "puntaje": 0
@@ -171,6 +219,8 @@ Body para actualizar usuario:
 Notas:
 
 - `rol` solo lo puede cambiar un `ADMINISTRADOR`.
+- Un usuario no administrador no puede cambiar su correo desde este endpoint
+  legado; ese cambio requiere un flujo de verificacion dedicado.
 - Si un usuario no administrador manda `rol`, el backend no lo aplica.
 - El administrador autenticado no puede cambiar su propio rol a `DOCENTE` o `ESTUDIANTE`.
 - `nivelActual` debe estar entre `1` y `5`.
@@ -325,6 +375,7 @@ Dependencias de produccion:
 - Spring Security
 - Spring OAuth2 Resource Server
 - Spring JSON
+- Spring Mail
 - Jackson Databind
 - PostgreSQL Driver
 - MapStruct 1.6.3
@@ -349,9 +400,26 @@ DB_PASSWORD=
 JWT_SECRET=clave-super-secreta-para-firmar-tokens-jwt-de-desarrollo
 JWT_EXPIRACION_MS=86400000
 ADMIN_NOMBRE=Cristhian David
-ADMIN_CORREO=cristhian.david@admin.com
+ADMIN_CORREO=administrador@campusucc.edu.co
 ADMIN_CONTRASENA=define-una-contrasena-segura
+SMTP_HOST=smtp.proveedor.edu
+SMTP_PORT=587
+SMTP_USERNAME=usuario-smtp
+SMTP_PASSWORD=contrasena-smtp
+SMTP_FROM=algolab@campusucc.edu.co
+SMTP_FROM_NAME=AlgoLab
+DOS_FA_EXPIRATION_SECONDS=300
+DOS_FA_RESEND_COOLDOWN_SECONDS=60
+DOS_FA_MAX_ATTEMPTS=5
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=
 ```
+
+SMTP es obligatorio para usar el canal `CORREO`. Si falta la configuracion o el
+proveedor falla, el backend responde `503 Service Unavailable`; nunca registra
+ni incluye el codigo en la respuesta. Las tres variables Twilio son obligatorias
+para habilitar `SMS`; si falta una, ese canal responde 503.
 
 En Railway tambien se soporta `DATABASE_URL` con formato:
 
@@ -389,8 +457,13 @@ Pasos:
 ```properties
 JWT_SECRET=valor-largo-y-seguro
 ADMIN_NOMBRE=Nombre Admin
-ADMIN_CORREO=admin@correo.com
+ADMIN_CORREO=administrador@campusucc.edu.co
 ADMIN_CONTRASENA=contrasena-segura
+SMTP_HOST=smtp.proveedor.edu
+SMTP_PORT=587
+SMTP_USERNAME=usuario-smtp
+SMTP_PASSWORD=contrasena-smtp
+SMTP_FROM=algolab@campusucc.edu.co
 ```
 
 6. Asegurar que el servicio del backend tenga acceso a las variables de PostgreSQL.
@@ -424,12 +497,14 @@ Content-Type: application/json
 
 ```json
 {
-  "correo": "cristhian.david@admin.com",
-  "contrasena": "tu-contrasena-segura"
+  "correo": "administrador@campusucc.edu.co",
+  "contrasena": "tu-contrasena-segura",
+  "canal": "CORREO"
 }
 ```
 
-Con el token recibido:
+Con el `desafioId` recibido, verifica el codigo enviado. Usa el JWT retornado por
+`/api/usuarios/segundo-factor/verificar` en las solicitudes siguientes:
 
 ```http
 GET /api/usuarios/me

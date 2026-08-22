@@ -40,7 +40,7 @@ export default function DocentePage() {
 
   const completados = reportes.filter((item) => item.completado).length;
   const dominioGrupo = reportes.length ? Math.round(reportes.reduce((sum, item) => sum + item.dominio, 0) / reportes.length) : 0;
-  
+
   const estudiantesBajoDominio = reportes.filter((item) => item.dominio < 60);
   const necesitanApoyoIds = new Set(estudiantesBajoDominio.map((item) => item.usuarioId));
   const necesitanApoyo = necesitanApoyoIds.size;

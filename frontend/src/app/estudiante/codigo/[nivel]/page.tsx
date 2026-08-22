@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, useCallback, useMemo } from "react";
+import { use, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -14,6 +14,13 @@ import {
   CheckCheck,
   X,
   Layers,
+  Code2,
+  BookOpen,
+  TerminalSquare,
+  Keyboard,
+  CloudCheck,
+  CloudOff,
+  RefreshCw,
 } from "lucide-react";
 import { OOP_NIVELES, type LenguajeOOP } from "@/lib/oop-niveles";
 import { validarEstructuraCodigo } from "@/lib/oop-validador";
@@ -23,8 +30,17 @@ import { CodeTerminal, type TerminalLine } from "@/components/code-terminal";
 import { OopDocsPanel } from "@/components/oop-docs-panel";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { apiRequest } from "@/lib/client-api";
+import {
+  asegurarRecuperacionLocal,
+  encolarCambioSync,
+  type OopNivelSync,
+  type OopSyncItem,
+  type OopSyncPayload,
+} from "@/lib/oop-sync-queue";
+import styles from "../programar-poo.module.css";
 
 const STORAGE_KEY = "oop_progreso";
+const SYNC_QUEUE_KEY = "oop_progreso_sync";
 const MAX_INTENTOS = 6;
 
 type NivelProgreso = {
@@ -55,10 +71,14 @@ type ProgresoOopBackend = {
   }>;
 };
 
-function cargarProgresoLocal(): OopProgreso {
+function claveProgreso(usuarioId?: number) {
+  return `${STORAGE_KEY}:${usuarioId ?? "anonimo"}`;
+}
+
+function cargarProgresoLocal(usuarioId?: number): OopProgreso {
   if (typeof window === "undefined") return { lenguaje: "python", niveles: {}, puntajeTotal: 0 };
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(claveProgreso(usuarioId));
     if (raw) return JSON.parse(raw) as OopProgreso;
   } catch {
     /* ignore */
@@ -66,10 +86,54 @@ function cargarProgresoLocal(): OopProgreso {
   return { lenguaje: "python", niveles: {}, puntajeTotal: 0 };
 }
 
-function guardarProgresoLocal(p: OopProgreso) {
+function guardarProgresoLocal(p: OopProgreso, usuarioId?: number) {
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+    localStorage.setItem(claveProgreso(usuarioId), JSON.stringify(p));
   }
+}
+
+function claveColaSync(usuarioId: number) {
+  return `${SYNC_QUEUE_KEY}:${usuarioId}`;
+}
+
+function cargarColaSync(usuarioId: number): OopSyncItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(claveColaSync(usuarioId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is OopSyncItem => {
+      if (!item || typeof item !== "object") return false;
+      const candidate = item as Partial<OopSyncItem>;
+      return Boolean(candidate.id && candidate.payload && Number.isFinite(candidate.payload.nivel));
+    });
+  } catch {
+    return [];
+  }
+}
+
+function guardarColaSync(usuarioId: number, cola: OopSyncItem[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(claveColaSync(usuarioId), JSON.stringify(cola));
+}
+
+function fusionarNivelProgreso(
+  local: NivelProgreso | undefined,
+  remoto: NivelProgreso,
+): NivelProgreso {
+  if (!local) return remoto;
+
+  return {
+    completado: local.completado || remoto.completado,
+    puntos: Math.max(local.puntos, remoto.puntos),
+    intentos: Math.max(local.intentos, remoto.intentos),
+    usoPista: local.usoPista || remoto.usoPista,
+  };
+}
+
+function normalizarLenguaje(value: string | null): LenguajeOOP {
+  return value === "java" ? "java" : "python";
 }
 
 function normalizarSalida(texto: string): string {
@@ -84,9 +148,11 @@ function salidaCoincide(obtenida: string, esperada: string): boolean {
 }
 
 type PageParams = { nivel: string };
+type MobileVista = "docs" | "code" | "terminal";
+type EstadoSync = "sincronizado" | "sincronizando" | "pendiente" | "error";
 
 export default function NivelPage({ params }: { params: Promise<PageParams> }) {
-  const { token } = useAuthSession();
+  const { hydrated, token, usuario } = useAuthSession();
   const { nivel: nivelParam } = use(params);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -94,12 +160,12 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
   const nivelId = parseInt(nivelParam, 10);
   const nivel = OOP_NIVELES.find((n) => n.id === nivelId);
 
-  const [lenguaje, setLenguaje] = useState<LenguajeOOP>(
-    (searchParams.get("lang") as LenguajeOOP) ?? "python",
+  const [lenguaje, setLenguaje] = useState<LenguajeOOP>(() =>
+    normalizarLenguaje(searchParams.get("lang")),
   );
   const [codigo, setCodigo] = useState(() => {
     if (!nivel) return "";
-    const lang = (searchParams.get("lang") as LenguajeOOP) ?? "python";
+    const lang = normalizarLenguaje(searchParams.get("lang"));
     return lang === "python" ? nivel.codigoBasePython : nivel.codigoBaseJava;
   });
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
@@ -122,6 +188,96 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
   const [mostroPista, setMostroPista] = useState(() => nivelProgreso.usoPista);
   const [modalAyudaAbierto, setModalAyudaAbierto] = useState(false);
   const [celebrando, setCelebrando] = useState(false);
+  const [mobileVista, setMobileVista] = useState<MobileVista>("docs");
+  const [ejecucionesSesion, setEjecucionesSesion] = useState(0);
+  const [progresoCargado, setProgresoCargado] = useState(false);
+  const [estadoSync, setEstadoSync] = useState<EstadoSync>("sincronizado");
+  const [mensajeSync, setMensajeSync] = useState("Progreso sincronizado con tu perfil");
+  const [pendientesSync, setPendientesSync] = useState(0);
+  const procesandoSyncRef = useRef(false);
+
+  const procesarColaSync = useCallback(async () => {
+    const usuarioId = usuario?.id;
+    if (!usuarioId) return false;
+
+    let cola = cargarColaSync(usuarioId);
+    setPendientesSync(cola.length);
+    if (cola.length === 0) {
+      setEstadoSync("sincronizado");
+      setMensajeSync("Progreso sincronizado con tu perfil");
+      return true;
+    }
+
+    if (!token) {
+      setEstadoSync("pendiente");
+      setMensajeSync(`${cola.length} cambio${cola.length === 1 ? "" : "s"} protegido${cola.length === 1 ? "" : "s"} en este dispositivo`);
+      return false;
+    }
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setEstadoSync("pendiente");
+      setMensajeSync("Sin conexión: tu avance está protegido y se enviará al volver");
+      return false;
+    }
+
+    if (procesandoSyncRef.current) return false;
+    procesandoSyncRef.current = true;
+    setEstadoSync("sincronizando");
+    setMensajeSync(`Sincronizando ${cola.length} cambio${cola.length === 1 ? "" : "s"}…`);
+
+    try {
+      while (true) {
+        cola = cargarColaSync(usuarioId);
+        if (cola.length === 0) break;
+        const actual = cola[0];
+        try {
+          await apiRequest("/api/oop/progreso", token, {
+            method: "POST",
+            body: JSON.stringify(actual.payload),
+          });
+          cola = cargarColaSync(usuarioId).filter((item) => item.id !== actual.id);
+          guardarColaSync(usuarioId, cola);
+          setPendientesSync(cola.length);
+        } catch (error) {
+          const detalle = error instanceof Error ? error.message : "No fue posible guardar el progreso";
+          cola = cargarColaSync(usuarioId).map((item) =>
+            item.id === actual.id
+              ? {
+                  ...item,
+                  intentosSync: item.intentosSync + 1,
+                  ultimoError: detalle,
+                }
+              : item,
+          );
+          guardarColaSync(usuarioId, cola);
+          setPendientesSync(cola.length);
+          setEstadoSync("error");
+          setMensajeSync(`No se pudo sincronizar: ${detalle}`);
+          return false;
+        }
+      }
+
+      setEstadoSync("sincronizado");
+      setMensajeSync("Progreso sincronizado con tu perfil");
+      return true;
+    } finally {
+      procesandoSyncRef.current = false;
+    }
+  }, [token, usuario?.id]);
+
+  const encolarSincronizacion = useCallback(
+    (payload: OopSyncPayload) => {
+      const usuarioId = usuario?.id;
+      if (!usuarioId) return;
+      const cola = encolarCambioSync(cargarColaSync(usuarioId), payload);
+      guardarColaSync(usuarioId, cola);
+      setPendientesSync(cola.length);
+      setEstadoSync("pendiente");
+      setMensajeSync("Avance protegido localmente; preparando sincronización…");
+      void procesarColaSync();
+    },
+    [procesarColaSync, usuario?.id],
+  );
 
   // Pre-cargar Pyodide en segundo plano al montar
   useEffect(() => {
@@ -130,62 +286,169 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
   // Sincronizar desde backend al cargar
   useEffect(() => {
-    if (!token) return;
+    if (!hydrated) return;
+
+    if (!usuario?.id) {
+      queueMicrotask(() => setProgresoCargado(true));
+      return;
+    }
+
+    let cancelado = false;
+    const local = cargarProgresoLocal(usuario.id);
+    const localNivel = local.niveles[String(nivelId)];
+    const prepararRecuperacion = (remotos: Record<string, OopNivelSync>) => {
+      const cola = asegurarRecuperacionLocal(
+        cargarColaSync(usuario.id),
+        local.niveles,
+        remotos,
+        local.lenguaje,
+      );
+      guardarColaSync(usuario.id, cola);
+      setPendientesSync(cola.length);
+      if (cola.length > 0) {
+        setEstadoSync("pendiente");
+        setMensajeSync(`${cola.length} cambio${cola.length === 1 ? "" : "s"} listo${cola.length === 1 ? "" : "s"} para sincronizar`);
+        void procesarColaSync();
+      }
+    };
+    queueMicrotask(() => {
+      if (cancelado) return;
+      setProgreso(local);
+      if (localNivel) {
+        setIntentos(localNivel.intentos);
+        setCompletado(localNivel.completado);
+        setMostroPista(localNivel.usoPista);
+      }
+      const colaGuardada = cargarColaSync(usuario.id);
+      setPendientesSync(colaGuardada.length);
+      if (colaGuardada.length > 0) {
+        setEstadoSync("pendiente");
+        setMensajeSync(`${colaGuardada.length} cambio${colaGuardada.length === 1 ? "" : "s"} pendiente${colaGuardada.length === 1 ? "" : "s"}`);
+      }
+      if (!token) {
+        prepararRecuperacion({});
+        setProgresoCargado(true);
+      }
+    });
+    if (!token) return () => { cancelado = true; };
     apiRequest<ProgresoOopBackend>("/api/oop/progreso", token)
       .then((data) => {
-        if (!data || !data.niveles) return;
+        if (cancelado || !data || !data.niveles) return;
+        const remotosPorClave: Record<string, OopNivelSync> = {};
+        data.niveles.forEach((n) => {
+          remotosPorClave[String(n.nivel)] = {
+            completado: n.completado,
+            puntos: n.puntaje,
+            intentos: n.intentos,
+            usoPista: n.usoPista,
+          };
+        });
         setProgreso((prev) => {
           const actualizados: Record<string, NivelProgreso> = { ...prev.niveles };
           data.niveles.forEach((n) => {
-            actualizados[String(n.nivel)] = {
+            const claveNivel = String(n.nivel);
+            const remoto: NivelProgreso = {
               completado: n.completado,
               puntos: n.puntaje,
               intentos: n.intentos,
               usoPista: n.usoPista,
             };
+            actualizados[claveNivel] = fusionarNivelProgreso(
+              actualizados[claveNivel],
+              remoto,
+            );
           });
-          const nuevo = { ...prev, niveles: actualizados, puntajeTotal: data.puntajeOopTotal };
-          guardarProgresoLocal(nuevo);
+
+          const totalFusionado = Object.values(actualizados).reduce(
+            (total, nivelActual) => total + nivelActual.puntos,
+            0,
+          );
+          const nuevo = {
+            ...prev,
+            niveles: actualizados,
+            puntajeTotal: Math.max(prev.puntajeTotal, data.puntajeOopTotal, totalFusionado),
+          };
+          guardarProgresoLocal(nuevo, usuario.id);
           return nuevo;
         });
 
         const np = data.niveles.find((n) => n.nivel === nivelId);
         if (np) {
-          setIntentos(np.intentos);
-          setCompletado(np.completado);
-          setMostroPista(np.usoPista);
+          const fusionado = fusionarNivelProgreso(localNivel, {
+            completado: np.completado,
+            puntos: np.puntaje,
+            intentos: np.intentos,
+            usoPista: np.usoPista,
+          });
+          setIntentos(fusionado.intentos);
+          setCompletado(fusionado.completado);
+          setMostroPista(fusionado.usoPista);
+        }
+        prepararRecuperacion(remotosPorClave);
+      })
+      .catch((error) => {
+        if (cancelado) return;
+        const detalle = error instanceof Error ? error.message : "No se pudo consultar el progreso remoto";
+        prepararRecuperacion({});
+        if (cargarColaSync(usuario.id).length === 0) {
+          setEstadoSync("error");
+          setMensajeSync(`No se pudo verificar la nube: ${detalle}`);
         }
       })
-      .catch(() => {});
-  }, [token, nivelId]);
+      .finally(() => {
+        if (!cancelado) setProgresoCargado(true);
+      });
+    return () => { cancelado = true; };
+  }, [hydrated, token, usuario?.id, nivelId, procesarColaSync]);
 
-  // Guardar en backend
+  useEffect(() => {
+    if (!hydrated || !usuario?.id) return;
+    const reintentarAlConectar = () => void procesarColaSync();
+    window.addEventListener("online", reintentarAlConectar);
+    return () => window.removeEventListener("online", reintentarAlConectar);
+  }, [hydrated, procesarColaSync, usuario?.id]);
+
+  const indiceNivel = OOP_NIVELES.findIndex((item) => item.id === nivelId);
+  const nivelBloqueado =
+    indiceNivel > 0 &&
+    !progreso.niveles[String(OOP_NIVELES[indiceNivel - 1].id)]?.completado;
+
+  useEffect(() => {
+    if (!progresoCargado || !nivelBloqueado) return;
+    router.replace("/estudiante/codigo");
+  }, [nivelBloqueado, progresoCargado, router]);
+
+  useEffect(() => {
+    if (!modalAyudaAbierto) return;
+
+    const cerrarConEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setModalAyudaAbierto(false);
+    };
+    window.addEventListener("keydown", cerrarConEscape);
+    return () => window.removeEventListener("keydown", cerrarConEscape);
+  }, [modalAyudaAbierto]);
+
+  // Guardar primero en una cola local durable y enviarla al backend en orden.
   const sincronizarProgresoBackend = useCallback(
-    async (completadoEstado: boolean, puntosGanados: number, intentosTotales: number, usoPistaEstado: boolean) => {
-      if (!token) return;
-      try {
-        await apiRequest("/api/oop/progreso", token, {
-          method: "POST",
-          body: JSON.stringify({
-            nivel: nivelId,
-            lenguaje,
-            completado: completadoEstado,
-            puntaje: puntosGanados,
-            intentos: intentosTotales,
-            usoPista: usoPistaEstado,
-          }),
-        });
-      } catch (err) {
-        console.error("Error al guardar progreso OOP en el servidor:", err);
-      }
+    (completadoEstado: boolean, puntosGanados: number, intentosTotales: number, usoPistaEstado: boolean) => {
+      encolarSincronizacion({
+        nivel: nivelId,
+        lenguaje,
+        completado: completadoEstado,
+        puntaje: puntosGanados,
+        intentos: intentosTotales,
+        usoPista: usoPistaEstado,
+      });
     },
-    [token, nivelId, lenguaje],
+    [encolarSincronizacion, nivelId, lenguaje],
   );
 
   const ejecutar = useCallback(async () => {
     if (!nivel || ejecutando) return;
 
     setEjecutando(true);
+    setEjecucionesSesion((total) => total + 1);
+    setMobileVista("terminal");
     setTerminalLines([
       { type: "info", text: `Ejecutando código ${lenguaje === "python" ? "Python" : "Java"}…` },
       { type: "pending" },
@@ -206,6 +469,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     setTiempoMs(resultado.tiempoMs ?? null);
 
     const lines: TerminalLine[] = [];
+    let resolvioEnEsteIntento = false;
 
     if (resultado.error) {
       lines.push({ type: "error", text: resultado.error });
@@ -226,27 +490,33 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
         const validacion = validarEstructuraCodigo(nivelId, codigo, lenguaje);
 
         if (coincide && validacion.valido) {
+          resolvioEnEsteIntento = true;
           const puntosGanados = mostroPista ? Math.floor(nivel.puntaje / 2) : nivel.puntaje;
 
           lines.push({
             type: "success",
-            text: `✅ ¡Excelente! Tu código cumple la estructura y la salida. Ganaste ${puntosGanados} puntos para tu perfil global.`,
+            text: `✅ ¡Excelente! Tu código cumple la estructura y la salida. Ganaste ${puntosGanados} puntos; el avance quedó protegido en este dispositivo mientras se sincroniza.`,
           });
 
           // Actualizar estado local y backend
-          const nuevoProgreso = { ...progreso };
-          nuevoProgreso.niveles[String(nivelId)] = {
-            completado: true,
-            puntos: puntosGanados,
-            intentos: nuevosIntentos,
-            usoPista: mostroPista,
+          const nuevoProgreso: OopProgreso = {
+            ...progreso,
+            niveles: {
+              ...progreso.niveles,
+              [String(nivelId)]: {
+                completado: true,
+                puntos: puntosGanados,
+                intentos: nuevosIntentos,
+                usoPista: mostroPista,
+              },
+            },
           };
           nuevoProgreso.puntajeTotal = Object.values(nuevoProgreso.niveles).reduce(
             (sum, n) => sum + n.puntos,
             0,
           );
           setProgreso(nuevoProgreso);
-          guardarProgresoLocal(nuevoProgreso);
+          guardarProgresoLocal(nuevoProgreso, usuario?.id);
           setCompletado(true);
           setCelebrando(true);
           setTimeout(() => setCelebrando(false), 3500);
@@ -295,15 +565,20 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     setTerminalLines(lines);
 
     // Persistir intentos si aún no está completado
-    if (!completado) {
-      const nuevoProgreso = { ...progreso };
-      nuevoProgreso.niveles[String(nivelId)] = {
-        ...nivelProgreso,
-        intentos: nuevosIntentos,
-        usoPista: mostroPista,
+    if (!completado && !resolvioEnEsteIntento) {
+      const nuevoProgreso: OopProgreso = {
+        ...progreso,
+        niveles: {
+          ...progreso.niveles,
+          [String(nivelId)]: {
+            ...nivelProgreso,
+            intentos: nuevosIntentos,
+            usoPista: mostroPista,
+          },
+        },
       };
       setProgreso(nuevoProgreso);
-      guardarProgresoLocal(nuevoProgreso);
+      guardarProgresoLocal(nuevoProgreso, usuario?.id);
       sincronizarProgresoBackend(false, 0, nuevosIntentos, mostroPista);
     }
   }, [
@@ -318,7 +593,20 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     nivelId,
     nivelProgreso,
     sincronizarProgresoBackend,
+    usuario?.id,
   ]);
+
+  useEffect(() => {
+    const ejecutarConAtajo = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        if (!modalAyudaAbierto) void ejecutar();
+      }
+    };
+
+    window.addEventListener("keydown", ejecutarConAtajo);
+    return () => window.removeEventListener("keydown", ejecutarConAtajo);
+  }, [ejecutar, modalAyudaAbierto]);
 
   function limpiarEditor() {
     if (!nivel) return;
@@ -339,10 +627,15 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
       { type: "info", text: `⚠️ Al completar este subnivel con pista ganarás ${Math.floor(nivel.puntaje / 2)} pts (la mitad).` },
     ]);
 
-    const nuevoProgreso = { ...progreso };
-    nuevoProgreso.niveles[String(nivelId)] = { ...nivelProgreso, usoPista: true };
+    const nuevoProgreso: OopProgreso = {
+      ...progreso,
+      niveles: {
+        ...progreso.niveles,
+        [String(nivelId)]: { ...nivelProgreso, usoPista: true },
+      },
+    };
     setProgreso(nuevoProgreso);
-    guardarProgresoLocal(nuevoProgreso);
+    guardarProgresoLocal(nuevoProgreso, usuario?.id);
     sincronizarProgresoBackend(completado, completado ? nivelProgreso.puntos : 0, intentos, true);
   }
 
@@ -357,16 +650,27 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
       { type: "info", text: "ℹ️ Este subnivel queda completado con 0 puntos otorgados." },
     ]);
 
-    const nuevoProgreso = { ...progreso };
-    nuevoProgreso.niveles[String(nivelId)] = {
-      completado: true,
-      puntos: 0,
-      intentos,
-      usoPista: mostroPista,
+    const nuevoProgreso: OopProgreso = {
+      ...progreso,
+      niveles: {
+        ...progreso.niveles,
+        [String(nivelId)]: {
+          completado: true,
+          puntos: 0,
+          intentos,
+          usoPista: mostroPista,
+        },
+      },
     };
+    nuevoProgreso.puntajeTotal = Object.values(nuevoProgreso.niveles).reduce(
+      (sum, item) => sum + item.puntos,
+      0,
+    );
     setProgreso(nuevoProgreso);
-    guardarProgresoLocal(nuevoProgreso);
+    guardarProgresoLocal(nuevoProgreso, usuario?.id);
     setCompletado(true);
+    setCelebrando(true);
+    window.setTimeout(() => setCelebrando(false), 5000);
     sincronizarProgresoBackend(true, 0, intentos, mostroPista);
   }
 
@@ -376,6 +680,12 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     if (nivel) {
       setCodigo(lang === "python" ? nivel.codigoBasePython : nivel.codigoBaseJava);
     }
+    setProgreso((prev) => {
+      const nuevo = { ...prev, lenguaje: lang };
+      guardarProgresoLocal(nuevo, usuario?.id);
+      return nuevo;
+    });
+    router.replace(`/estudiante/codigo/${nivelId}?lang=${lang}`, { scroll: false });
   }
 
   if (!nivel) {
@@ -392,12 +702,55 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     );
   }
 
+  if (!progresoCargado || nivelBloqueado) {
+    return (
+      <div className="grid min-h-screen place-items-center p-8 text-center" role="status">
+        <div>
+          <p className="text-4xl" aria-hidden="true">🔐</p>
+          <p className="mt-4 text-slate-300">
+            {nivelBloqueado ? "Volviendo al último subnivel disponible…" : "Cargando tu progreso…"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const prevNivel = OOP_NIVELES.find((n) => n.id === nivelId - 1);
   const nextNivel = OOP_NIVELES.find((n) => n.id === nivelId + 1);
   const ayudaHabilitada = intentos >= MAX_INTENTOS || mostroPista;
+  const rutaCompleta = OOP_NIVELES.every(
+    (item) => progreso.niveles[String(item.id)]?.completado,
+  );
+  const estaDesbloqueado = (id: number) =>
+    id === OOP_NIVELES[0]?.id ||
+    Boolean(progreso.niveles[String(id - 1)]?.completado);
+  const codigoBaseActual =
+    lenguaje === "python" ? nivel.codigoBasePython : nivel.codigoBaseJava;
+  const editorModificado = codigo.trim() !== codigoBaseActual.trim();
+  const ejecutoAlgunaVez = ejecucionesSesion > 0 || intentos > 0;
+  const pasosMision = [
+    { etiqueta: "Comprende la guía", completo: true },
+    { etiqueta: "Construye la solución", completo: editorModificado || completado },
+    { etiqueta: "Ejecuta tu código", completo: ejecutoAlgunaVez || completado },
+    { etiqueta: "Supera la prueba", completo: completado },
+  ];
+  const claseVistaMovil =
+    mobileVista === "code"
+      ? styles.mobileCode
+      : mobileVista === "terminal"
+        ? styles.mobileTerminal
+        : styles.mobileDocs;
+  const claseEstadoSync =
+    estadoSync === "error"
+      ? styles.syncError
+      : estadoSync === "pendiente"
+        ? styles.syncPending
+        : estadoSync === "sincronizando"
+          ? styles.syncWorking
+          : styles.syncOk;
 
   return (
-    <div className={`oop-level-page ${celebrando ? "oop-celebrating" : ""}`}>
+    <div className={`oop-level-page ${styles.levelShell} ${celebrando ? "oop-celebrating" : ""}`}>
       {/* Top bar */}
       <nav className="oop-level-nav">
         <div className="flex items-center gap-3">
@@ -419,16 +772,24 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           {OOP_NIVELES.map((n) => {
             const esActual = n.id === nivelId;
             const esCompletado = progreso.niveles[String(n.id)]?.completado;
+            const desbloqueado = estaDesbloqueado(n.id);
             return (
               <button
                 key={n.id}
-                onClick={() => router.push(`/estudiante/codigo/${n.id}?lang=${lenguaje}`)}
+                disabled={!desbloqueado}
+                onClick={() => {
+                  if (desbloqueado) {
+                    router.push(`/estudiante/codigo/${n.id}?lang=${lenguaje}`);
+                  }
+                }}
                 className={`flex h-6 items-center gap-1 rounded-md px-2 text-xs font-semibold transition ${
                   esActual
                     ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/50"
                     : esCompletado
                     ? "bg-white/10 text-emerald-400 hover:bg-white/15"
-                    : "bg-white/5 text-slate-400 hover:bg-white/10"
+                    : desbloqueado
+                      ? "bg-white/5 text-slate-400 hover:bg-white/10"
+                      : "cursor-not-allowed bg-white/[.025] text-slate-600"
                 }`}
                 title={`${n.titulo} (Subnivel ${n.subnivel})`}
               >
@@ -457,6 +818,35 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
         {/* Right: Help button (available after 6 attempts) + Level arrows */}
         <div className="flex items-center gap-2">
+          <div className={styles.mobileViewTabs} role="tablist" aria-label="Vista del laboratorio">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobileVista === "docs"}
+              aria-controls="oop-docs-view"
+              onClick={() => setMobileVista("docs")}
+            >
+              <BookOpen size={14} /> Guía
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobileVista === "code"}
+              aria-controls="oop-code-view"
+              onClick={() => setMobileVista("code")}
+            >
+              <Code2 size={14} /> Código
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobileVista === "terminal"}
+              aria-controls="oop-terminal-view"
+              onClick={() => setMobileVista("terminal")}
+            >
+              <TerminalSquare size={14} /> Terminal
+            </button>
+          </div>
           {ayudaHabilitada && !completado && (
             <button
               onClick={() => setModalAyudaAbierto(true)}
@@ -481,7 +871,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
             <span className="oop-nav-current font-mono text-xs font-bold text-slate-200">
               {nivel.subnivel} / 4.2
             </span>
-            {nextNivel && (
+            {nextNivel && (completado || progreso.niveles[String(nextNivel.id)]?.completado) && (
               <button
                 className="oop-nav-arrow"
                 onClick={() => router.push(`/estudiante/codigo/${nextNivel.id}?lang=${lenguaje}`)}
@@ -494,10 +884,35 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
         </div>
       </nav>
 
+      <div
+        className={`${styles.syncBanner} ${claseEstadoSync}`}
+        role="status"
+        aria-live="polite"
+      >
+        <span className={styles.syncIcon} aria-hidden="true">
+          {estadoSync === "sincronizado" ? (
+            <CloudCheck size={16} />
+          ) : estadoSync === "sincronizando" ? (
+            <RefreshCw size={16} className={styles.syncSpinner} />
+          ) : (
+            <CloudOff size={16} />
+          )}
+        </span>
+        <span className={styles.syncMessage}>{mensajeSync}</span>
+        {pendientesSync > 0 && (
+          <span className={styles.syncCount}>{pendientesSync} pendiente{pendientesSync === 1 ? "" : "s"}</span>
+        )}
+        {(estadoSync === "error" || estadoSync === "pendiente") && token && (
+          <button type="button" onClick={() => void procesarColaSync()}>
+            Reintentar ahora
+          </button>
+        )}
+      </div>
+
       {/* Main split layout */}
-      <div className="oop-split-layout">
+      <div className={`oop-split-layout ${claseVistaMovil}`}>
         {/* Left: Editor + Terminal */}
-        <div className="oop-left-panel">
+        <div className="oop-left-panel" id="oop-code-view">
           {/* Editor Header & Container */}
           <div className="oop-editor-container">
             <div className="oop-editor-header">
@@ -507,6 +922,9 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                 </div>
                 <span className="text-xs text-slate-400">
                   {intentos > 0 ? `Intentos: ${intentos}/${MAX_INTENTOS}` : "Código limpio para practicar"}
+                </span>
+                <span className={styles.keyboardHint}>
+                  <Keyboard size={13} /> <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
                 </span>
               </div>
               <div className="oop-editor-actions">
@@ -519,7 +937,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                   <RotateCcw size={14} />
                 </button>
                 <button
-                  className="oop-run-btn"
+                  className={`oop-run-btn ${editorModificado && !completado ? styles.runReady : ""}`}
                   onClick={ejecutar}
                   disabled={ejecutando}
                   title="Ejecutar código localmente"
@@ -547,30 +965,54 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           </div>
 
           {/* Terminal */}
-          <CodeTerminal lines={terminalLines} tiempoMs={tiempoMs} />
+          <div id="oop-terminal-view" className="contents">
+            <CodeTerminal lines={terminalLines} tiempoMs={tiempoMs} />
+          </div>
         </div>
 
         {/* Right: Docs + Practice */}
-        <div className="oop-right-panel">
-          <OopDocsPanel
-            nivel={nivel}
-            lenguaje={lenguaje}
-            intentos={intentos}
-            maxIntentos={MAX_INTENTOS}
-            completado={completado}
-            onVerPista={() => setModalAyudaAbierto(true)}
-            onVerSolucion={() => setModalAyudaAbierto(true)}
-            mostroPista={mostroPista}
-          />
+        <div className={`oop-right-panel ${styles.docsWithHud}`} id="oop-docs-view">
+          <div className={styles.missionHud} aria-label="Progreso de la misión">
+            {pasosMision.map((paso, index) => (
+              <div
+                key={paso.etiqueta}
+                className={`${styles.missionStep} ${paso.completo ? styles.missionStepComplete : ""}`}
+              >
+                <span aria-hidden="true">{paso.completo ? "✓" : index + 1}</span>
+                <span>{paso.etiqueta}</span>
+              </div>
+            ))}
+          </div>
+          <div className={styles.docsBody}>
+            <OopDocsPanel
+              nivel={nivel}
+              lenguaje={lenguaje}
+              intentos={intentos}
+              maxIntentos={MAX_INTENTOS}
+              completado={completado}
+              onVerPista={() => setModalAyudaAbierto(true)}
+              onVerSolucion={() => setModalAyudaAbierto(true)}
+              mostroPista={mostroPista}
+            />
+          </div>
         </div>
       </div>
 
       {/* ─── MODAL DE OPCIONES DE AYUDA (6 INTENTOS) ─── */}
       {modalAyudaAbierto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg rounded-2xl border border-amber-500/30 bg-slate-900 p-6 shadow-2xl">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-modal-ayuda"
+            aria-describedby="descripcion-modal-ayuda"
+            className="relative w-full max-w-lg rounded-2xl border border-amber-500/30 bg-slate-900 p-6 shadow-2xl"
+          >
             <button
+              type="button"
               onClick={() => setModalAyudaAbierto(false)}
+              aria-label="Cerrar opciones de ayuda"
+              autoFocus
               className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
             >
               <X size={18} />
@@ -581,8 +1023,10 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                 <HelpCircle size={24} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Opciones de Ayuda (6 Intentos)</h3>
-                <p className="text-xs text-slate-300">
+                <h3 id="titulo-modal-ayuda" className="text-lg font-bold text-white">
+                  Opciones de Ayuda (6 Intentos)
+                </h3>
+                <p id="descripcion-modal-ayuda" className="text-xs text-slate-300">
                   Has alcanzado {intentos} intentos. Elige cómo deseas continuar:
                 </p>
               </div>
@@ -590,44 +1034,46 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
             <div className="space-y-3">
               {/* Opción 1: Pista */}
-              <div
+              <button
+                type="button"
                 onClick={aplicarPista}
-                className="group cursor-pointer rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 transition hover:border-amber-400 hover:bg-amber-500/10"
+                className="group w-full rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-left transition hover:border-amber-400 hover:bg-amber-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2 font-bold text-amber-300">
+                <span className="flex items-start justify-between">
+                  <span className="flex items-center gap-2 font-bold text-amber-300">
                     <Lightbulb size={18} />
                     <span>Opción 1: Obtener Pista (Fragmento de código)</span>
-                  </div>
+                  </span>
                   <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-300">
                     +{Math.floor(nivel.puntaje / 2)} pts
                   </span>
-                </div>
-                <p className="mt-2 text-xs text-slate-300">
+                </span>
+                <span className="mt-2 block text-xs text-slate-300">
                   Carga en el editor la estructura base guiada con comentarios para que completes lo que falta.
                   Recibirás la <strong>mitad de los puntos ({Math.floor(nivel.puntaje / 2)} pts)</strong> al completarlo.
-                </p>
-              </div>
+                </span>
+              </button>
 
               {/* Opción 2: Completar código */}
-              <div
+              <button
+                type="button"
                 onClick={aplicarSolucionCompleta}
-                className="group cursor-pointer rounded-xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/10"
+                className="group w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left transition hover:border-white/20 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2 font-bold text-slate-200">
+                <span className="flex items-start justify-between">
+                  <span className="flex items-center gap-2 font-bold text-slate-200">
                     <CheckCheck size={18} />
                     <span>Opción 2: Completar Código (Solución completa)</span>
-                  </div>
+                  </span>
                   <span className="rounded bg-white/10 px-2 py-0.5 text-xs font-bold text-slate-400">
                     0 pts
                   </span>
-                </div>
-                <p className="mt-2 text-xs text-slate-300">
+                </span>
+                <span className="mt-2 block text-xs text-slate-300">
                   Inserta la solución final funcional en el editor y marca el subnivel como superado para desbloquear el
                   siguiente. <strong>No otorgará puntos adicionales</strong>.
-                </p>
-              </div>
+                </span>
+              </button>
             </div>
 
             {/* Footer con opción de seguir intentando */}
@@ -636,6 +1082,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                 El botón de ayuda seguirá disponible arriba si cambias de opinión.
               </p>
               <button
+                type="button"
                 onClick={() => setModalAyudaAbierto(false)}
                 className="rounded-lg bg-white/10 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/15"
               >
@@ -653,9 +1100,24 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
             <p className="text-5xl">🎉</p>
             <h2 className="oop-celebration-title">¡Subnivel Superado!</h2>
             <p className="oop-celebration-pts">
-              +{mostroPista ? Math.floor(nivel.puntaje / 2) : nivel.puntaje} puntos guardados
+              +{mostroPista ? Math.floor(nivel.puntaje / 2) : nivel.puntaje} puntos asegurados
             </p>
-            <p className="text-xs text-slate-300">Sumados a tu puntaje global en AlgoLab</p>
+            <p className="text-xs text-slate-300">
+              {estadoSync === "sincronizado"
+                ? "Sincronizados con tu perfil global de AlgoLab"
+                : "Guardados localmente; se enviarán a tu perfil al recuperar conexión"}
+            </p>
+            {!nextNivel && rutaCompleta ? (
+              <div className="oop-konami-reward oop-konami-reward-compact">
+                <span className="oop-konami-crown">🏆 RECOMPENSA SECRETA</span>
+                <strong>↑ ↑ ↓ ↓ ← ← → → B A</strong>
+                <p>
+                  Úsalo como <b>invitado</b>, después de ver o saltar el tutorial y estando fuera de un nivel,
+                  para desbloquear la ruta. En el <b>nivel 3</b>, introdúcelo durante la práctica para descubrir
+                  una reacción especial del robot.
+                </p>
+              </div>
+            ) : null}
             {nextNivel && (
               <Link
                 href={`/estudiante/codigo/${nextNivel.id}?lang=${lenguaje}`}

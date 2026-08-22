@@ -1,5 +1,15 @@
 import { clearAuthSession } from "@/lib/use-auth-session";
 
+export class ApiRequestError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
+
 export async function apiRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (!(init?.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -25,14 +35,19 @@ export async function apiRequest<T>(path: string, token: string, init?: RequestI
   }
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       if (typeof window !== "undefined") {
         clearAuthSession();
       }
-      throw new Error("Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.");
+      throw new ApiRequestError(
+        "Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.",
+        response.status,
+      );
     }
 
-    let mensaje = `Error del servidor (HTTP ${response.status})`;
+    let mensaje = response.status === 403
+      ? "No tienes permisos para realizar esta acción."
+      : `Error del servidor (HTTP ${response.status})`;
     if (typeof data === "object" && data !== null) {
       const record = data as Record<string, unknown>;
       if (typeof record.mensaje === "string" && record.mensaje) {
@@ -47,7 +62,7 @@ export async function apiRequest<T>(path: string, token: string, init?: RequestI
     } else if (typeof data === "string" && data) {
       mensaje = data;
     }
-    throw new Error(mensaje);
+    throw new ApiRequestError(mensaje, response.status);
   }
   return data as T;
 }

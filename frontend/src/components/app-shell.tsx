@@ -2,9 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Sparkles, LogOut, Headphones } from "lucide-react";
+import {
+  Menu,
+  X,
+  Sparkles,
+  LogOut,
+  Headphones,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 
 import { AvatarDisplay } from "@/components/avatar-display";
 import { clearAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
@@ -163,9 +171,72 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuDialogRef = useRef<HTMLElement>(null);
+  const mobileMenuCloseRef = useRef<HTMLButtonElement>(null);
 
   const config = usuario ? roleConfig[usuario.rol] : roleConfig.ESTUDIANTE;
   const links = config.links;
+  const isCodeWorkspace = /^\/estudiante\/codigo\/\d+/.test(pathname);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const menuButton = mobileMenuButtonRef.current;
+    const desktopMedia = window.matchMedia("(min-width: 768px)");
+    document.body.style.overflow = "hidden";
+    mobileMenuCloseRef.current?.focus();
+
+    function closeWhenDesktop(event: MediaQueryListEvent) {
+      if (event.matches) setMobileMenuOpen(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileMenuOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const dialog = mobileMenuDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.offsetParent !== null);
+      if (!focusable.length) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    desktopMedia.addEventListener("change", closeWhenDesktop);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      desktopMedia.removeEventListener("change", closeWhenDesktop);
+      document.body.style.overflow = previousOverflow;
+      menuButton?.focus();
+    };
+  }, [mobileMenuOpen]);
+
+  function toggleDesktopSidebar() {
+    setDesktopCollapsed((current) => !current);
+  }
 
   function salir() {
     clearAuthSession();
@@ -183,7 +254,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           <span className="brand-mark transition duration-300 group-hover:rotate-3 group-hover:scale-105">
             A
           </span>
-          <span className="min-w-0">
+          <span className="min-w-0" data-sidebar-hide>
             <strong className="block text-lg tracking-[-.03em] text-white">AlgoLab</strong>
             <small className="flex items-center gap-1.5 text-[9px] uppercase tracking-[.25em] text-emerald-300/75">
               <span className="h-1 w-1 rounded-full bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" />{" "}
@@ -192,7 +263,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           </span>
         </Link>
 
-        <div className="mt-5 flex items-center justify-between px-2">
+        <div className="mt-5 flex items-center justify-between px-2" data-sidebar-hide>
           <span className="font-mono text-[9px] uppercase tracking-[.22em] text-slate-500">
             Navegación
           </span>
@@ -231,9 +302,9 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
                 >
                   <ShellIcon name={link.icon} />
                 </span>
-                <span>{link.label}</span>
+                <span data-sidebar-hide>{link.label}</span>
                 {active ? (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" />
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" data-sidebar-hide />
                 ) : null}
               </Link>
             );
@@ -241,7 +312,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
         </nav>
 
         {/* Puente con las gafas banner */}
-        <div className="mt-5 rounded-[1.25rem] border border-cyan-200/10 bg-gradient-to-br from-cyan-300/[.07] to-emerald-300/[.025] p-3.5">
+        <div className="mt-5 rounded-[1.25rem] border border-cyan-200/10 bg-gradient-to-br from-cyan-300/[.07] to-emerald-300/[.025] p-3.5" data-sidebar-hide>
           <div className="flex items-start justify-between gap-3">
             <span className="grid h-8 w-8 place-items-center rounded-xl border border-cyan-200/15 bg-cyan-200/[.07] text-cyan-200">
               <Headphones size={16} />
@@ -269,7 +340,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
             ) : (
               <span className="h-10 w-10 animate-pulse rounded-[.85rem] bg-white/5" />
             )}
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1" data-sidebar-hide>
               <strong className="block truncate text-xs font-bold text-slate-100">
                 {usuario?.nombre ?? "Sincronizando…"}
               </strong>
@@ -283,7 +354,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
             onClick={salir}
             type="button"
           >
-            <span>Cerrar sesión</span>
+            <span data-sidebar-hide>Cerrar sesión</span>
             <LogOut size={13} />
           </button>
         </div>
@@ -297,9 +368,12 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
       <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/10 bg-[#05100e]/95 px-4 backdrop-blur-xl md:hidden">
         <div className="flex items-center gap-3">
           <button
+            aria-controls="algolab-mobile-navigation"
+            aria-expanded={mobileMenuOpen}
             aria-label="Abrir menú de navegación"
             className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-300 transition hover:bg-white/[.08] hover:text-white active:scale-95"
             onClick={() => setMobileMenuOpen(true)}
+            ref={mobileMenuButtonRef}
             type="button"
           >
             <Menu size={20} />
@@ -328,6 +402,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
         {mobileMenuOpen ? (
           <>
             <motion.div
+              aria-hidden="true"
               animate={{ opacity: 1 }}
               className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm md:hidden"
               exit={{ opacity: 0 }}
@@ -336,19 +411,25 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
             />
             <motion.aside
               animate={{ x: 0 }}
+              aria-labelledby="algolab-mobile-menu-title"
+              aria-modal="true"
               className="fixed inset-y-0 left-0 z-50 flex w-[290px] max-w-[85vw] flex-col border-r border-white/10 bg-[#05100e] p-5 shadow-2xl overflow-y-auto scrollbar-none md:hidden"
               exit={{ x: "-100%" }}
+              id="algolab-mobile-navigation"
               initial={{ x: "-100%" }}
+              ref={mobileMenuDialogRef}
+              role="dialog"
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
             >
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <span className="font-mono text-xs text-slate-400 font-semibold tracking-wider">
+                <span className="font-mono text-xs text-slate-400 font-semibold tracking-wider" id="algolab-mobile-menu-title">
                   MENÚ PRINCIPAL
                 </span>
                 <button
                   aria-label="Cerrar menú"
                   className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-slate-400 hover:text-white"
                   onClick={() => setMobileMenuOpen(false)}
+                  ref={mobileMenuCloseRef}
                   type="button"
                 >
                   <X size={18} />
@@ -363,18 +444,45 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
       </AnimatePresence>
 
       {/* Desktop & Tablet 100% FIXED Left Sidebar (>= md screens) */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] xl:w-[285px] flex-col border-r border-white/10 bg-[#05100e]/98 p-5 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-2xl overflow-y-auto scrollbar-none md:flex">
+      <aside
+        className={`desktop-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-white/10 bg-[#05100e]/98 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-2xl transition-[width,padding] duration-300 overflow-y-auto scrollbar-none md:flex ${
+          desktopCollapsed
+            ? "desktop-sidebar-collapsed w-[84px] p-3"
+            : "w-[260px] p-5 xl:w-[285px]"
+        }`}
+      >
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent"
         />
+        <button
+          aria-expanded={!desktopCollapsed}
+          aria-label={desktopCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+          className="mb-3 ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-400 transition hover:border-emerald-300/25 hover:bg-emerald-300/10 hover:text-emerald-200"
+          onClick={toggleDesktopSidebar}
+          title={desktopCollapsed ? "Expandir menú" : "Contraer menú"}
+          type="button"
+        >
+          {desktopCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+        </button>
         {navContent}
       </aside>
 
       {/* Main Content Area: Offset with padding-left on >= md */}
-      <div className="w-full min-h-screen md:pl-[260px] xl:pl-[285px]">
-        <main className="mx-auto max-w-[1480px] px-4 py-5 sm:px-7 lg:px-9 lg:py-8 xl:px-12">
+      <div
+        className={`min-h-screen w-full transition-[padding] duration-300 ${
+          desktopCollapsed ? "md:pl-[84px]" : "md:pl-[260px] xl:pl-[285px]"
+        }`}
+      >
+        <main
+          className={
+            isCodeWorkspace
+              ? "mx-auto w-full max-w-none p-2 sm:p-3 lg:p-4"
+              : "mx-auto max-w-[1600px] px-4 py-5 sm:px-7 lg:px-9 lg:py-8 xl:px-12"
+          }
+        >
           {/* Main Top Header Banner */}
+          {!isCodeWorkspace ? (
           <header className="relative mb-7 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#071713]/70 p-5 shadow-[0_26px_80px_rgba(0,0,0,.2)] backdrop-blur-xl sm:p-6 lg:mb-8">
             <div
               aria-hidden="true"
@@ -412,6 +520,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
               </div>
             </div>
           </header>
+          ) : null}
 
           {/* Subpage Children Content */}
           <div className="w-full">

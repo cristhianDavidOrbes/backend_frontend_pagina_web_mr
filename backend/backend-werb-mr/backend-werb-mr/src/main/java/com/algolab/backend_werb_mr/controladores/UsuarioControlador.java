@@ -24,14 +24,22 @@ import com.algolab.backend_werb_mr.dtos.ActualizarProgresoUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.ActualizarPerfilRequest;
 import com.algolab.backend_werb_mr.dtos.ActualizarUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.AuthRespuestaDTO;
+import com.algolab.backend_werb_mr.dtos.DesafioSegundoFactorRespuestaDTO;
 import com.algolab.backend_werb_mr.dtos.LoginRequest;
+import com.algolab.backend_werb_mr.dtos.ReenviarSegundoFactorRequest;
 import com.algolab.backend_werb_mr.dtos.RegistroUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.UsuarioSesionDTO;
 import com.algolab.backend_werb_mr.dtos.UsuarioRespuestaDTO;
+import com.algolab.backend_werb_mr.dtos.VerificarSegundoFactorRequest;
 import com.algolab.backend_werb_mr.modelos.Rol;
+import com.algolab.backend_werb_mr.modelos.CanalSegundoFactor;
 import com.algolab.backend_werb_mr.modelos.Usuario;
-import com.algolab.backend_werb_mr.seguridad.JwtServicio;
+import com.algolab.backend_werb_mr.seguridad.CorreoInstitucional;
+import com.algolab.backend_werb_mr.seguridad.NumeroCelular;
+import com.algolab.backend_werb_mr.servicios.AutenticacionSegundoFactorResultado;
+import com.algolab.backend_werb_mr.servicios.ISegundoFactorServicio;
 import com.algolab.backend_werb_mr.servicios.IUsuarioServicio;
+import com.algolab.backend_werb_mr.servicios.SegundoFactorException;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -39,57 +47,83 @@ public class UsuarioControlador {
     private static final Logger logger = LoggerFactory.getLogger(UsuarioControlador.class);
 
     private final IUsuarioServicio usuarioServicio;
-    private final JwtServicio jwtServicio;
+    private final ISegundoFactorServicio segundoFactorServicio;
 
-    public UsuarioControlador(IUsuarioServicio usuarioServicio, JwtServicio jwtServicio) {
+    public UsuarioControlador(IUsuarioServicio usuarioServicio, ISegundoFactorServicio segundoFactorServicio) {
         this.usuarioServicio = usuarioServicio;
-        this.jwtServicio = jwtServicio;
+        this.segundoFactorServicio = segundoFactorServicio;
     }
 
     @PostMapping(value = "/iniciar-sesion", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<AuthRespuestaDTO> iniciarSesion(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> iniciarSesion(@RequestBody LoginRequest request) {
         if (request == null) {
-            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
-                    false,
-                    "Debe enviar correo y contrasena",
-                    null,
-                    null));
+            return errorSegundoFactor(HttpStatus.BAD_REQUEST, "Debe enviar correo institucional y contrasena");
         }
 
-        String identificador = limpiar(request.getCorreo());
-        String contrasena = limpiar(request.getContrasena());
+        String correo = CorreoInstitucional.normalizar(request.getCorreo());
+        String contrasena = request.getContrasena();
 
-        if (identificador == null || contrasena == null) {
-            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
-                    false,
-                    "Debe enviar correo y contrasena",
-                    null,
-                    null));
+        if (correo == null || contrasena == null || contrasena.isBlank()) {
+            return errorSegundoFactor(HttpStatus.BAD_REQUEST, "Debe enviar correo institucional y contrasena");
         }
 
-        if (!usuarioServicio.existePorCorreoONombreUsuario(identificador)) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new AuthRespuestaDTO(
-                    false,
-                    "El usuario no existe en la base de datos",
-                    null,
-                    null));
+        if (!CorreoInstitucional.esValido(correo)) {
+            return errorSegundoFactor(HttpStatus.BAD_REQUEST,
+                    "Solo se permite el correo institucional " + CorreoInstitucional.DOMINIO);
         }
 
-        Usuario usuarioEncontrado = usuarioServicio.iniciarSesion(identificador, contrasena).orElse(null);
+        Usuario usuarioEncontrado = usuarioServicio.iniciarSesion(correo, contrasena).orElse(null);
 
         if (usuarioEncontrado == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new AuthRespuestaDTO(
-                    false,
-                    "Contrasena incorrecta",
-                    null,
-                    null));
+            // Una respuesta unica evita revelar si la cuenta institucional existe.
+            return errorSegundoFactor(HttpStatus.UNAUTHORIZED, "Correo o contrasena incorrectos");
         }
 
-        return ResponseEntity.ok(new AuthRespuestaDTO(
-                true,
-                "Inicio de sesion exitoso",
-                jwtServicio.generarToken(usuarioEncontrado),
-                UsuarioRespuestaDTO.desdeUsuario(usuarioEncontrado)));
+        CanalSegundoFactor canal = obtenerCanalSegundoFactor(request.getCanal());
+        if (canal == null) {
+            return errorSegundoFactor(HttpStatus.BAD_REQUEST, "Canal invalido. Use CORREO o SMS");
+        }
+
+        try {
+            return ResponseEntity.accepted().body(segundoFactorServicio.crearDesafio(usuarioEncontrado, canal));
+        } catch (SegundoFactorException error) {
+            return errorSegundoFactor(error.getEstado(), error.getMessage());
+        }
+    }
+
+    @PostMapping(value = "/segundo-factor/verificar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AuthRespuestaDTO> verificarSegundoFactor(@RequestBody VerificarSegundoFactorRequest request) {
+        if (request == null) {
+            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
+                    false, "Debe enviar desafioId y codigo", null, null));
+        }
+
+        try {
+            AutenticacionSegundoFactorResultado resultado = segundoFactorServicio.verificar(
+                    request.getDesafioId(), request.getCodigo());
+            return ResponseEntity.ok(new AuthRespuestaDTO(
+                    true,
+                    "Inicio de sesion verificado correctamente",
+                    resultado.token(),
+                    UsuarioRespuestaDTO.desdeUsuario(resultado.usuario())));
+        } catch (SegundoFactorException error) {
+            return ResponseEntity.status(error.getEstado()).body(new AuthRespuestaDTO(
+                    false, error.getMessage(), null, null));
+        }
+    }
+
+    @PostMapping(value = "/segundo-factor/reenviar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<DesafioSegundoFactorRespuestaDTO> reenviarSegundoFactor(
+            @RequestBody ReenviarSegundoFactorRequest request) {
+        if (request == null) {
+            return errorSegundoFactor(HttpStatus.BAD_REQUEST, "Debe enviar desafioId");
+        }
+
+        try {
+            return ResponseEntity.ok(segundoFactorServicio.reenviar(request.getDesafioId()));
+        } catch (SegundoFactorException error) {
+            return errorSegundoFactor(error.getEstado(), error.getMessage());
+        }
     }
 
     @PostMapping(value = "/registrar", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -108,14 +142,31 @@ public class UsuarioControlador {
         }
 
         String nombre = limpiar(request.getNombre());
-        String correo = limpiar(request.getCorreo());
+        String correo = CorreoInstitucional.normalizar(request.getCorreo());
         String rolTexto = limpiar(request.getRol());
-        String contrasena = limpiar(request.getContrasena());
+        String contrasena = request.getContrasena();
 
-        if (nombre == null || correo == null || rolTexto == null || contrasena == null) {
+        if (nombre == null || correo == null || rolTexto == null || contrasena == null || contrasena.isBlank()) {
             return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
                     false,
                     "Debe enviar nombre, correo, rol y contrasena",
+                    null,
+                    null));
+        }
+
+        if (!CorreoInstitucional.esValido(correo)) {
+            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
+                    false,
+                    "Solo se permiten cuentas con correo institucional " + CorreoInstitucional.DOMINIO,
+                    null,
+                    null));
+        }
+
+        String celular = NumeroCelular.normalizar(request.getCelular());
+        if (celular != null && !NumeroCelular.esValido(celular)) {
+            return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
+                    false,
+                    "El celular debe usar formato internacional E.164, por ejemplo +573001234567",
                     null,
                     null));
         }
@@ -148,6 +199,7 @@ public class UsuarioControlador {
         }
 
         Usuario usuario = new Usuario(null, nombre, correo, rol, contrasena);
+        usuario.setCelular(celular);
         Usuario usuarioGuardado = usuarioServicio.registrar(usuario);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new AuthRespuestaDTO(
@@ -197,6 +249,24 @@ public class UsuarioControlador {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
                     "mensaje", "Usuario autenticado no encontrado"));
         }
+        return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(usuario));
+    }
+
+    @PatchMapping("/me/tutorial-completado")
+    public ResponseEntity<?> marcarTutorialCompletado(Authentication authentication) {
+        Usuario usuario = usuarioAutenticado(authentication);
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "mensaje", "Usuario autenticado no encontrado"));
+        }
+
+        // Operación intencionalmente idempotente: repetirla desde otra gafa o
+        // tras una reconexión nunca revierte el estado ni crea efectos laterales.
+        if (!usuario.isTutorialCompletado()) {
+            usuario.setTutorialCompletado(true);
+            usuario = usuarioServicio.actualizar(usuario);
+        }
+
         return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(usuario));
     }
 
@@ -292,17 +362,35 @@ public class UsuarioControlador {
         }
 
         String nombre = limpiar(request.getNombre());
-        String correo = limpiar(request.getCorreo());
+        String correo = CorreoInstitucional.normalizar(request.getCorreo());
 
         if (nombre == null || correo == null) {
             return ResponseEntity.badRequest().body(Map.of(
                     "mensaje", "Debe enviar nombre y correo"));
         }
 
+        if (!CorreoInstitucional.esValido(correo)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "Solo se permiten cuentas con correo institucional " + CorreoInstitucional.DOMINIO));
+        }
+
+
+        if (!tieneRol(authentication, Rol.ADMINISTRADOR)
+                && !correo.equalsIgnoreCase(usuario.getCorreo())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "Cambiar el correo requiere verificacion y no esta permitido desde este endpoint"));
+        }
+
         Usuario usuarioConCorreo = usuarioServicio.buscarPorCorreo(correo).orElse(null);
         if (usuarioConCorreo != null && !usuarioConCorreo.getId().equals(id)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
                     "mensaje", "El correo ya esta registrado por otro usuario"));
+        }
+
+        if ((request.getNivelActual() != null || request.getPuntaje() != null)
+                && !tieneRol(authentication, Rol.ADMINISTRADOR)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "El progreso se registra mediante el endpoint de progreso; solo un administrador puede corregirlo manualmente"));
         }
 
         usuario.setNombre(nombre);
@@ -352,9 +440,9 @@ public class UsuarioControlador {
             return ResponseEntity.notFound().build();
         }
 
-        if (!puedeActualizarUsuario(authentication, usuario)) {
+        if (!tieneRol(authentication, Rol.ADMINISTRADOR)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                    "mensaje", "No tiene permiso para actualizar este usuario"));
+                    "mensaje", "Solo un administrador puede corregir el progreso manualmente"));
         }
 
         if (request.getNivelActual() == null && request.getPuntaje() == null) {
@@ -466,6 +554,30 @@ public class UsuarioControlador {
         return limpio.length() <= maximo ? limpio : limpio.substring(0, maximo);
     }
 
+    private ResponseEntity<DesafioSegundoFactorRespuestaDTO> errorSegundoFactor(HttpStatus estado, String mensaje) {
+        return ResponseEntity.status(estado).body(new DesafioSegundoFactorRespuestaDTO(
+                false,
+                false,
+                mensaje,
+                null,
+                null,
+                null,
+                0,
+                0));
+    }
+
+    private CanalSegundoFactor obtenerCanalSegundoFactor(String canalTexto) {
+        String limpio = limpiar(canalTexto);
+        if (limpio == null) {
+            return CanalSegundoFactor.CORREO;
+        }
+        try {
+            return CanalSegundoFactor.valueOf(limpio.toUpperCase());
+        } catch (IllegalArgumentException error) {
+            return null;
+        }
+    }
+
     private ResponseEntity<Map<String, String>> validarYAsignarProgreso(Usuario usuario, Integer nivelActual,
             Integer puntaje) {
         if (nivelActual != null) {
@@ -478,6 +590,10 @@ public class UsuarioControlador {
         }
 
         if (puntaje != null) {
+            if (puntaje < 0) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "mensaje", "El puntaje no puede ser negativo"));
+            }
             usuario.setPuntaje(puntaje);
         }
 

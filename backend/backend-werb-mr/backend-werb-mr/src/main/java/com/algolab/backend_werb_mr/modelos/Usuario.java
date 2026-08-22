@@ -20,11 +20,14 @@ public class Usuario {
 
     @Column(nullable= false)
     private String nombre;
-    @Column(nullable= false)
+    @Column(nullable = false, unique = true)
     private String correo;
 
     @Column(unique = true)
     private String nombreUsuario;
+
+    @Column(unique = true, length = 16)
+    private String celular;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable= false)
@@ -53,6 +56,9 @@ public class Usuario {
 
     @Column(length = 64)
     private String avatarVersion;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean tutorialCompletado = false;
 
     public Usuario() {
     }
@@ -84,6 +90,10 @@ public class Usuario {
 
         if (avatar == null || avatar.isBlank()) {
             avatar = "orbita";
+        }
+
+        if (tutorialCompletado == null) {
+            tutorialCompletado = false;
         }
     }
 
@@ -117,6 +127,14 @@ public class Usuario {
 
     public void setNombreUsuario(String nombreUsuario) {
         this.nombreUsuario = nombreUsuario;
+    }
+
+    public String getCelular() {
+        return celular;
+    }
+
+    public void setCelular(String celular) {
+        this.celular = celular;
     }
 
     public Rol getRol() {
@@ -189,5 +207,13 @@ public class Usuario {
 
     public void setAvatarVersion(String avatarVersion) {
         this.avatarVersion = avatarVersion;
+    }
+
+    public boolean isTutorialCompletado() {
+        return Boolean.TRUE.equals(tutorialCompletado);
+    }
+
+    public void setTutorialCompletado(boolean tutorialCompletado) {
+        this.tutorialCompletado = tutorialCompletado;
     }
 }

@@ -93,7 +93,7 @@ class AvatarControladorTest {
         AvatarUsuario avatar = avatar("etag123", new byte[] { 4, 5, 6 });
         when(avatarServicio.buscarPorUsuarioId(8L)).thenReturn(Optional.of(avatar));
 
-        ResponseEntity<?> respuesta = controlador.obtenerAvatar(8L, null);
+        ResponseEntity<?> respuesta = controlador.obtenerAvatar(8L, null, autenticacion);
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
         assertEquals("image/png", respuesta.getHeaders().getContentType().toString());
@@ -108,7 +108,7 @@ class AvatarControladorTest {
         AvatarUsuario avatar = avatar("etag123", new byte[] { 4, 5, 6 });
         when(avatarServicio.buscarPorUsuarioId(8L)).thenReturn(Optional.of(avatar));
 
-        ResponseEntity<?> respuesta = controlador.obtenerAvatar(8L, "\"etag123\"");
+        ResponseEntity<?> respuesta = controlador.obtenerAvatar(8L, "\"etag123\"", autenticacion);
 
         assertEquals(HttpStatus.NOT_MODIFIED, respuesta.getStatusCode());
         assertNull(respuesta.getBody());
@@ -119,7 +119,21 @@ class AvatarControladorTest {
     void getDevuelve404SiElUsuarioNoTieneAvatarPersonalizado() {
         when(avatarServicio.buscarPorUsuarioId(8L)).thenReturn(Optional.empty());
 
-        assertEquals(HttpStatus.NOT_FOUND, controlador.obtenerAvatar(8L, null).getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, controlador.obtenerAvatar(8L, null, autenticacion).getStatusCode());
+    }
+
+    @Test
+    void getRequiereSesionYNoExponeFotosPorIdPublicamente() {
+        ResponseEntity<?> respuesta = controlador.obtenerAvatar(8L, null, null);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
+    }
+
+    @Test
+    void estudianteNoPuedeConsultarElAvatarDeOtroUsuario() {
+        ResponseEntity<?> respuesta = controlador.obtenerAvatar(99L, null, autenticacion);
+
+        assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
     }
 
     @Test

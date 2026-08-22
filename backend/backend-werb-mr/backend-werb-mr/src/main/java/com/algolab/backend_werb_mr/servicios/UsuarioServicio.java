@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.repositorio.Repositorio;
+import com.algolab.backend_werb_mr.seguridad.CorreoInstitucional;
+import com.algolab.backend_werb_mr.seguridad.NumeroCelular;
 
 @Service
 public class UsuarioServicio implements IUsuarioServicio {
@@ -27,6 +29,18 @@ public class UsuarioServicio implements IUsuarioServicio {
 
     @Override
     public Usuario registrar(Usuario usuario) {
+        String correo = CorreoInstitucional.normalizar(usuario.getCorreo());
+        if (!CorreoInstitucional.esValido(correo)) {
+            throw new IllegalArgumentException(
+                    "Solo se permiten cuentas con correo institucional " + CorreoInstitucional.DOMINIO);
+        }
+        usuario.setCorreo(correo);
+        String celular = NumeroCelular.normalizar(usuario.getCelular());
+        if (celular != null && !NumeroCelular.esValido(celular)) {
+            throw new IllegalArgumentException("El celular debe usar formato internacional E.164, por ejemplo +573001234567");
+        }
+        usuario.setCelular(celular);
+
         if (usuario.getNombreUsuario() == null || usuario.getNombreUsuario().isBlank()) {
             usuario.setNombreUsuario(generarNombreUsuario(usuario.getCorreo()));
         }
@@ -37,7 +51,11 @@ public class UsuarioServicio implements IUsuarioServicio {
 
     @Override
     public Optional<Usuario> iniciarSesion(String identificador, String contrasena) {
-        return repositorio.buscarPorCorreoONombreUsuario(identificador)
+        String correo = CorreoInstitucional.normalizar(identificador);
+        if (!CorreoInstitucional.esValido(correo)) {
+            return Optional.empty();
+        }
+        return repositorio.buscarPorCorreo(correo)
                 .filter(usuario -> passwordEncoder.matches(contrasena, usuario.getContrasena()));
     }
 
@@ -58,6 +76,14 @@ public class UsuarioServicio implements IUsuarioServicio {
 
     @Override
     public Usuario actualizar(Usuario usuario) {
+        if (usuario.getCorreo() != null) {
+            String correo = CorreoInstitucional.normalizar(usuario.getCorreo());
+            if (!CorreoInstitucional.esValido(correo)) {
+                throw new IllegalArgumentException(
+                        "Solo se permiten cuentas con correo institucional " + CorreoInstitucional.DOMINIO);
+            }
+            usuario.setCorreo(correo);
+        }
         return repositorio.actualizar(usuario);
     }
 
@@ -68,12 +94,14 @@ public class UsuarioServicio implements IUsuarioServicio {
 
     @Override
     public Optional<Usuario> buscarPorCorreo(String correo) {
-        return repositorio.buscarPorCorreo(correo);
+        String normalizado = CorreoInstitucional.normalizar(correo);
+        return normalizado == null ? Optional.empty() : repositorio.buscarPorCorreo(normalizado);
     }
 
     @Override
     public boolean existePorCorreo(String correo) {
-        return repositorio.existePorCorreo(correo);
+        String normalizado = CorreoInstitucional.normalizar(correo);
+        return normalizado != null && repositorio.existePorCorreo(normalizado);
     }
 
     @Override

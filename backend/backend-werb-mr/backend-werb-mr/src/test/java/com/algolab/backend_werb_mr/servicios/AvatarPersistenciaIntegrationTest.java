@@ -37,7 +37,7 @@ class AvatarPersistenciaIntegrationTest {
         Usuario usuario = new Usuario(
                 null,
                 "Avatar integración",
-                "avatar.integracion@algolab.test",
+                "avatar.integracion@campusucc.edu.co",
                 Rol.ESTUDIANTE,
                 "ContrasenaSegura123");
         usuario = usuarioServicio.registrar(usuario);

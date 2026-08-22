@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -19,25 +20,32 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.algolab.backend_werb_mr.dtos.ActualizarUsuarioRequest;
+import com.algolab.backend_werb_mr.dtos.ActualizarProgresoUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.ActualizarPerfilRequest;
 import com.algolab.backend_werb_mr.dtos.AuthRespuestaDTO;
+import com.algolab.backend_werb_mr.dtos.DesafioSegundoFactorRespuestaDTO;
 import com.algolab.backend_werb_mr.dtos.LoginRequest;
 import com.algolab.backend_werb_mr.dtos.RegistroUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.UsuarioRespuestaDTO;
 import com.algolab.backend_werb_mr.dtos.UsuarioSesionDTO;
+import com.algolab.backend_werb_mr.dtos.VerificarSegundoFactorRequest;
 import com.algolab.backend_werb_mr.modelos.Rol;
+import com.algolab.backend_werb_mr.modelos.CanalSegundoFactor;
 import com.algolab.backend_werb_mr.modelos.Usuario;
-import com.algolab.backend_werb_mr.seguridad.JwtServicio;
+import com.algolab.backend_werb_mr.seguridad.CorreoInstitucional;
+import com.algolab.backend_werb_mr.servicios.AutenticacionSegundoFactorResultado;
+import com.algolab.backend_werb_mr.servicios.ISegundoFactorServicio;
 import com.algolab.backend_werb_mr.servicios.IUsuarioServicio;
 
 class UsuarioControladorTest {
     private final UsuarioServicioPrueba usuarioServicio = new UsuarioServicioPrueba();
-    private final UsuarioControlador controlador = new UsuarioControlador(usuarioServicio, new JwtServicioPrueba());
+    private final SegundoFactorServicioPrueba segundoFactorServicio = new SegundoFactorServicioPrueba();
+    private final UsuarioControlador controlador = new UsuarioControlador(usuarioServicio, segundoFactorServicio);
 
     @Test
     void registroPublicoRechazaRolesPrivilegiados() {
         ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(
-                solicitudRegistro("Admin", "admin@test.com", Rol.ADMINISTRADOR, "123456"));
+                solicitudRegistro("Admin", "admin@campusucc.edu.co", Rol.ADMINISTRADOR, "123456"));
 
         assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
         assertFalse(respuesta.getBody().isExitoso());
@@ -46,79 +54,109 @@ class UsuarioControladorTest {
     @Test
     void registroPublicoCreaEstudianteSinToken() {
         ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(
-                solicitudRegistro("Estudiante", "estudiante@test.com", Rol.ESTUDIANTE, "123456"));
+                solicitudRegistro("Estudiante", " ESTUDIANTE@CAMPUSUCC.EDU.CO ", Rol.ESTUDIANTE, "123456"));
 
         assertEquals(HttpStatus.CREATED, respuesta.getStatusCode());
         assertNull(respuesta.getBody().getToken());
         assertEquals(Rol.ESTUDIANTE, respuesta.getBody().getUsuario().getRol());
+        assertEquals("estudiante@campusucc.edu.co", respuesta.getBody().getUsuario().getCorreo());
     }
 
     @Test
-    void inicioSesionExitosoConCorreoDevuelveToken() {
+    void registroPublicoRechazaCorreoNoInstitucional() {
+        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(
+                solicitudRegistro("Estudiante", "estudiante@gmail.com", Rol.ESTUDIANTE, "123456"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
+        assertFalse(respuesta.getBody().isExitoso());
+    }
+
+    @Test
+    void inicioSesionExitosoConCorreoCreaDesafioSinToken() {
         Usuario usuario = usuarioServicio.registrar(
-                new Usuario(null, "Estudiante", "estudiante@test.com", Rol.ESTUDIANTE, "123456"));
+                new Usuario(null, "Estudiante", "estudiante@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
         usuario.setNombreUsuario("estudiante");
 
         LoginRequest request = new LoginRequest();
-        request.setCorreo("estudiante@test.com");
+        request.setCorreo(" ESTUDIANTE@CAMPUSUCC.EDU.CO ");
         request.setContrasena("123456");
 
-        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.iniciarSesion(request);
+        ResponseEntity<?> respuesta = controlador.iniciarSesion(request);
 
-        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
-        assertEquals("token-prueba", respuesta.getBody().getToken());
+        assertEquals(HttpStatus.ACCEPTED, respuesta.getStatusCode());
+        DesafioSegundoFactorRespuestaDTO desafio = assertInstanceOf(
+                DesafioSegundoFactorRespuestaDTO.class, respuesta.getBody());
+        assertTrue(desafio.isRequiereSegundoFactor());
+        assertEquals("desafio-prueba", desafio.getDesafioId());
     }
 
     @Test
-    void inicioSesionExitosoConNombreUsuarioDevuelveToken() {
-        Usuario usuario = usuarioServicio.registrar(
-                new Usuario(null, "Estudiante", "estudiante@test.com", Rol.ESTUDIANTE, "123456"));
-        usuario.setNombreUsuario("estudiante");
+    void jwtSoloSeEntregaDespuesDeVerificarSegundoFactor() {
+        usuarioServicio.registrar(
+                new Usuario(null, "Estudiante", "verificado@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
+        LoginRequest login = new LoginRequest();
+        login.setCorreo("verificado@campusucc.edu.co");
+        login.setContrasena("123456");
 
+        ResponseEntity<?> inicio = controlador.iniciarSesion(login);
+        assertEquals(HttpStatus.ACCEPTED, inicio.getStatusCode());
+        assertInstanceOf(DesafioSegundoFactorRespuestaDTO.class, inicio.getBody());
+
+        VerificarSegundoFactorRequest verificacion = new VerificarSegundoFactorRequest();
+        verificacion.setDesafioId("desafio-prueba");
+        verificacion.setCodigo("123456");
+        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.verificarSegundoFactor(verificacion);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals("token-prueba", respuesta.getBody().getToken());
+        assertEquals("verificado@campusucc.edu.co", respuesta.getBody().getUsuario().getCorreo());
+    }
+
+    @Test
+    void inicioSesionRechazaNombreUsuarioPorqueExigeCorreoInstitucional() {
         LoginRequest request = new LoginRequest();
         request.setCorreo("estudiante");
         request.setContrasena("123456");
 
-        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.iniciarSesion(request);
+        ResponseEntity<?> respuesta = controlador.iniciarSesion(request);
 
-        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
-        assertEquals("token-prueba", respuesta.getBody().getToken());
-        assertEquals("estudiante", respuesta.getBody().getUsuario().getNombreUsuario());
+        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
+        assertFalse(assertInstanceOf(DesafioSegundoFactorRespuestaDTO.class, respuesta.getBody()).isExitoso());
     }
 
     @Test
     void inicioSesionRechazaContrasenaIncorrecta() {
         Usuario usuario = usuarioServicio.registrar(
-                new Usuario(null, "Estudiante", "estudiante@test.com", Rol.ESTUDIANTE, "123456"));
+                new Usuario(null, "Estudiante", "estudiante@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
         usuario.setNombreUsuario("estudiante");
 
         LoginRequest request = new LoginRequest();
-        request.setCorreo("estudiante");
+        request.setCorreo("estudiante@campusucc.edu.co");
         request.setContrasena("incorrecta");
 
-        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.iniciarSesion(request);
+        ResponseEntity<?> respuesta = controlador.iniciarSesion(request);
 
         assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
-        assertFalse(respuesta.getBody().isExitoso());
+        assertFalse(assertInstanceOf(DesafioSegundoFactorRespuestaDTO.class, respuesta.getBody()).isExitoso());
     }
 
     @Test
     void inicioSesionRechazaUsuarioInexistente() {
         LoginRequest request = new LoginRequest();
-        request.setCorreo("noexiste");
+        request.setCorreo("noexiste@campusucc.edu.co");
         request.setContrasena("123456");
 
-        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.iniciarSesion(request);
+        ResponseEntity<?> respuesta = controlador.iniciarSesion(request);
 
-        assertEquals(HttpStatus.NOT_FOUND, respuesta.getStatusCode());
-        assertFalse(respuesta.getBody().isExitoso());
+        assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
+        assertFalse(assertInstanceOf(DesafioSegundoFactorRespuestaDTO.class, respuesta.getBody()).isExitoso());
     }
 
     @Test
     void administradorPuedeCrearDocentesDesdeCrud() {
         ResponseEntity<AuthRespuestaDTO> respuesta = controlador.crearUsuario(
-                solicitudRegistro("Docente", "docente@test.com", Rol.DOCENTE, "123456"),
-                autenticacion("admin@test.com", Rol.ADMINISTRADOR));
+                solicitudRegistro("Docente", "docente@campusucc.edu.co", Rol.DOCENTE, "123456"),
+                autenticacion("admin@campusucc.edu.co", Rol.ADMINISTRADOR));
 
         assertEquals(HttpStatus.CREATED, respuesta.getStatusCode());
         assertNull(respuesta.getBody().getToken());
@@ -145,16 +183,16 @@ class UsuarioControladorTest {
     @Test
     void estudianteSoloPuedeActualizarSuUsuarioYSuRolNoCambia() {
         Usuario estudiante = usuarioServicio.registrar(
-                new Usuario(null, "Estudiante", "estudiante@test.com", Rol.ESTUDIANTE, "123456"));
+                new Usuario(null, "Estudiante", "estudiante@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
         Usuario otroUsuario = usuarioServicio.registrar(
-                new Usuario(null, "Otro", "otro@test.com", Rol.ESTUDIANTE, "123456"));
+                new Usuario(null, "Otro", "otro@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
 
-        ActualizarUsuarioRequest solicitud = solicitudActualizacion("Estudiante Editado", "estudiante@test.com",
+        ActualizarUsuarioRequest solicitud = solicitudActualizacion("Estudiante Editado", "estudiante@campusucc.edu.co",
                 Rol.ADMINISTRADOR);
         ResponseEntity<?> respuestaPropia = controlador.actualizarUsuario(
                 estudiante.getId(),
                 solicitud,
-                autenticacion("estudiante@test.com", Rol.ESTUDIANTE));
+                autenticacion("estudiante@campusucc.edu.co", Rol.ESTUDIANTE));
 
         assertEquals(HttpStatus.OK, respuestaPropia.getStatusCode());
         UsuarioRespuestaDTO usuario = assertInstanceOf(UsuarioRespuestaDTO.class, respuestaPropia.getBody());
@@ -163,28 +201,71 @@ class UsuarioControladorTest {
 
         ResponseEntity<?> respuestaAjena = controlador.actualizarUsuario(
                 otroUsuario.getId(),
-                solicitudActualizacion("Otro Editado", "otro@test.com", Rol.ESTUDIANTE),
-                autenticacion("estudiante@test.com", Rol.ESTUDIANTE));
+                solicitudActualizacion("Otro Editado", "otro@campusucc.edu.co", Rol.ESTUDIANTE),
+                autenticacion("estudiante@campusucc.edu.co", Rol.ESTUDIANTE));
 
         assertEquals(HttpStatus.FORBIDDEN, respuestaAjena.getStatusCode());
     }
 
     @Test
+    void usuarioNoAdministradorNoPuedeCambiarCorreoDesdeEndpointLegado() {
+        Usuario estudiante = usuarioServicio.registrar(
+                new Usuario(null, "Estudiante", "original@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
+
+        ResponseEntity<?> respuesta = controlador.actualizarUsuario(
+                estudiante.getId(),
+                solicitudActualizacion("Estudiante", "nuevo@campusucc.edu.co", Rol.ESTUDIANTE),
+                autenticacion("original@campusucc.edu.co", Rol.ESTUDIANTE));
+
+        assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
+        assertEquals("original@campusucc.edu.co", estudiante.getCorreo());
+    }
+
+    @Test
+    void administradorSiPuedeCambiarCorreoInstitucional() {
+        Usuario estudiante = usuarioServicio.registrar(
+                new Usuario(null, "Estudiante", "original-admin@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
+
+        ResponseEntity<?> respuesta = controlador.actualizarUsuario(
+                estudiante.getId(),
+                solicitudActualizacion("Estudiante", "nuevo-admin@campusucc.edu.co", Rol.ESTUDIANTE),
+                autenticacion("admin@campusucc.edu.co", Rol.ADMINISTRADOR));
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals("nuevo-admin@campusucc.edu.co", estudiante.getCorreo());
+    }
+
+    @Test
+    void estudianteNoPuedeAlterarSuPuntajeFueraDelEndpointDeProgreso() {
+        Usuario estudiante = usuarioServicio.registrar(
+                new Usuario(null, "Estudiante", "progreso@test.com", Rol.ESTUDIANTE, "123456"));
+        estudiante.setPuntaje(40);
+        ActualizarProgresoUsuarioRequest request = new ActualizarProgresoUsuarioRequest();
+        request.setPuntaje(99999);
+
+        ResponseEntity<?> respuesta = controlador.actualizarProgresoUsuario(
+                estudiante.getId(), request, autenticacion(estudiante.getCorreo(), Rol.ESTUDIANTE));
+
+        assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
+        assertEquals(40, estudiante.getPuntaje());
+    }
+
+    @Test
     void administradorPuedeCambiarRolYEliminarUsuarios() {
         Usuario usuario = usuarioServicio.registrar(
-                new Usuario(null, "Usuario", "usuario@test.com", Rol.ESTUDIANTE, "123456"));
+                new Usuario(null, "Usuario", "usuario@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
 
         ResponseEntity<?> respuestaActualizar = controlador.actualizarUsuario(
                 usuario.getId(),
-                solicitudActualizacion("Usuario", "usuario@test.com", Rol.DOCENTE),
-                autenticacion("admin@test.com", Rol.ADMINISTRADOR));
+                solicitudActualizacion("Usuario", "usuario@campusucc.edu.co", Rol.DOCENTE),
+                autenticacion("admin@campusucc.edu.co", Rol.ADMINISTRADOR));
 
         assertEquals(HttpStatus.OK, respuestaActualizar.getStatusCode());
         assertEquals(Rol.DOCENTE, assertInstanceOf(UsuarioRespuestaDTO.class, respuestaActualizar.getBody()).getRol());
 
         ResponseEntity<?> respuestaEliminar = controlador.eliminarUsuario(
                 usuario.getId(),
-                autenticacion("admin@test.com", Rol.ADMINISTRADOR));
+                autenticacion("admin@campusucc.edu.co", Rol.ADMINISTRADOR));
 
         assertEquals(HttpStatus.NO_CONTENT, respuestaEliminar.getStatusCode());
     }
@@ -192,12 +273,12 @@ class UsuarioControladorTest {
     @Test
     void administradorNoPuedeQuitarSuPropioRolAdministrador() {
         Usuario administrador = usuarioServicio.registrar(
-                new Usuario(null, "Admin", "admin@test.com", Rol.ADMINISTRADOR, "123456"));
+                new Usuario(null, "Admin", "admin@campusucc.edu.co", Rol.ADMINISTRADOR, "123456"));
 
         ResponseEntity<?> respuesta = controlador.actualizarUsuario(
                 administrador.getId(),
-                solicitudActualizacion("Admin", "admin@test.com", Rol.DOCENTE),
-                autenticacion("admin@test.com", Rol.ADMINISTRADOR));
+                solicitudActualizacion("Admin", "admin@campusucc.edu.co", Rol.DOCENTE),
+                autenticacion("admin@campusucc.edu.co", Rol.ADMINISTRADOR));
 
         assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
     }
@@ -205,11 +286,11 @@ class UsuarioControladorTest {
     @Test
     void administradorNoPuedeEliminarSuPropiaCuenta() {
         Usuario administrador = usuarioServicio.registrar(
-                new Usuario(null, "Admin", "admin@test.com", Rol.ADMINISTRADOR, "123456"));
+                new Usuario(null, "Admin", "admin@campusucc.edu.co", Rol.ADMINISTRADOR, "123456"));
 
         ResponseEntity<?> respuesta = controlador.eliminarUsuario(
                 administrador.getId(),
-                autenticacion("admin@test.com", Rol.ADMINISTRADOR));
+                autenticacion("admin@campusucc.edu.co", Rol.ADMINISTRADOR));
 
         assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
     }
@@ -259,6 +340,41 @@ class UsuarioControladorTest {
         assertEquals("/api/usuarios/" + estudiante.getId() + "/avatar?v=version123", perfil.getAvatarUrl());
     }
 
+    @Test
+    void sesionExponeEstadoDelTutorialConValorInicialSeguro() {
+        Usuario estudiante = usuarioServicio.registrar(
+                new Usuario(null, "Ada", "ada-tutorial@test.com", Rol.ESTUDIANTE, "123456"));
+
+        UsuarioSesionDTO perfil = UsuarioSesionDTO.desdeUsuario(estudiante);
+
+        assertFalse(perfil.isTutorialCompletado());
+        estudiante.setTutorialCompletado(true);
+        assertTrue(UsuarioSesionDTO.desdeUsuario(estudiante).isTutorialCompletado());
+    }
+
+    @Test
+    void usuarioAutenticadoMarcaTutorialCompletadoDeFormaIdempotente() {
+        Usuario estudiante = usuarioServicio.registrar(
+                new Usuario(null, "Ada", "ada-tutorial-endpoint@test.com", Rol.ESTUDIANTE, "123456"));
+        Authentication autenticacion = autenticacion(estudiante.getCorreo(), Rol.ESTUDIANTE);
+
+        ResponseEntity<?> primera = controlador.marcarTutorialCompletado(autenticacion);
+        ResponseEntity<?> segunda = controlador.marcarTutorialCompletado(autenticacion);
+
+        assertEquals(HttpStatus.OK, primera.getStatusCode());
+        assertEquals(HttpStatus.OK, segunda.getStatusCode());
+        assertTrue(estudiante.isTutorialCompletado());
+        assertTrue(assertInstanceOf(UsuarioSesionDTO.class, primera.getBody()).isTutorialCompletado());
+        assertTrue(assertInstanceOf(UsuarioSesionDTO.class, segunda.getBody()).isTutorialCompletado());
+    }
+
+    @Test
+    void marcarTutorialCompletadoRequiereSesionAutenticada() {
+        ResponseEntity<?> respuesta = controlador.marcarTutorialCompletado(null);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
+    }
+
     private static RegistroUsuarioRequest solicitudRegistro(String nombre, String correo, Rol rol, String contrasena) {
         RegistroUsuarioRequest request = new RegistroUsuarioRequest();
         request.setNombre(nombre);
@@ -283,10 +399,27 @@ class UsuarioControladorTest {
                 List.of(new SimpleGrantedAuthority("ROLE_" + rol.name())));
     }
 
-    private static class JwtServicioPrueba extends JwtServicio {
+    private static class SegundoFactorServicioPrueba implements ISegundoFactorServicio {
+        private Usuario ultimoUsuario;
+
         @Override
-        public String generarToken(Usuario usuario) {
-            return "token-prueba";
+        public DesafioSegundoFactorRespuestaDTO crearDesafio(Usuario usuario, CanalSegundoFactor canal) {
+            ultimoUsuario = usuario;
+            return new DesafioSegundoFactorRespuestaDTO(
+                    true, true, "Codigo enviado", "desafio-prueba", canal.name(),
+                    "es***e@campusucc.edu.co", 300, 60);
+        }
+
+        @Override
+        public AutenticacionSegundoFactorResultado verificar(String desafioId, String codigo) {
+            return new AutenticacionSegundoFactorResultado("token-prueba", ultimoUsuario);
+        }
+
+        @Override
+        public DesafioSegundoFactorRespuestaDTO reenviar(String desafioId) {
+            return new DesafioSegundoFactorRespuestaDTO(
+                    true, true, "Codigo reenviado", desafioId, "CORREO",
+                    "es***e@campusucc.edu.co", 300, 60);
         }
     }
 
@@ -301,6 +434,7 @@ class UsuarioControladorTest {
 
         @Override
         public Usuario registrar(Usuario usuario) {
+            usuario.setCorreo(CorreoInstitucional.normalizar(usuario.getCorreo()));
             return guardarUsuario(usuario);
         }
 

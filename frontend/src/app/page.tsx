@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowRight,
@@ -9,12 +11,14 @@ import {
   ScanLine,
   ShieldCheck,
   Sparkles,
+  CircleUserRound,
 } from "lucide-react";
 import { FloatLayer, Reveal } from "@/components/reveal";
 import { RobotStage } from "@/components/robot-stage";
 import { SignalMarquee } from "@/components/signal-marquee";
 import { LevelsCarousel } from "@/components/levels-carousel";
 import { WorkshopSimulator } from "@/components/workshop-simulator";
+import { useAuthSession } from "@/lib/use-auth-session";
 
 const pasos = [
   {
@@ -38,6 +42,22 @@ const pasos = [
 ];
 
 export default function Home() {
+  const { hydrated, usuario } = useAuthSession();
+  const portalHref = usuario
+    ? usuario.rol === "DOCENTE"
+      ? "/docente"
+      : usuario.rol === "ADMINISTRADOR"
+        ? "/administrador"
+        : "/estudiante"
+    : "/iniciar-sesion";
+  const portalLabel = usuario
+    ? usuario.rol === "DOCENTE"
+      ? "Volver al observatorio"
+      : usuario.rol === "ADMINISTRADOR"
+        ? "Volver al centro de control"
+        : "Volver a mi ruta"
+    : "Ingresar";
+
   return (
     <main className="landing-shell min-h-screen overflow-hidden text-slate-100">
       <div className="ambient-orb ambient-orb-one" />
@@ -59,10 +79,23 @@ export default function Home() {
           <a className="nav-anchor" href="#roles">Comunidad</a>
         </nav>
         <div className="landing-actions">
-          <Link className="ghost-button" href="/iniciar-sesion">Ingresar</Link>
-          <Link className="primary-button hidden items-center sm:inline-flex" href="/registrarse">
-            Crear cuenta <ArrowRight size={16} />
-          </Link>
+          {hydrated && usuario ? (
+            <>
+              <span className="landing-session-chip">
+                <CircleUserRound size={15} /> Registrado como {usuario.nombre.split(" ")[0]}
+              </span>
+              <Link className="primary-button inline-flex items-center" href={portalHref}>
+                {portalLabel} <ArrowRight size={16} />
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link className="ghost-button" href="/iniciar-sesion">Ingresar</Link>
+              <Link className="primary-button hidden items-center sm:inline-flex" href="/registrarse">
+                Crear cuenta <ArrowRight size={16} />
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -79,8 +112,8 @@ export default function Home() {
             Puertas para entender clases. Vehículos para construir objetos. Un robot para proteger su estado interno. AlgoLab convierte la programación orientada a objetos en un laboratorio interactivo que aparece en tu espacio real.
           </p>
           <div className="hero-actions">
-            <Link className="primary-button hero-primary" href="/registrarse">
-              Entrar al laboratorio <ArrowRight size={18} />
+            <Link className="primary-button hero-primary" href={usuario ? portalHref : "/registrarse"}>
+              {usuario ? portalLabel : "Entrar al laboratorio"} <ArrowRight size={18} />
             </Link>
             <a className="play-link" href="#niveles">
               <span><MousePointer2 size={16} /></span> Ver misiones interactivas
@@ -241,8 +274,8 @@ export default function Home() {
             <span>ESTUDIANTE</span>
             <h3>Una ruta que se siente como una misión interactiva.</h3>
             <p>Niveles progresivos, objetos desbloqueables, ranking, avatar personalizado y diagnósticos de IA.</p>
-            <Link href="/registrarse">
-              Crear mi perfil <ArrowRight size={15} />
+            <Link href={usuario ? portalHref : "/registrarse"}>
+              {usuario ? portalLabel : "Crear mi perfil"} <ArrowRight size={15} />
             </Link>
           </Reveal>
 
@@ -278,8 +311,8 @@ export default function Home() {
               Crea tu cuenta, personaliza tu avatar y continúa aprendiendo dentro y fuera de las gafas de realidad mixta.
             </p>
           </div>
-          <Link className="primary-button hero-primary" href="/registrarse">
-            Comenzar ahora <ArrowRight size={18} />
+          <Link className="primary-button hero-primary" href={usuario ? portalHref : "/registrarse"}>
+            {usuario ? portalLabel : "Comenzar ahora"} <ArrowRight size={18} />
           </Link>
         </Reveal>
       </section>

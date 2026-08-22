@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 
 import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.modelos.Usuario;
+import com.algolab.backend_werb_mr.seguridad.CorreoInstitucional;
 import com.algolab.backend_werb_mr.servicios.IUsuarioServicio;
 
 @Configuration
@@ -15,12 +16,12 @@ public class DatosInicialesConfiguracion {
     public CommandLineRunner crearAdministradorInicial(
             IUsuarioServicio usuarioServicio,
             @Value("${app.admin.nombre:Cristhian David}") String nombre,
-            @Value("${app.admin.correo:cristhian.david@admin.com}") String correo,
+            @Value("${app.admin.correo:administrador@campusucc.edu.co}") String correo,
             @Value("${app.admin.contrasena:}") String contrasena) {
         return args -> {
-            String correoLimpio = correo.trim();
+            String correoLimpio = CorreoInstitucional.normalizar(correo);
 
-            if (!contrasena.isBlank() &&
+            if (!contrasena.isBlank() && CorreoInstitucional.esValido(correoLimpio) &&
                     !usuarioServicio.existePorCorreo(correoLimpio)) {
                 Usuario administrador = new Usuario(
                         null,

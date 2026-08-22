@@ -1,8 +1,6 @@
-// Servicio de ejecución de código:
-// ✅ Python: Pyodide (WASM) — 100% local en el navegador, sin internet tras la descarga inicial
-// ✅ Java: Transpilador propio Java→JS — 100% local, sin servicios externos
-
-import { executeJavaCode } from "@/lib/java-interpreter";
+// Ejecución local aislada para los ejercicios de Programar POO.
+// El código del estudiante nunca se evalúa en el hilo de la interfaz ni recibe
+// datos de sesión: únicamente se intercambian mensajes serializables con workers.
 
 export type ResultadoEjecucion = {
   salida: string;
@@ -11,137 +9,213 @@ export type ResultadoEjecucion = {
   tiempoMs?: number;
 };
 
-// ─── Pyodide (Python local via WASM) ─────────────────────────────────────────
+type LenguajeWorker = "python" | "java";
 
-type PyodideInterface = {
-  runPythonAsync: (code: string) => Promise<unknown>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  globals: any;
+type SolicitudWorker = {
+  id: string;
+  tipo: "ready" | "run";
+  codigo?: string;
 };
 
-declare global {
-  interface Window {
-    loadPyodide?: (opts: { indexURL: string }) => Promise<PyodideInterface>;
-    _pyodideInstance?: PyodideInterface;
-    _pyodideLoading?: Promise<PyodideInterface>;
+type RespuestaWorker = {
+  id: string;
+  tipo: "ready" | "result";
+  resultado?: ResultadoEjecucion;
+  error?: string;
+};
+
+type PythonRuntime = {
+  worker: Worker;
+  listo: Promise<void>;
+};
+
+const TIEMPO_MAXIMO_EJECUCION_MS = 5_000;
+const TIEMPO_MAXIMO_CARGA_PYODIDE_MS = 60_000;
+const ERROR_TIMEOUT = "__ALGOLAB_EXECUTION_TIMEOUT__";
+
+let pythonRuntime: PythonRuntime | null = null;
+
+function crearId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
   }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-async function cargarPyodide(): Promise<PyodideInterface> {
-  if (typeof window === "undefined") throw new Error("Solo disponible en el navegador");
-  if (window._pyodideInstance) return window._pyodideInstance;
-  if (window._pyodideLoading) return window._pyodideLoading;
+function esRespuestaWorker(valor: unknown): valor is RespuestaWorker {
+  if (!valor || typeof valor !== "object") return false;
+  const respuesta = valor as Partial<RespuestaWorker>;
+  return (
+    typeof respuesta.id === "string" &&
+    (respuesta.tipo === "ready" || respuesta.tipo === "result")
+  );
+}
 
-  if (!window.loadPyodide) {
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js";
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("No se pudo cargar Pyodide"));
-      document.head.appendChild(script);
-    });
-  }
+function enviarSolicitud(
+  worker: Worker,
+  solicitud: Omit<SolicitudWorker, "id">,
+  timeoutMs: number,
+): Promise<RespuestaWorker> {
+  const id = crearId();
 
-  window._pyodideLoading = window.loadPyodide!({
-    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/",
-  }).then((py) => {
-    window._pyodideInstance = py;
-    window._pyodideLoading = undefined;
-    return py;
+  return new Promise((resolve, reject) => {
+    let terminado = false;
+
+    const limpiar = () => {
+      worker.removeEventListener("message", alRecibirMensaje);
+      worker.removeEventListener("error", alFallarWorker);
+      clearTimeout(timeoutId);
+    };
+
+    const completar = (accion: () => void) => {
+      if (terminado) return;
+      terminado = true;
+      limpiar();
+      accion();
+    };
+
+    const alRecibirMensaje = (evento: MessageEvent<unknown>) => {
+      if (!esRespuestaWorker(evento.data) || evento.data.id !== id) return;
+      const respuesta = evento.data;
+      completar(() => resolve(respuesta));
+    };
+
+    const alFallarWorker = () => {
+      completar(() => reject(new Error("El entorno aislado dejó de responder.")));
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      completar(() => reject(new Error(ERROR_TIMEOUT)));
+    }, timeoutMs);
+
+    worker.addEventListener("message", alRecibirMensaje);
+    worker.addEventListener("error", alFallarWorker);
+    worker.postMessage({ ...solicitud, id } satisfies SolicitudWorker);
   });
-
-  return window._pyodideLoading!;
 }
 
-async function ejecutarPython(codigo: string): Promise<ResultadoEjecucion> {
-  const inicio = Date.now();
-  try {
-    const py = await cargarPyodide();
+function resultadoDeError(error: unknown, lenguaje: LenguajeWorker): ResultadoEjecucion {
+  const mensaje = error instanceof Error ? error.message : String(error);
 
-    await py.runPythonAsync(`
-import sys
-import traceback
-from io import StringIO
-_stdout_capture = StringIO()
-_stderr_capture = StringIO()
-sys.stdout = _stdout_capture
-sys.stderr = _stderr_capture
-`);
-
-    let exitoso = true;
-    let errorMsg: string | null = null;
-
-    try {
-      await py.runPythonAsync(codigo);
-    } catch (e) {
-      exitoso = false;
-      errorMsg = e instanceof Error ? e.message : String(e);
-    }
-
-    const stdout = (await py.runPythonAsync(`
-_out = _stdout_capture.getvalue()
-_err = _stderr_capture.getvalue()
-sys.stdout = sys.__stdout__
-sys.stderr = sys.__stderr__
-_out
-`)) as string ?? "";
-
-    const stderr = (await py.runPythonAsync("_err")) as string ?? "";
-
-    const tiempoMs = Date.now() - inicio;
-
-    if (!exitoso) {
-      const errorCompleto = (stderr + (errorMsg ?? "")).trim();
-      return { salida: "", error: errorCompleto || "Error desconocido", exitoso: false, tiempoMs };
-    }
-
-    return { salida: stdout.trim(), error: null, exitoso: true, tiempoMs };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes("No se pudo cargar") || msg.includes("Failed to fetch")) {
-      return {
-        salida: "",
-        error:
-          "⚠️ Python necesita descargar Pyodide la primera vez (~10 MB).\n" +
-          "Verifica tu conexión a internet y vuelve a intentarlo.\n" +
-          "Una vez descargado funciona completamente sin internet.",
-        exitoso: false,
-      };
-    }
-    return { salida: "", error: msg, exitoso: false };
+  if (mensaje === ERROR_TIMEOUT) {
+    return {
+      salida: "",
+      error:
+        "La ejecución superó 5 segundos y fue detenida de forma segura. " +
+        "Revisa si tu programa tiene un ciclo infinito.",
+      exitoso: false,
+    };
   }
-}
 
-// ─── Ejecutor Java local (sin servicios externos) ─────────────────────────────
+  if (lenguaje === "python" && /cargar|pyodide|fetch|conexi[oó]n/i.test(mensaje)) {
+    return {
+      salida: "",
+      error:
+        "No fue posible preparar Python. La primera ejecución necesita internet " +
+        "para descargar el entorno local; verifica tu conexión y vuelve a intentarlo.",
+      exitoso: false,
+    };
+  }
 
-function ejecutarJavaLocal(codigo: string): ResultadoEjecucion {
-  const resultado = executeJavaCode(codigo);
   return {
-    salida: resultado.stdout,
-    error: resultado.error,
-    exitoso: resultado.error === null,
-    tiempoMs: resultado.tiempoMs,
+    salida: "",
+    error: mensaje || "No fue posible ejecutar el código en el entorno aislado.",
+    exitoso: false,
   };
 }
 
-// ─── Exportación principal ────────────────────────────────────────────────────
+function crearJavaWorker(): Worker {
+  return new Worker("/workers/java-code-runner.js", {
+    name: "algolab-java-runner",
+  });
+}
+
+function crearPythonRuntime(): PythonRuntime {
+  const worker = new Worker("/workers/python-code-runner.js", {
+    name: "algolab-python-runner",
+  });
+
+  const listo = enviarSolicitud(
+    worker,
+    { tipo: "ready" },
+    TIEMPO_MAXIMO_CARGA_PYODIDE_MS,
+  ).then((respuesta) => {
+    if (respuesta.error) throw new Error(respuesta.error);
+  });
+
+  const runtime = { worker, listo } satisfies PythonRuntime;
+  listo.catch(() => {
+    if (pythonRuntime === runtime) {
+      worker.terminate();
+      pythonRuntime = null;
+    }
+  });
+  return runtime;
+}
+
+function obtenerPythonRuntime(): PythonRuntime {
+  if (!pythonRuntime) pythonRuntime = crearPythonRuntime();
+  return pythonRuntime;
+}
+
+async function ejecutarJava(codigo: string): Promise<ResultadoEjecucion> {
+  const worker = crearJavaWorker();
+  try {
+    const respuesta = await enviarSolicitud(
+      worker,
+      { tipo: "run", codigo },
+      TIEMPO_MAXIMO_EJECUCION_MS,
+    );
+    if (respuesta.error) throw new Error(respuesta.error);
+    if (!respuesta.resultado) throw new Error("Java no devolvió un resultado válido.");
+    return respuesta.resultado;
+  } catch (error) {
+    return resultadoDeError(error, "java");
+  } finally {
+    worker.terminate();
+  }
+}
+
+async function ejecutarPython(codigo: string): Promise<ResultadoEjecucion> {
+  const runtime = obtenerPythonRuntime();
+  try {
+    await runtime.listo;
+    const respuesta = await enviarSolicitud(
+      runtime.worker,
+      { tipo: "run", codigo },
+      TIEMPO_MAXIMO_EJECUCION_MS,
+    );
+    if (respuesta.error) throw new Error(respuesta.error);
+    if (!respuesta.resultado) throw new Error("Python no devolvió un resultado válido.");
+    return respuesta.resultado;
+  } catch (error) {
+    // Terminate es también el corte duro para ciclos infinitos; la siguiente
+    // ejecución empieza con un intérprete limpio y sin estado compartido.
+    runtime.worker.terminate();
+    if (pythonRuntime === runtime) pythonRuntime = null;
+    return resultadoDeError(error, "python");
+  }
+}
 
 export async function ejecutarCodigo(
   codigo: string,
-  lenguaje: "python" | "java",
+  lenguaje: LenguajeWorker,
 ): Promise<ResultadoEjecucion> {
-  if (lenguaje === "python") {
-    return ejecutarPython(codigo);
+  if (typeof window === "undefined" || typeof Worker === "undefined") {
+    return {
+      salida: "",
+      error: "El ejecutor de código solo está disponible en un navegador compatible.",
+      exitoso: false,
+    };
   }
-  // Java: 100% local, sin servicios externos
-  return ejecutarJavaLocal(codigo);
+
+  return lenguaje === "python" ? ejecutarPython(codigo) : ejecutarJava(codigo);
 }
 
-/** Pre-carga Pyodide en segundo plano al abrir el módulo */
+/** Prepara Pyodide sin bloquear la interfaz. No envía sesión, perfil ni token. */
 export function preCargaPyodide(): void {
-  if (typeof window !== "undefined") {
-    cargarPyodide().catch(() => {
-      // Silencioso: se intentará cuando el estudiante ejecute código
-    });
-  }
+  if (typeof window === "undefined" || typeof Worker === "undefined") return;
+  obtenerPythonRuntime().listo.catch(() => {
+    // Se mostrará un error claro si el estudiante intenta ejecutar Python.
+  });
 }

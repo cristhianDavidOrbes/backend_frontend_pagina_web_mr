@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.algolab.backend_werb_mr.dtos.UsuarioSesionDTO;
 import com.algolab.backend_werb_mr.modelos.AvatarUsuario;
+import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.servicios.AvatarInvalidoException;
 import com.algolab.backend_werb_mr.servicios.AvatarServicio;
@@ -121,7 +122,22 @@ public class AvatarControlador {
 
     @GetMapping("/{id}/avatar")
     public ResponseEntity<?> obtenerAvatar(@PathVariable Long id,
-            @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
+            @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch,
+            Authentication authentication) {
+        Usuario solicitante = usuarioAutenticado(authentication);
+        if (solicitante == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "mensaje", "Usuario autenticado no encontrado"));
+        }
+
+        boolean esPropietario = solicitante.getId() != null && solicitante.getId().equals(id);
+        boolean puedeConsultarEstudiantes = solicitante.getRol() == Rol.DOCENTE
+                || solicitante.getRol() == Rol.ADMINISTRADOR;
+        if (!esPropietario && !puedeConsultarEstudiantes) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "No puedes consultar la foto de otro usuario"));
+        }
+
         AvatarUsuario avatar = avatarServicio.buscarPorUsuarioId(id).orElse(null);
         if (avatar == null) {
             return ResponseEntity.notFound().build();

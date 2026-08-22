@@ -17,13 +17,15 @@ public class UsuarioSesionDTO {
     private String avatar;
     private String avatarUrl;
     private String avatarVersion;
+    private boolean tutorialCompletado;
 
     public UsuarioSesionDTO() {
     }
 
     public UsuarioSesionDTO(Long id, String nombre, String correo, String nombreUsuario, Rol rol,
             Integer nivelActual, Integer puntaje, String biografia, String institucion,
-            String programa, String avatar, String avatarUrl, String avatarVersion) {
+            String programa, String avatar, String avatarUrl, String avatarVersion,
+            boolean tutorialCompletado) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
@@ -37,6 +39,7 @@ public class UsuarioSesionDTO {
         this.avatar = avatar;
         this.avatarUrl = avatarUrl;
         this.avatarVersion = avatarVersion;
+        this.tutorialCompletado = tutorialCompletado;
     }
 
     public static UsuarioSesionDTO desdeUsuario(Usuario usuario) {
@@ -53,7 +56,8 @@ public class UsuarioSesionDTO {
                 usuario.getPrograma(),
                 usuario.getAvatar(),
                 construirAvatarUrl(usuario),
-                usuario.getAvatarVersion());
+                usuario.getAvatarVersion(),
+                usuario.isTutorialCompletado());
     }
 
     private static String construirAvatarUrl(Usuario usuario) {
@@ -131,4 +135,6 @@ public class UsuarioSesionDTO {
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     public String getAvatarVersion() { return avatarVersion; }
     public void setAvatarVersion(String avatarVersion) { this.avatarVersion = avatarVersion; }
+    public boolean isTutorialCompletado() { return tutorialCompletado; }
+    public void setTutorialCompletado(boolean tutorialCompletado) { this.tutorialCompletado = tutorialCompletado; }
 }

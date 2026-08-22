@@ -1,6 +1,7 @@
 package com.algolab.backend_werb_mr.servicios;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -54,18 +55,51 @@ class ProgresoServicioTest {
                 usuarioServicio,
                 descripcionNivelServicio);
 
-        ProgresoUsuarioDTO nivel1 = servicio.guardarProgreso(usuario, progreso(1, 100));
+        ProgresoUsuarioDTO nivel1 = servicio.guardarProgreso(usuario, progreso(1, 60));
         ProgresoUsuarioDTO nivel2 = servicio.guardarProgreso(usuario, progreso(2, 130));
-        ProgresoUsuarioDTO repeticionMejor = servicio.guardarProgreso(usuario, progreso(1, 120));
-        ProgresoUsuarioDTO repeticionPeor = servicio.guardarProgreso(usuario, progreso(1, 80));
+        ProgresoUsuarioDTO repeticionMejor = servicio.guardarProgreso(usuario, progreso(1, 80));
+        ProgresoUsuarioDTO repeticionPeor = servicio.guardarProgreso(usuario, progreso(1, 50));
 
-        assertEquals(100, nivel1.getPuntajeTotal());
-        assertEquals(230, nivel2.getPuntajeTotal());
-        assertEquals(250, repeticionMejor.getPuntajeTotal());
-        assertEquals(250, repeticionPeor.getPuntajeTotal());
+        assertEquals(60, nivel1.getPuntajeTotal());
+        assertEquals(190, nivel2.getPuntajeTotal());
+        assertEquals(210, repeticionMejor.getPuntajeTotal());
+        assertEquals(210, repeticionPeor.getPuntajeTotal());
         assertEquals(2, repeticionPeor.getNivelActual());
-        assertEquals(120, puntajeNivel(repeticionPeor, 1));
+        assertEquals(80, puntajeNivel(repeticionPeor, 1));
         assertEquals(130, puntajeNivel(repeticionPeor, 2));
+        assertEquals(1, intentosNivel(repeticionPeor, 1));
+    }
+
+    @Test
+    void rechazaPuntajesFueraDelRangoRealDelNivel() {
+        IProgresoNivelRepositorio progresoRepositorio = mock(IProgresoNivelRepositorio.class);
+        IUsuarioServicio usuarioServicio = mock(IUsuarioServicio.class);
+        IDescripcionNivelServicio descripcionNivelServicio = mock(IDescripcionNivelServicio.class);
+        Usuario usuario = new Usuario(2L, "Ada", "ada@test.com", Rol.ESTUDIANTE, "123456");
+        ProgresoServicio servicio = new ProgresoServicio(
+                progresoRepositorio, usuarioServicio, descripcionNivelServicio);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> servicio.guardarProgreso(usuario, progreso(1, 81)));
+
+        assertEquals("El puntaje del nivel 1 debe estar entre 0 y 80", error.getMessage());
+    }
+
+    @Test
+    void rechazaCompletarUnNivelSinHaberCompletadoElAnterior() {
+        IProgresoNivelRepositorio progresoRepositorio = mock(IProgresoNivelRepositorio.class);
+        IUsuarioServicio usuarioServicio = mock(IUsuarioServicio.class);
+        IDescripcionNivelServicio descripcionNivelServicio = mock(IDescripcionNivelServicio.class);
+        Usuario usuario = new Usuario(3L, "Linus", "linus@test.com", Rol.ESTUDIANTE, "123456");
+        when(progresoRepositorio.findByUsuarioAndNivel(usuario, 2)).thenReturn(Optional.empty());
+        when(progresoRepositorio.findByUsuarioAndNivel(usuario, 1)).thenReturn(Optional.empty());
+        ProgresoServicio servicio = new ProgresoServicio(
+                progresoRepositorio, usuarioServicio, descripcionNivelServicio);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> servicio.guardarProgreso(usuario, progreso(2, 100)));
+
+        assertEquals("Debes completar el nivel 1 antes de completar el nivel 2", error.getMessage());
     }
 
     private static GuardarProgresoRequest progreso(Integer nivel, Integer puntaje) {
@@ -89,6 +123,14 @@ class ProgresoServicioTest {
                 .filter(progreso -> progreso.getNivel().equals(nivel))
                 .findFirst()
                 .map(ProgresoNivelDTO::getPuntaje)
+                .orElseThrow();
+    }
+
+    private static Integer intentosNivel(ProgresoUsuarioDTO progresoUsuario, Integer nivel) {
+        return progresoUsuario.getNiveles().stream()
+                .filter(progreso -> progreso.getNivel().equals(nivel))
+                .findFirst()
+                .map(ProgresoNivelDTO::getIntentos)
                 .orElseThrow();
     }
 }

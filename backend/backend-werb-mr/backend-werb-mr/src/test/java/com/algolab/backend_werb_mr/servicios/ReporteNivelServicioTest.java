@@ -3,6 +3,7 @@ package com.algolab.backend_werb_mr.servicios;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -60,6 +61,10 @@ class ReporteNivelServicioTest {
         ia.setFortalezas(List.of("Distingue miembros privados", "Usa métodos públicos"));
         ia.setAspectosMejora(List.of("Explicar la validación"));
         ia.setRecomendaciones(List.of("Crear otro ejemplo de encapsulamiento"));
+        ia.setPuntajeBase(78);
+        ia.setTiempoRestanteBase(54);
+        ia.setIntentosBase(2);
+        ia.setCompletadoBase(true);
 
         ReporteNivelDTO enriquecido = servicio.actualizarConIa(usuario, 3, ia);
 
@@ -68,5 +73,78 @@ class ReporteNivelServicioTest {
         assertEquals("Encapsulamiento", enriquecido.getTituloNivel());
         assertEquals(2, enriquecido.getFortalezas().size());
         assertEquals("Explicar la validación", enriquecido.getAspectosMejora().get(0));
+
+        ReporteNivelDTO resincronizado = servicio.sincronizarDesdeProgreso(usuario, progreso);
+        assertTrue(resincronizado.getGeneradoPorIa());
+        assertEquals("Explicar la validación", resincronizado.getAspectosMejora().get(0));
+    }
+
+    @Test
+    void desempenoCorrectoMantieneAspectosMejoraVacios() {
+        IReporteNivelRepositorio repositorio = mock(IReporteNivelRepositorio.class);
+        AtomicReference<ReporteNivel> guardado = new AtomicReference<>();
+        Usuario usuario = new Usuario(8L, "Grace", "grace@test.com", Rol.ESTUDIANTE, "123456");
+
+        when(repositorio.findByUsuarioAndNivel(usuario, 1))
+                .thenAnswer(invocacion -> Optional.ofNullable(guardado.get()));
+        when(repositorio.save(any(ReporteNivel.class))).thenAnswer(invocacion -> {
+            ReporteNivel reporte = invocacion.getArgument(0);
+            reporte.normalizar();
+            guardado.set(reporte);
+            return reporte;
+        });
+
+        ProgresoNivel progreso = new ProgresoNivel();
+        progreso.setUsuario(usuario);
+        progreso.setNivel(1);
+        progreso.setCompletado(true);
+        progreso.setPuntaje(100);
+        progreso.setTiempoRestante(90);
+        progreso.setIntentos(1);
+
+        ReporteNivelServicio servicio = new ReporteNivelServicio(repositorio);
+        ReporteNivelDTO base = servicio.sincronizarDesdeProgreso(usuario, progreso);
+        assertTrue(base.getAspectosMejora().isEmpty());
+
+        ActualizarReporteIaRequest ia = new ActualizarReporteIaRequest();
+        ia.setDominio(100);
+        ia.setResumen("Completó el nivel sin errores.");
+        ia.setFortalezas(List.of("Comprensión conceptual"));
+        ia.setAspectosMejora(List.of());
+        ia.setRecomendaciones(List.of("Aplicar el concepto en otro caso"));
+        ia.setPuntajeBase(100);
+        ia.setTiempoRestanteBase(90);
+        ia.setIntentosBase(1);
+        ia.setCompletadoBase(true);
+
+        ReporteNivelDTO enriquecido = servicio.actualizarConIa(usuario, 1, ia);
+        assertTrue(enriquecido.getAspectosMejora().isEmpty());
+    }
+
+    @Test
+    void rechazaUnInformeIaGeneradoConMetricasDeUnIntentoAnterior() {
+        IReporteNivelRepositorio repositorio = mock(IReporteNivelRepositorio.class);
+        Usuario usuario = new Usuario(9L, "Linus", "linus@campusucc.edu.co", Rol.ESTUDIANTE, "123456");
+        ReporteNivel actual = new ReporteNivel();
+        actual.setUsuario(usuario);
+        actual.setNivel(4);
+        actual.setPuntaje(210);
+        actual.setTiempoRestante(120);
+        actual.setIntentos(2);
+        actual.setCompletado(true);
+        when(repositorio.findByUsuarioAndNivel(usuario, 4)).thenReturn(Optional.of(actual));
+
+        ActualizarReporteIaRequest anterior = new ActualizarReporteIaRequest();
+        anterior.setResumen("Informe de un intento anterior");
+        anterior.setPuntajeBase(170);
+        anterior.setTiempoRestanteBase(80);
+        anterior.setIntentosBase(1);
+        anterior.setCompletadoBase(true);
+
+        ReporteNivelServicio servicio = new ReporteNivelServicio(repositorio);
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> servicio.actualizarConIa(usuario, 4, anterior));
+
+        assertTrue(error.getMessage().contains("progreso cambió"));
     }
 }

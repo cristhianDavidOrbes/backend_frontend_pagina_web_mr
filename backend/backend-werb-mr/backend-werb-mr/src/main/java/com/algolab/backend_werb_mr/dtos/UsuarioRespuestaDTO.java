@@ -17,6 +17,7 @@ public class UsuarioRespuestaDTO {
     private String avatar;
     private String avatarUrl;
     private String avatarVersion;
+    private boolean tutorialCompletado;
 
     public UsuarioRespuestaDTO() {
     }
@@ -33,7 +34,8 @@ public class UsuarioRespuestaDTO {
 
     public UsuarioRespuestaDTO(Long id, String nombre, String correo, String nombreUsuario, Rol rol,
             Integer nivelActual, Integer puntaje, String biografia, String institucion,
-            String programa, String avatar, String avatarUrl, String avatarVersion) {
+            String programa, String avatar, String avatarUrl, String avatarVersion,
+            boolean tutorialCompletado) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
@@ -47,6 +49,7 @@ public class UsuarioRespuestaDTO {
         this.avatar = avatar;
         this.avatarUrl = avatarUrl;
         this.avatarVersion = avatarVersion;
+        this.tutorialCompletado = tutorialCompletado;
     }
 
     public static UsuarioRespuestaDTO desdeUsuario(Usuario usuario) {
@@ -63,7 +66,8 @@ public class UsuarioRespuestaDTO {
                 usuario.getPrograma(),
                 usuario.getAvatar(),
                 construirAvatarUrl(usuario),
-                usuario.getAvatarVersion());
+                usuario.getAvatarVersion(),
+                usuario.isTutorialCompletado());
     }
 
     private static String construirAvatarUrl(Usuario usuario) {
@@ -141,4 +145,6 @@ public class UsuarioRespuestaDTO {
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     public String getAvatarVersion() { return avatarVersion; }
     public void setAvatarVersion(String avatarVersion) { this.avatarVersion = avatarVersion; }
+    public boolean isTutorialCompletado() { return tutorialCompletado; }
+    public void setTutorialCompletado(boolean tutorialCompletado) { this.tutorialCompletado = tutorialCompletado; }
 }

@@ -63,8 +63,9 @@ public class ReporteNivelControlador {
             @RequestBody ActualizarReporteIaRequest request, Authentication authentication) {
         Usuario usuario = usuarioAutenticado(authentication);
         if (usuario == null) return noAutorizado();
-        if (nivel == null || nivel < 1 || request == null) {
-            return ResponseEntity.badRequest().body(Map.of("mensaje", "Nivel y reporte son obligatorios"));
+        if (nivel == null || nivel < 1 || nivel > 6 || request == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "El reporte es obligatorio y el nivel debe estar entre 1 y 6"));
         }
         try {
             return ResponseEntity.ok(reporteServicio.actualizarConIa(usuario, nivel, request));

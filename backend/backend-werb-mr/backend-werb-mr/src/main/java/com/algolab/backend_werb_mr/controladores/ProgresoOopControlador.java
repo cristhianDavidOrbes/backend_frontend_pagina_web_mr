@@ -1,6 +1,8 @@
 package com.algolab.backend_werb_mr.controladores;
 
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +25,16 @@ import com.algolab.backend_werb_mr.servicios.IProgresoOopServicio;
 @RequestMapping("/api/oop/progreso")
 public class ProgresoOopControlador {
     private static final Logger logger = LoggerFactory.getLogger(ProgresoOopControlador.class);
+    private static final Map<Integer, Integer> PUNTAJES_POR_NIVEL = Map.of(
+            1, 10,
+            2, 15,
+            3, 20,
+            4, 25,
+            5, 30,
+            6, 25,
+            7, 30,
+            8, 50);
+    private static final Set<String> LENGUAJES_PERMITIDOS = Set.of("python", "java");
 
     private final IProgresoOopServicio progresoOopServicio;
 
@@ -59,8 +71,13 @@ public class ProgresoOopControlador {
                     "mensaje", "Usuario autenticado no encontrado"));
         }
 
-        ProgresoOopUsuarioDTO progreso = progresoOopServicio.guardarProgreso(usuario, request);
-        return ResponseEntity.ok(progreso);
+        try {
+            ProgresoOopUsuarioDTO progreso = progresoOopServicio.guardarProgreso(usuario, request);
+            return ResponseEntity.ok(progreso);
+        } catch (IllegalArgumentException excepcion) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", excepcion.getMessage()));
+        }
     }
 
     private Usuario obtenerUsuario(Authentication authentication) {
@@ -78,9 +95,9 @@ public class ProgresoOopControlador {
                     "mensaje", "Debe enviar los datos del progreso OOP"));
         }
 
-        if (request.getNivel() == null || request.getNivel() < 1) {
+        if (request.getNivel() == null || !PUNTAJES_POR_NIVEL.containsKey(request.getNivel())) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "mensaje", "El nivel debe ser mayor o igual a 1"));
+                    "mensaje", "El nivel OOP debe estar entre 1 y 8"));
         }
 
         if (request.getPuntaje() == null || request.getPuntaje() < 0) {
@@ -95,6 +112,31 @@ public class ProgresoOopControlador {
 
         if (request.getCompletado() == null) {
             request.setCompletado(false);
+        }
+
+        String lenguaje = request.getLenguaje() == null
+                ? "python"
+                : request.getLenguaje().trim().toLowerCase(Locale.ROOT);
+        if (!LENGUAJES_PERMITIDOS.contains(lenguaje)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "El lenguaje debe ser python o java"));
+        }
+        request.setLenguaje(lenguaje);
+
+        int puntajeMaximo = PUNTAJES_POR_NIVEL.get(request.getNivel());
+        boolean usoPista = Boolean.TRUE.equals(request.getUsoPista());
+        int puntajeEsperado = usoPista ? puntajeMaximo / 2 : puntajeMaximo;
+        // La solución completa permite avanzar sin regalar puntos. El servicio
+        // sigue exigiendo los prerrequisitos del nivel anterior.
+        if (Boolean.TRUE.equals(request.getCompletado())
+                && request.getPuntaje() != 0
+                && request.getPuntaje() != puntajeEsperado) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "El puntaje no corresponde al nivel y al uso de pista"));
+        }
+        if (!Boolean.TRUE.equals(request.getCompletado()) && request.getPuntaje() != 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "Un nivel incompleto no puede otorgar puntaje"));
         }
 
         return null;

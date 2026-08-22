@@ -1,11 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useMemo } from "react";
-import { Code2, CheckCircle2, Circle, Lock, Trophy, ChevronRight, Sparkles, BookOpen } from "lucide-react";
+import { useEffect, useState, useMemo, type CSSProperties } from "react";
+import {
+  Code2,
+  CheckCircle2,
+  Circle,
+  Lock,
+  Trophy,
+  ChevronRight,
+  Sparkles,
+  BookOpen,
+  Gamepad2,
+  TerminalSquare,
+  ArrowRight,
+  Target,
+  Zap,
+  Clock3,
+} from "lucide-react";
 import { OOP_NIVELES, type MiniNivel } from "@/lib/oop-niveles";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { apiRequest } from "@/lib/client-api";
+import styles from "./programar-poo.module.css";
 
 const STORAGE_KEY = "oop_progreso";
 
@@ -38,12 +54,16 @@ type ProgresoOopBackend = {
   }>;
 };
 
-function cargarProgresoLocal(): OopProgreso {
+function claveProgreso(usuarioId?: number) {
+  return `${STORAGE_KEY}:${usuarioId ?? "anonimo"}`;
+}
+
+function cargarProgresoLocal(usuarioId?: number): OopProgreso {
   if (typeof window === "undefined") {
     return { lenguaje: "python", niveles: {}, puntajeTotal: 0 };
   }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(claveProgreso(usuarioId));
     if (raw) return JSON.parse(raw) as OopProgreso;
   } catch {
     /* ignore */
@@ -51,10 +71,24 @@ function cargarProgresoLocal(): OopProgreso {
   return { lenguaje: "python", niveles: {}, puntajeTotal: 0 };
 }
 
-function guardarProgresoLocal(p: OopProgreso) {
+function guardarProgresoLocal(p: OopProgreso, usuarioId?: number) {
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+    localStorage.setItem(claveProgreso(usuarioId), JSON.stringify(p));
   }
+}
+
+function fusionarNivelProgreso(
+  local: NivelProgreso | undefined,
+  remoto: NivelProgreso,
+): NivelProgreso {
+  if (!local) return remoto;
+
+  return {
+    completado: local.completado || remoto.completado,
+    puntos: Math.max(local.puntos, remoto.puntos),
+    intentos: Math.max(local.intentos, remoto.intentos),
+    usoPista: local.usoPista || remoto.usoPista,
+  };
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -82,47 +116,71 @@ const BG_MAP: Record<string, string> = {
 export default function CodigoPage() {
   const { token, usuario } = useAuthSession();
   const [progreso, setProgreso] = useState<OopProgreso>(() => cargarProgresoLocal());
-  const [lenguaje, setLenguaje] = useState<"python" | "java">(() => cargarProgresoLocal().lenguaje);
+  const [lenguaje, setLenguaje] = useState<"python" | "java">("python");
 
   // Sincronizar con el backend al montar o al obtener token
   useEffect(() => {
-    if (!token) return;
+    if (!usuario?.id) return;
+
+    let cancelado = false;
+    const local = cargarProgresoLocal(usuario.id);
+    queueMicrotask(() => {
+      if (cancelado) return;
+      setProgreso(local);
+      setLenguaje(local.lenguaje);
+    });
+    if (!token) return () => { cancelado = true; };
 
     apiRequest<ProgresoOopBackend>("/api/oop/progreso", token)
       .then((data) => {
-        if (!data || !data.niveles) return;
+        if (cancelado || !data || !data.niveles) return;
 
         setProgreso((prev) => {
           const actualizados: Record<string, NivelProgreso> = { ...prev.niveles };
           data.niveles.forEach((n) => {
-            actualizados[String(n.nivel)] = {
+            const claveNivel = String(n.nivel);
+            const remoto: NivelProgreso = {
               completado: n.completado,
               puntos: n.puntaje,
               intentos: n.intentos,
               usoPista: n.usoPista,
             };
+            actualizados[claveNivel] = fusionarNivelProgreso(
+              actualizados[claveNivel],
+              remoto,
+            );
           });
+
+          const totalFusionado = Object.values(actualizados).reduce(
+            (total, nivel) => total + nivel.puntos,
+            0,
+          );
 
           const nuevo: OopProgreso = {
             lenguaje: prev.lenguaje,
             niveles: actualizados,
-            puntajeTotal: data.puntajeOopTotal ?? prev.puntajeTotal,
+            puntajeTotal: Math.max(
+              prev.puntajeTotal,
+              data.puntajeOopTotal ?? 0,
+              totalFusionado,
+            ),
             puntajeGlobal: data.puntajeGlobalTotal,
           };
-          guardarProgresoLocal(nuevo);
+          guardarProgresoLocal(nuevo, usuario.id);
           return nuevo;
         });
       })
       .catch(() => {
         // Fallback transparente a localStorage si el backend no responde
       });
-  }, [token]);
+    return () => { cancelado = true; };
+  }, [token, usuario?.id]);
 
   function cambiarLenguaje(lang: "python" | "java") {
     setLenguaje(lang);
     setProgreso((prev) => {
       const nuevo = { ...prev, lenguaje: lang };
-      guardarProgresoLocal(nuevo);
+      guardarProgresoLocal(nuevo, usuario?.id);
       return nuevo;
     });
   }
@@ -144,11 +202,31 @@ export default function CodigoPage() {
   }, []);
 
   const puntajeOopTotal = Object.values(progreso.niveles).reduce((sum, n) => sum + n.puntos, 0);
-  const puntajeGlobal = progreso.puntajeGlobal ?? (usuario?.puntaje ? usuario.puntaje + puntajeOopTotal : puntajeOopTotal);
+  // usuario.puntaje ya incluye OOP; sumarlo otra vez en el fallback duplicaba
+  // el total cuando el endpoint específico estaba temporalmente indisponible.
+  const puntajeGlobal = progreso.puntajeGlobal ?? usuario?.puntaje ?? puntajeOopTotal;
   const completados = Object.values(progreso.niveles).filter((n) => n.completado).length;
+  const porcentaje = Math.round((completados / OOP_NIVELES.length) * 100);
+  const intentosTotales = Object.values(progreso.niveles).reduce(
+    (total, nivel) => total + nivel.intentos,
+    0,
+  );
+  const puntosDisponibles = OOP_NIVELES.reduce((total, nivel) => total + nivel.puntaje, 0);
+  const puntosRestantes = OOP_NIVELES.reduce(
+    (total, nivel) =>
+      total + (progreso.niveles[String(nivel.id)]?.completado ? 0 : nivel.puntaje),
+    0,
+  );
+  const siguienteNivel = OOP_NIVELES.find((nivel, index) => {
+    if (progreso.niveles[String(nivel.id)]?.completado) return false;
+    return index === 0 || progreso.niveles[String(OOP_NIVELES[index - 1].id)]?.completado;
+  });
+  const rutaCompleta = OOP_NIVELES.every(
+    (nivel) => progreso.niveles[String(nivel.id)]?.completado,
+  );
 
   return (
-    <main className="oop-main">
+    <main className={`oop-main ${styles.routePage}`}>
       {/* Header */}
       <header className="oop-page-header">
         <div className="oop-page-title-row">
@@ -157,14 +235,14 @@ export default function CodigoPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <p className="section-kicker">Módulo de Programación POO</p>
+              <p className="section-kicker">Contenido adicional · laboratorio de código</p>
               <span className="rounded-md bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300">
                 Suma Puntos Globales
               </span>
             </div>
-            <h1 className="oop-page-title">Aprende Python y Java con Objetos</h1>
+            <h1 className="oop-page-title">Programa POO fuera de las gafas</h1>
             <p className="oop-page-subtitle">
-              4 Módulos estructurados · 8 Subniveles interactivos · Compilador 100% local
+              Un complemento opcional de AlgoLab para llevar a código lo que ya tocaste y comprendiste en realidad mixta.
             </p>
           </div>
         </div>
@@ -195,6 +273,78 @@ export default function CodigoPage() {
         </div>
       </header>
 
+      <section className={styles.missionHero} aria-labelledby="mision-programar-poo">
+        <div className={styles.missionCopy}>
+          <span className={styles.liveBadge}>
+            <span aria-hidden="true" /> {rutaCompleta ? "RUTA DOMINADA" : "MISIÓN ACTIVA"}
+          </span>
+          <p className={styles.eyebrow}>
+            {rutaCompleta ? "Laboratorio completado" : `Siguiente desafío · ${siguienteNivel?.subnivel ?? "1.1"}`}
+          </p>
+          <h2 id="mision-programar-poo">
+            {rutaCompleta ? "Tu colección POO está completa" : siguienteNivel?.titulo ?? "Variables y Tipos"}
+          </h2>
+          <p>
+            {rutaCompleta
+              ? "Puedes repetir cualquier reto, probar el otro lenguaje y perfeccionar tus soluciones sin perder el progreso."
+              : siguienteNivel?.descripcionCorta ?? "Convierte lo aprendido en una solución real de código."}
+          </p>
+
+          <div className={styles.missionActions}>
+            <Link
+              href={`/estudiante/codigo/${siguienteNivel?.id ?? OOP_NIVELES[0].id}?lang=${lenguaje}`}
+              className={styles.primaryMissionButton}
+            >
+              {rutaCompleta ? "Volver al laboratorio" : completados > 0 ? "Continuar misión" : "Comenzar aventura"}
+              <ArrowRight size={17} />
+            </Link>
+            <span className={styles.shortcutHint}>
+              <TerminalSquare size={15} /> Código ejecutado en tu navegador
+            </span>
+          </div>
+
+          <div className={styles.missionMetrics}>
+            <span><Target size={15} /> {OOP_NIVELES.length - completados} retos pendientes</span>
+            <span><Zap size={15} /> {puntosRestantes} XP disponibles</span>
+            <span><Clock3 size={15} /> {intentosTotales} ejecuciones guardadas</span>
+          </div>
+        </div>
+
+        <div className={styles.progressCore} aria-label={`${porcentaje}% de la ruta completado`}>
+          <div
+            className={styles.progressRing}
+            style={{ "--route-progress": `${porcentaje * 3.6}deg` } as CSSProperties}
+          >
+            <div className={styles.progressRingInner}>
+              <strong>{porcentaje}%</strong>
+              <span>RUTA POO</span>
+            </div>
+          </div>
+          <div className={styles.scoreDock}>
+            <span>XP CONSEGUIDA</span>
+            <strong>{puntajeOopTotal}<small> / {puntosDisponibles}</small></strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="oop-additional-banner" aria-label="Cómo funciona Programar POO">
+        <div className="oop-additional-copy">
+          <span className="oop-additional-badge">MODO COMPLEMENTARIO</span>
+          <h2>De los objetos físicos al código, sin reemplazar la experiencia VR.</h2>
+          <p>
+            Practica a tu ritmo en Python o Java. Cada reto combina documentación breve, editor, terminal y
+            validación del concepto; los puntos se sincronizan con tu perfil global de AlgoLab.
+          </p>
+        </div>
+        <div className="oop-additional-flow" aria-label="Flujo del módulo">
+          <span><Gamepad2 size={17} /> Comprende en MR</span>
+          <ChevronRight size={16} />
+          <span><BookOpen size={17} /> Consulta la guía</span>
+          <ChevronRight size={16} />
+          <span><TerminalSquare size={17} /> Programa y ejecuta</span>
+        </div>
+      </section>
+
       {/* Language selector */}
       <div className="oop-lang-selector">
         <p className="oop-lang-label">Lenguaje de aprendizaje:</p>
@@ -222,34 +372,60 @@ export default function CodigoPage() {
         <div className="oop-progress-bar-track">
           <div
             className="oop-progress-bar-fill"
-            style={{ width: `${(completados / OOP_NIVELES.length) * 100}%` }}
+            style={{ width: `${porcentaje}%` }}
           />
         </div>
         <span className="oop-progress-label">
-          {Math.round((completados / OOP_NIVELES.length) * 100)}% completado
+          {porcentaje}% completado
         </span>
       </div>
 
+      {rutaCompleta ? (
+        <section className="oop-konami-reward" aria-label="Recompensa secreta de Programar POO">
+          <div>
+            <span className="oop-konami-crown">🏆 TROFEO DE MAESTRÍA POO</span>
+            <h2>Desbloqueaste el secreto mejor guardado de AlgoLab</h2>
+            <p>
+              Esta recompensa solo aparece al completar los ocho subniveles. Memoriza la secuencia y pruébala
+              dentro de las gafas.
+            </p>
+          </div>
+          <div className="oop-konami-code" aria-label="Código Konami">
+            <strong>↑ ↑ ↓ ↓ ← ← → → B A</strong>
+            <small>
+              Como <b>invitado</b>: úsalo después de ver o saltar el tutorial, fuera de cualquier nivel, para
+              desbloquear la ruta. En el <b>nivel 3</b>: introdúcelo durante la práctica y observa al robot.
+            </small>
+          </div>
+        </section>
+      ) : null}
+
       {/* Modules and Sublevels list in 2-column grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="oop-modules-grid">
         {modulos.map((mod) => {
           const subnivelesCompletados = mod.niveles.filter((n) => progreso.niveles[String(n.id)]?.completado).length;
 
           return (
-            <section key={mod.numero} className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-lg">
+            <section key={mod.numero} className={`oop-module-card ${styles.moduleStage}`}>
               {/* Module Header */}
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
+              <div className={styles.moduleHeader}>
                 <div className="flex items-center gap-2">
-                  <BookOpen size={18} className="text-emerald-400" />
-                  <h2 className="text-base font-bold text-white">{mod.nombre}</h2>
+                  <span className={styles.moduleNumber}>{String(mod.numero).padStart(2, "0")}</span>
+                  <div>
+                    <p>CAPÍTULO</p>
+                    <h2>{mod.nombre}</h2>
+                  </div>
                 </div>
-                <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs text-slate-300">
+                <span className={styles.moduleCounter}>
                   {subnivelesCompletados} de {mod.niveles.length} completados
                 </span>
+                <div className={styles.moduleProgress} aria-hidden="true">
+                  <span style={{ width: `${(subnivelesCompletados / mod.niveles.length) * 100}%` }} />
+                </div>
               </div>
 
               {/* Sublevels Grid (2 sub-levels side by side) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 flex-1">
+              <div className="oop-module-levels">
                 {mod.niveles.map((nivel) => {
                   const nivelIdx = OOP_NIVELES.findIndex((n) => n.id === nivel.id);
                   const nivelProgreso = progreso.niveles[String(nivel.id)];
@@ -259,7 +435,7 @@ export default function CodigoPage() {
                   return (
                     <div
                       key={nivel.id}
-                      className={`oop-nivel-card flex flex-col justify-between border ${BG_MAP[nivel.color]} ${bloqueado ? "opacity-50" : ""}`}
+                      className={`oop-nivel-card ${styles.levelCard} flex flex-col justify-between border ${BG_MAP[nivel.color]} ${bloqueado ? `${styles.levelLocked} opacity-50` : ""} ${completado ? styles.levelComplete : ""}`}
                     >
                       <div className="space-y-2.5">
                         <div className="oop-nivel-card-top">
@@ -278,6 +454,12 @@ export default function CodigoPage() {
                               <Circle size={18} className="text-slate-600" />
                             )}
                           </div>
+                        </div>
+
+                        <div className={styles.levelSignal} aria-hidden="true">
+                          <span />
+                          <span />
+                          <span />
                         </div>
 
                         <div className="oop-nivel-info">
@@ -300,7 +482,7 @@ export default function CodigoPage() {
                         </div>
 
                         {bloqueado ? (
-                          <span className="oop-locked-text text-[11px]">Bloqueado</span>
+                          <span className="oop-locked-text text-[11px]">Completa el reto anterior</span>
                         ) : (
                           <Link
                             href={`/estudiante/codigo/${nivel.id}?lang=${lenguaje}`}

@@ -32,8 +32,9 @@ public class SeguridadConfiguracion {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/usuarios/registrar").permitAll()
                         .requestMatchers("/api/usuarios/iniciar-sesion").permitAll()
+                        .requestMatchers("/api/usuarios/segundo-factor/verificar").permitAll()
+                        .requestMatchers("/api/usuarios/segundo-factor/reenviar").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/usuarios/*/avatar").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ranking", "/api/ranking/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/niveles", "/api/niveles/**").authenticated()
                         .requestMatchers("/api/niveles/**").hasAnyRole("DOCENTE", "ADMINISTRADOR")

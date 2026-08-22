@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 import {
   AVATAR_PRESETS,
   avatarPresetSeguro,
-  avatarUrlParaCliente,
   normalizarAvatar,
   type AvatarNormalizado,
   type AvatarPreset,
 } from "@/lib/avatar";
 import { apiRequest } from "@/lib/client-api";
 import { clearAuthSession, saveAuthUser, type UsuarioSesion } from "@/lib/use-auth-session";
+import { useSecureAvatarUrl } from "@/lib/use-secure-avatar";
 
 type Props = {
   usuario: UsuarioSesion;
@@ -50,7 +50,7 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
   }
 
   const preset = avatarPresetSeguro(form.avatar);
-  const avatarRemotoUrl = avatarUrlParaCliente(form.avatarUrl);
+  const avatarRemotoUrl = useSecureAvatarUrl(form.avatarUrl);
   const avatarUrl = avatarPendiente?.previewUrl ?? (eliminarAvatarAlGuardar ? null : avatarRemotoUrl);
   const inicial = (form.nombre?.trim().charAt(0) || "A").toUpperCase();
   const estaOcupado = busy !== null;
@@ -121,22 +121,22 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
         body: crearFormularioAvatar(avatarPendiente),
       });
 
-      const fusionado: UsuarioSesion = {
-        ...updated,
-        nombre: form.nombre,
-        nombreUsuario: form.nombreUsuario,
-        biografia: form.biografia,
-        institucion: form.institucion,
-        programa: form.programa,
-      };
-
-      saveAuthUser(fusionado);
-      setForm(fusionado);
+      // La respuesta del backend es la única fuente de verdad para el perfil
+      // sincronizado. Conservamos en el formulario los textos todavía no
+      // guardados, pero nunca los publicamos en la sesión local como si ya
+      // existieran en el servidor.
+      saveAuthUser(updated);
+      setForm((current) => ({
+        ...current,
+        avatar: updated.avatar,
+        avatarUrl: updated.avatarUrl,
+        avatarVersion: updated.avatarVersion,
+      }));
       setAvatarPendiente(null);
-      setTieneAvatarPersonalizado(Boolean(fusionado.avatarUrl));
+      setTieneAvatarPersonalizado(Boolean(updated.avatarUrl));
       setEliminarAvatarAlGuardar(false);
       setStatus("¡Foto de perfil subida y sincronizada con AlgoLab!");
-      onSaved?.(fusionado);
+      onSaved?.(updated);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo subir la foto.");
     } finally {
@@ -165,26 +165,22 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
       });
 
       const updated: UsuarioSesion = respuesta ?? {
-        ...form,
+        ...usuario,
         avatarUrl: null,
         avatarVersion: null,
       };
 
-      const fusionado: UsuarioSesion = {
-        ...updated,
-        nombre: form.nombre,
-        nombreUsuario: form.nombreUsuario,
-        biografia: form.biografia,
-        institucion: form.institucion,
-        programa: form.programa,
-      };
-
-      saveAuthUser(fusionado);
-      setForm(fusionado);
+      saveAuthUser(updated);
+      setForm((current) => ({
+        ...current,
+        avatar: updated.avatar,
+        avatarUrl: null,
+        avatarVersion: null,
+      }));
       setTieneAvatarPersonalizado(false);
       setEliminarAvatarAlGuardar(false);
       setStatus("Foto eliminada. Se usará el avatar prediseñado.");
-      onSaved?.(fusionado);
+      onSaved?.(updated);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo eliminar la foto.");
     } finally {

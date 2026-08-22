@@ -10,6 +10,9 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.algolab.backend_werb_mr.modelos.Usuario;
+import com.algolab.backend_werb_mr.repositorio.IUsuarioRepositorio;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,9 +23,11 @@ public class JwtFiltro extends OncePerRequestFilter {
     private static final String BEARER = "Bearer ";
 
     private final JwtServicio jwtServicio;
+    private final IUsuarioRepositorio usuarioRepositorio;
 
-    public JwtFiltro(JwtServicio jwtServicio) {
+    public JwtFiltro(JwtServicio jwtServicio, IUsuarioRepositorio usuarioRepositorio) {
         this.jwtServicio = jwtServicio;
+        this.usuarioRepositorio = usuarioRepositorio;
     }
 
     @Override
@@ -41,14 +46,22 @@ public class JwtFiltro extends OncePerRequestFilter {
 
         if (jwtServicio.tokenValido(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
             String correo = jwtServicio.obtenerCorreo(token);
-            String rol = jwtServicio.obtenerRol(token);
-            UsernamePasswordAuthenticationToken autenticacion = new UsernamePasswordAuthenticationToken(
-                    correo,
-                    null,
-                    List.of(new SimpleGrantedAuthority("ROLE_" + rol)));
+            Usuario usuarioActual = correo == null
+                    ? null
+                    : usuarioRepositorio.buscarPorCorreo(correo).orElse(null);
 
-            autenticacion.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(autenticacion);
+            // La autoridad siempre se toma de la base de datos. De este modo, una
+            // cuenta eliminada o cuyo rol fue reducido pierde acceso inmediatamente,
+            // aunque conserve un JWT que todavía no haya expirado.
+            if (usuarioActual != null && usuarioActual.getRol() != null) {
+                UsernamePasswordAuthenticationToken autenticacion = new UsernamePasswordAuthenticationToken(
+                        usuarioActual.getCorreo(),
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_" + usuarioActual.getRol().name())));
+
+                autenticacion.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(autenticacion);
+            }
         }
 
         filterChain.doFilter(request, response);

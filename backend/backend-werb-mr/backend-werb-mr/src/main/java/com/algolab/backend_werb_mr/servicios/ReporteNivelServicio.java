@@ -2,6 +2,9 @@ package com.algolab.backend_werb_mr.servicios;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +18,14 @@ import com.algolab.backend_werb_mr.repositorio.IReporteNivelRepositorio;
 
 @Service
 public class ReporteNivelServicio {
+    private static final Map<Integer, Integer> PUNTAJE_MAXIMO_POR_NIVEL = Map.of(
+            1, 80,
+            2, 240,
+            3, 100,
+            4, 255,
+            5, 300,
+            6, 300);
+
     private final IReporteNivelRepositorio repositorio;
 
     public ReporteNivelServicio(IReporteNivelRepositorio repositorio) {
@@ -23,19 +34,31 @@ public class ReporteNivelServicio {
 
     @Transactional
     public ReporteNivelDTO sincronizarDesdeProgreso(Usuario usuario, ProgresoNivel progreso) {
-        ReporteNivel reporte = repositorio.findByUsuarioAndNivel(usuario, progreso.getNivel())
-                .orElseGet(ReporteNivel::new);
+        Optional<ReporteNivel> existente = repositorio.findByUsuarioAndNivel(usuario, progreso.getNivel());
 
         int puntaje = Math.max(0, progreso.getPuntaje());
         int intentos = Math.max(1, progreso.getIntentos());
-        int dominio = Math.max(0, Math.min(100, puntaje));
+        int puntajeMaximo = PUNTAJE_MAXIMO_POR_NIVEL.getOrDefault(progreso.getNivel(), 100);
+        int dominio = Math.max(0, Math.min(100,
+                Math.round((puntaje * 100f) / Math.max(1, puntajeMaximo))));
         boolean completado = Boolean.TRUE.equals(progreso.getCompletado());
+        int tiempoRestante = Math.max(0, progreso.getTiempoRestante());
+
+        // Unity puede reenviar el mismo progreso al cerrar o recuperar conexión.
+        // Una sincronización idéntica no debe borrar un informe ya enriquecido por IA.
+        if (existente.isPresent()
+                && Boolean.TRUE.equals(existente.get().getGeneradoPorIa())
+                && mismasMetricas(existente.get(), puntaje, tiempoRestante, intentos, completado)) {
+            return ReporteNivelDTO.desdeModelo(existente.get());
+        }
+
+        ReporteNivel reporte = existente.orElseGet(ReporteNivel::new);
 
         reporte.setUsuario(usuario);
         reporte.setNivel(progreso.getNivel());
         reporte.setTituloNivel(tituloNivel(progreso.getNivel()));
         reporte.setPuntaje(puntaje);
-        reporte.setTiempoRestante(Math.max(0, progreso.getTiempoRestante()));
+        reporte.setTiempoRestante(tiempoRestante);
         reporte.setIntentos(intentos);
         reporte.setCompletado(completado);
         reporte.setDominio(dominio);
@@ -53,16 +76,37 @@ public class ReporteNivelServicio {
         ReporteNivel reporte = repositorio.findByUsuarioAndNivel(usuario, nivel)
                 .orElseThrow(() -> new IllegalArgumentException("Primero debe guardarse el progreso del nivel"));
 
+        validarVersionMetricas(reporte, request);
+
         if (request.getDominio() != null) {
             reporte.setDominio(Math.max(0, Math.min(100, request.getDominio())));
         }
-        if (textoValido(request.getResumen())) reporte.setResumen(request.getResumen().trim());
+        if (textoValido(request.getResumen())) reporte.setResumen(limitar(request.getResumen(), 2000));
         if (listaValida(request.getFortalezas())) reporte.setFortalezas(unir(request.getFortalezas()));
-        if (listaValida(request.getAspectosMejora())) reporte.setAspectosMejora(unir(request.getAspectosMejora()));
+        // Una lista vacía es una respuesta válida: significa que no hay evidencia
+        // de deficiencias. No se conserva una debilidad genérica del reporte base.
+        if (request.getAspectosMejora() != null) reporte.setAspectosMejora(unir(request.getAspectosMejora()));
         if (listaValida(request.getRecomendaciones())) reporte.setRecomendaciones(unir(request.getRecomendaciones()));
         reporte.setGeneradoPorIa(true);
         reporte.setFechaGeneracion(LocalDateTime.now());
         return ReporteNivelDTO.desdeModelo(repositorio.save(reporte));
+    }
+
+    private static void validarVersionMetricas(ReporteNivel reporte, ActualizarReporteIaRequest request) {
+        if (request.getPuntajeBase() == null
+                || request.getTiempoRestanteBase() == null
+                || request.getIntentosBase() == null
+                || request.getCompletadoBase() == null) {
+            throw new IllegalArgumentException("Las métricas base del reporte son obligatorias");
+        }
+
+        if (!Objects.equals(reporte.getPuntaje(), request.getPuntajeBase())
+                || !Objects.equals(reporte.getTiempoRestante(), request.getTiempoRestanteBase())
+                || !Objects.equals(reporte.getIntentos(), request.getIntentosBase())
+                || !Objects.equals(reporte.getCompletado(), request.getCompletadoBase())) {
+            throw new IllegalArgumentException(
+                    "El progreso cambió mientras se generaba el informe; genere nuevamente el reporte");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +123,13 @@ public class ReporteNivelServicio {
 
     private static String unir(List<String> valores) {
         return valores.stream().filter(ReporteNivelServicio::textoValido)
-                .map(String::trim).limit(5).reduce((a, b) -> a + "\n" + b).orElse("");
+                .map(valor -> limitar(valor, 400)).distinct().limit(5)
+                .reduce((a, b) -> a + "\n" + b).orElse("");
+    }
+
+    private static String limitar(String valor, int maximo) {
+        String limpio = valor == null ? "" : valor.trim().replaceAll("\\s+", " ");
+        return limpio.length() <= maximo ? limpio : limpio.substring(0, maximo);
     }
 
     private static boolean textoValido(String valor) {
@@ -88,6 +138,14 @@ public class ReporteNivelServicio {
 
     private static boolean listaValida(List<String> valores) {
         return valores != null && valores.stream().anyMatch(ReporteNivelServicio::textoValido);
+    }
+
+    private static boolean mismasMetricas(ReporteNivel reporte, int puntaje, int tiempoRestante,
+            int intentos, boolean completado) {
+        return Objects.equals(reporte.getPuntaje(), puntaje)
+                && Objects.equals(reporte.getTiempoRestante(), tiempoRestante)
+                && Objects.equals(reporte.getIntentos(), intentos)
+                && Objects.equals(reporte.getCompletado(), completado);
     }
 
     private static String tituloNivel(int nivel) {
@@ -118,7 +176,7 @@ public class ReporteNivelServicio {
 
     private static List<String> mejorasBase(boolean completado, int dominio, int intentos) {
         if (!completado) return List.of("Completar la secuencia del reto", "Revisar la explicación del nivel");
-        if (dominio >= 85 && intentos <= 1) return List.of("Aplicar el concepto en un caso nuevo");
+        if (dominio >= 85 && intentos <= 1) return List.of();
         if (intentos > 2) return List.of("Reducir intentos mediante una estrategia previa", "Distinguir mejor las opciones del escenario");
         return dominio < 65
                 ? List.of("Diferenciar conceptos similares", "Justificar cada acción antes de ejecutarla")

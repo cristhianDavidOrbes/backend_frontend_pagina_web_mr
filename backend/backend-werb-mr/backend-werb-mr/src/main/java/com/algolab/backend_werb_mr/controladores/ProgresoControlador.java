@@ -61,8 +61,13 @@ public class ProgresoControlador {
                     "mensaje", "Usuario autenticado no encontrado"));
         }
 
-        ProgresoUsuarioDTO progreso = progresoServicio.guardarProgreso(usuario, request);
-        return ResponseEntity.ok(progreso);
+        try {
+            ProgresoUsuarioDTO progreso = progresoServicio.guardarProgreso(usuario, request);
+            return ResponseEntity.ok(progreso);
+        } catch (IllegalArgumentException errorValidacion) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", errorValidacion.getMessage()));
+        }
     }
 
     @GetMapping("/usuario/{usuarioId}")
@@ -93,9 +98,9 @@ public class ProgresoControlador {
                     "mensaje", "Debe enviar los datos del progreso"));
         }
 
-        if (request.getNivel() == null || request.getNivel() < 1) {
+        if (request.getNivel() == null || request.getNivel() < 1 || request.getNivel() > 6) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "mensaje", "El nivel debe ser mayor o igual a 1"));
+                    "mensaje", "El nivel debe estar entre 1 y 6"));
         }
 
         if (request.getPuntaje() == null || request.getPuntaje() < 0) {
