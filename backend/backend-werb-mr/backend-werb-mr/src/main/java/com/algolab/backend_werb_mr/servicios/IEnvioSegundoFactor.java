@@ -9,5 +9,9 @@ public interface IEnvioSegundoFactor {
 
     boolean disponible();
 
+    default boolean estaConfigurado() {
+        return true;
+    }
+
     void enviarCodigo(Usuario usuario, String codigo, long vigenciaSegundos);
 }

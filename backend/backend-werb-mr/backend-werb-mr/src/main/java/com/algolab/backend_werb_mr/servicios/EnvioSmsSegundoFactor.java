@@ -49,14 +49,18 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
     }
 
     @Override
+    public boolean estaConfigurado() {
+        return accountSid != null && authToken != null && fromNumber != null;
+    }
+
+    @Override
     public void enviarCodigo(Usuario usuario, String codigo, long vigenciaSegundos) {
         if (usuario.getCelular() == null || usuario.getCelular().isBlank()) {
             throw new SegundoFactorException(HttpStatus.BAD_REQUEST,
                     "La cuenta no tiene un numero celular verificado para recibir SMS");
         }
 
-        boolean twilioConfigurado = accountSid != null && authToken != null && fromNumber != null;
-        if (!twilioConfigurado) {
+        if (!estaConfigurado()) {
             logger.info("════════════════════════════════════════════════════════════════════");
             logger.info("[2FA SMS] Twilio no configurado. Código OTP para {}: {}", usuario.getCelular(), codigo);
             logger.info("════════════════════════════════════════════════════════════════════");

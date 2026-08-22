@@ -46,12 +46,18 @@ public class EnvioCorreoSegundoFactor implements IEnvioSegundoFactor {
     }
 
     @Override
+    public boolean estaConfigurado() {
+        return mailSenderProvider.getIfAvailable() != null
+                && limpiar(hostSmtp) != null
+                && limpiar(propiedades.getRemitente()) != null;
+    }
+
+    @Override
     public void enviarCodigo(Usuario usuario, String codigo, long vigenciaSegundos) {
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
         String remitente = limpiar(propiedades.getRemitente());
-        boolean smtpConfigurado = mailSender != null && limpiar(hostSmtp) != null && remitente != null;
 
-        if (!smtpConfigurado) {
+        if (!estaConfigurado() || mailSender == null || remitente == null) {
             logger.info("════════════════════════════════════════════════════════════════════");
             logger.info("[2FA CORREO] SMTP no configurado en el servidor. Código OTP para {}: {}", usuario.getCorreo(), codigo);
             logger.info("════════════════════════════════════════════════════════════════════");

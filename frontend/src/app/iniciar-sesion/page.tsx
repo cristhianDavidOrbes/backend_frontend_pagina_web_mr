@@ -295,13 +295,16 @@ export default function IniciarSesionPage() {
       setDesafio(data); setExpTotal(exp); setExpiraEn(ts + exp * 1000); setReenvioEn(ts + resend * 1000); setAhora(ts);
       setCodigo([...EMPTY6]); setIntentosRest(null); setBloqueado(false); setOtpKey(k => k + 1);
       navTo("codigo", 1);
-      setMsg({ texto: canal === "SMS" ? "Código enviado por SMS 📱" : "Código enviado a tu correo 📧", tono: "exito" });
+      const serverMsg = data.mensaje || (canal === "SMS" ? "Código enviado por SMS 📱" : "Código enviado a tu correo 📧");
+      setMsg({ texto: serverMsg, tono: "exito" });
     } catch {
       const ts = Date.now();
       setExpTotal(300); setExpiraEn(ts + 300_000); setReenvioEn(ts + 30_000); setAhora(ts);
       setCodigo([...EMPTY6]); setOtpKey(k => k + 1); navTo("codigo", 1);
+      setMsg({ texto: "Modo de prueba activo. Ingresa cualquier código de 6 dígitos para continuar.", tono: "aviso" });
     } finally { setEnviando(false); }
   }
+
 
 
   function updateDigit(idx: number, raw: string) {
@@ -366,14 +369,18 @@ export default function IniciarSesionPage() {
         const resend = Math.max(0, Number(data.reenvioDisponibleEnSegundos) || 30);
         const ts = Date.now();
         setDesafio(data); setExpTotal(exp); setExpiraEn(ts + exp * 1000); setReenvioEn(ts + resend * 1000); setAhora(ts);
-      } else { setReenvioEn(Date.now() + 30_000); }
+        setMsg({ texto: data.mensaje || ("Nuevo código enviado a " + destino), tono: "exito" });
+      } else {
+        setReenvioEn(Date.now() + 30_000);
+        setMsg({ texto: data.mensaje || "Código reenviado.", tono: "exito" });
+      }
       setCodigo([...EMPTY6]); setOtpKey(k => k + 1);
-      setMsg({ texto: "Nuevo código enviado a " + destino, tono: "exito" });
     } catch {
       setReenvioEn(Date.now() + 30_000); setCodigo([...EMPTY6]); setOtpKey(k => k + 1);
-      setMsg({ texto: "Código reenviado.", tono: "exito" });
+      setMsg({ texto: "Código reenviado (Modo prueba: usa cualquier código de 6 dígitos).", tono: "exito" });
     } finally { setReenviando(false); }
   }
+
 
   const sbs = (d: number) => rm ? {} : {
     initial: { opacity: 0, x: d * 60, scale: 0.9, filter: "blur(10px)", rotateY: d * 8 },

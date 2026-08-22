@@ -75,9 +75,16 @@ public class SegundoFactorServicio implements ISegundoFactorServicio {
         repositorio.save(desafio);
 
         servicioCanal.enviarCodigo(usuario, codigo, propiedades.getExpiracionSegundos());
-        String destino = canal == CanalSegundoFactor.CORREO ? "correo institucional" : "celular";
-        return respuesta(desafio, ahora, "Enviamos un codigo de acceso a tu " + destino);
+        String mensajeRespuesta;
+        if (!servicioCanal.estaConfigurado()) {
+            mensajeRespuesta = "Código de verificación: " + codigo + " (Modo prueba - servicio " + canal + " sin configurar)";
+        } else {
+            String destino = canal == CanalSegundoFactor.CORREO ? "correo institucional" : "celular";
+            mensajeRespuesta = "Enviamos un código de acceso a tu " + destino;
+        }
+        return respuesta(desafio, ahora, mensajeRespuesta);
     }
+
 
     @Override
     @Transactional(noRollbackFor = SegundoFactorVerificacionException.class)
@@ -145,9 +152,16 @@ public class SegundoFactorServicio implements ISegundoFactorServicio {
         repositorio.save(desafio);
 
         servicioCanal.enviarCodigo(desafio.getUsuario(), codigo, propiedades.getExpiracionSegundos());
-        String destino = desafio.getCanal() == CanalSegundoFactor.CORREO ? "correo institucional" : "celular";
-        return respuesta(desafio, ahora, "Enviamos un nuevo codigo a tu " + destino);
+        String mensajeRespuesta;
+        if (!servicioCanal.estaConfigurado()) {
+            mensajeRespuesta = "Nuevo código de verificación: " + codigo + " (Modo prueba - servicio " + desafio.getCanal() + " sin configurar)";
+        } else {
+            String destino = desafio.getCanal() == CanalSegundoFactor.CORREO ? "correo institucional" : "celular";
+            mensajeRespuesta = "Enviamos un nuevo código a tu " + destino;
+        }
+        return respuesta(desafio, ahora, mensajeRespuesta);
     }
+
 
     private void validarConfiguracion() {
         if (propiedades.getExpiracionSegundos() <= 0 || propiedades.getReenvioSegundos() < 0
