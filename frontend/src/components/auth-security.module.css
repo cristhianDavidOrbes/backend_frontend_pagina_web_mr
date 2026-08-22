@@ -1,3 +1,9 @@
+/* ═══════════════════════════════════════════════
+   AUTH SECURITY MODULE — AlgoLab Portal
+   Inputs use FLEXBOX (not absolute positioning)
+   to 100% guarantee icons never overlap text.
+═══════════════════════════════════════════════ */
+
 .securityCard {
   isolation: isolate;
   min-height: 520px;
@@ -12,180 +18,117 @@
   opacity: .35;
   background:
     radial-gradient(circle at 92% 12%, rgba(77, 244, 183, .25) 0 2px, transparent 3px),
-    linear-gradient(90deg, transparent 0 76%, rgba(84, 236, 183, .12) 76% 76.25%, transparent 76.25%),
-    linear-gradient(0deg, transparent 0 18%, rgba(84, 236, 183, .09) 18% 18.2%, transparent 18.2%);
+    linear-gradient(90deg, transparent 76%, rgba(84, 236, 183, .12) 76% 76.25%, transparent 76.25%),
+    linear-gradient(0deg, transparent 18%, rgba(84, 236, 183, .09) 18% 18.2%, transparent 18.2%);
   mask-image: linear-gradient(135deg, transparent 10%, black 55%, transparent 96%);
 }
 
-/* ─── Modern Cyber Stepper ───────────────────────────────── */
-.modernStepper {
+/* ─── FLEXBOX INPUT — icon never overlaps text ─────────── */
+.inputRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.4rem;
-  margin-bottom: 1.6rem;
-  padding: 0.35rem 0.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
-  backdrop-filter: blur(12px);
-}
-
-.stepItem {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.55rem;
-  border-radius: 9px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  font-family: var(--font-geist-mono);
-  color: #55756a;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid transparent;
-}
-
-.stepNum {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  font-size: 0.62rem;
-  font-weight: 800;
-  background: rgba(255, 255, 255, 0.06);
-  color: #6d8880;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.stepLabel {
-  display: inline;
-  white-space: nowrap;
-}
-
-/* Active Step */
-.stepActive {
-  background: rgba(87, 238, 178, 0.12);
-  color: #eafff7;
-  border: 1px solid rgba(87, 238, 178, 0.3);
-  box-shadow: 0 0 16px rgba(87, 238, 178, 0.12);
-}
-
-.stepActive .stepNum {
-  background: #57eeb2;
-  color: #03120e;
-  box-shadow: 0 0 8px #57eeb2;
-}
-
-/* Completed Step */
-.stepDone {
-  color: #8da2fb;
-  background: rgba(141, 162, 251, 0.06);
-}
-
-.stepDone .stepNum {
-  background: rgba(141, 162, 251, 0.25);
-  color: #a5b6ff;
-}
-
-/* Divider Line between steps */
-.stepLine {
-  flex: 1;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 99px;
-  transition: background 0.4s ease, box-shadow 0.4s ease;
-  min-width: 12px;
-}
-
-.stepLineDone {
-  background: linear-gradient(90deg, #57eeb2, #8da2fb);
-  box-shadow: 0 0 8px rgba(87, 238, 178, 0.3);
-}
-
-/* ─── Robust Non-Overlapping Input Wrapper ───────────────── */
-.inputWrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
+  min-height: 50px;
   margin-top: 0.45rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(2, 11, 9, 0.88);
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.inputRow:focus-within {
+  border-color: #57eeb2;
+  background: rgba(4, 20, 16, 0.97);
+  box-shadow:
+    0 0 0 3px rgba(87, 238, 178, 0.18),
+    0 0 28px rgba(87, 238, 178, 0.14);
+}
+
+.inputRowError:focus-within {
+  border-color: #ff8080 !important;
+  box-shadow: 0 0 0 3px rgba(255, 128, 128, 0.18) !important;
+}
+
+.inputRowError {
+  border-color: rgba(255, 128, 128, 0.45) !important;
 }
 
 .inputIcon {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
   color: #55756a;
-  pointer-events: none;
-  z-index: 3;
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition: color 0.2s ease;
+}
+
+.inputRow:focus-within .inputIcon {
+  color: #57eeb2;
 }
 
 .inputField {
-  width: 100%;
-  min-height: 48px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  outline: none;
-  background: rgba(2, 11, 9, 0.85);
-  padding: 0.7rem 3rem 0.7rem 3.1rem !important; /* Plenty of clearance so icons never overlap text */
-  color: #eef8f5;
-  font-size: 0.88rem;
-  line-height: 1.4;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
-}
-
-.inputField:focus {
-  border-color: #57eeb2;
-  background: rgba(4, 20, 16, 0.95);
-  box-shadow: 0 0 0 3px rgba(87, 238, 178, 0.18), 0 0 25px rgba(87, 238, 178, 0.12);
-}
-
-.inputWrapper:focus-within .inputIcon {
-  color: #57eeb2;
-  transform: translateY(-50%) scale(1.08);
-}
-
-.togglePasswordBtn {
-  position: absolute;
-  right: 0.85rem;
-  top: 50%;
-  transform: translateY(-50%);
+  flex: 1;
+  min-width: 0;
+  height: 50px;
   background: transparent;
   border: none;
-  color: #55756a;
-  padding: 0.4rem;
-  border-radius: 8px;
+  outline: none;
+  color: #eef8f5;
+  font-size: 0.88rem;
+  padding: 0 0.75rem 0 0;
+}
+
+.inputField::placeholder {
+  color: #4a6259;
+}
+
+/* Password toggle — inline in flexbox row */
+.inputToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 100%;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  display: grid;
-  place-items: center;
+  color: #55756a;
   transition: color 0.2s ease, background 0.2s ease;
-  z-index: 3;
+  border-radius: 0 12px 12px 0;
 }
 
-.togglePasswordBtn:hover {
+.inputToggle:hover {
   color: #57eeb2;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(87, 238, 178, 0.08);
 }
 
-/* ─── Password Strength Meter ───────────────────────────── */
+/* ─── Field Labels & Helpers ─────────────────────────── */
+.fieldHelp,
+.fieldError {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.71rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.fieldHelp { color: #506d64; }
+.fieldError { color: #ff8080; }
+
+/* ─── Password Strength ──────────────────────────────── */
 .strengthMeter {
-  margin-top: 0.55rem;
+  margin-top: 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .strengthBarTrack {
   height: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -199,97 +142,25 @@
 .strengthText {
   display: flex;
   justify-content: space-between;
-  font-size: 0.68rem;
+  font-size: 0.67rem;
   color: #6f8980;
   font-family: var(--font-geist-mono);
 }
 
-.fieldHelp,
-.fieldError {
-  display: block;
-  margin-top: 0.45rem;
-  font-size: 0.72rem;
-  font-weight: 500;
-  line-height: 1.45;
-}
-
-.fieldHelp { color: #6f8980; }
-.fieldError { color: #ff8080; }
-
-/* ─── Channel Picker Cards ──────────────────────────────── */
-.channelCard {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  padding: 1.1rem 1.2rem;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.channelCard:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-2px);
-}
-
-.channelCardActiveMail {
-  border-color: rgba(87, 238, 178, 0.6) !important;
-  background: linear-gradient(135deg, rgba(87, 238, 178, 0.12), rgba(6, 26, 20, 0.8)) !important;
-  box-shadow: 0 0 25px rgba(87, 238, 178, 0.15), inset 0 0 0 1px rgba(87, 238, 178, 0.2);
-  transform: translateY(-2px);
-}
-
-.channelCardActiveSms {
-  border-color: rgba(56, 189, 248, 0.6) !important;
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(6, 20, 30, 0.8)) !important;
-  box-shadow: 0 0 25px rgba(56, 189, 248, 0.15), inset 0 0 0 1px rgba(56, 189, 248, 0.2);
-  transform: translateY(-2px);
-}
-
-.channelIconWrap {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  flex-shrink: 0;
-  transition: all 0.25s ease;
-}
-
-.channelCardActiveMail .channelIconWrap {
-  background: rgba(87, 238, 178, 0.2);
-  color: #57eeb2;
-  box-shadow: 0 0 15px rgba(87, 238, 178, 0.3);
-}
-
-.channelCardActiveSms .channelIconWrap {
-  background: rgba(56, 189, 248, 0.2);
-  color: #38bdf8;
-  box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
-}
-
-/* ─── Portal Core Animation ─────────────────────────────── */
+/* ─── Portal Orb (OTP header) ─────────────────────────── */
 .portalHeader {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 68px minmax(0, 1fr);
   align-items: center;
-  gap: 1.2rem;
-  margin-bottom: 1.5rem;
+  gap: 1.1rem;
+  margin-bottom: 1.3rem;
 }
 
 .portalCore {
   position: relative;
   display: grid;
-  width: 72px;
-  height: 72px;
+  width: 68px;
+  height: 68px;
   place-items: center;
   border: 1px solid rgba(105, 244, 192, .35);
   border-radius: 50%;
@@ -320,7 +191,7 @@
   animation-duration: 12s;
 }
 
-/* ─── 3D Holographic OTP Input Fieldset ─────────────────── */
+/* ─── OTP Digit Boxes (apply on wrapper div, not input) ── */
 .codeForm {
   margin-top: 1.2rem;
 }
@@ -328,25 +199,37 @@
 .codeFieldset {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.6rem;
-  perspective: 1000px;
+  gap: 0.55rem;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* The outer wrapper div gets the 3D animation */
+.otpWrapper {
+  perspective: 600px;
 }
 
 .otpDigitBox {
+  display: block;
   width: 100%;
   min-width: 0;
-  aspect-ratio: 0.82;
+  aspect-ratio: 0.8;
   border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(3, 16, 13, 0.9), rgba(5, 24, 19, 0.85));
+  background: linear-gradient(180deg, rgba(3, 16, 13, 0.92), rgba(5, 24, 19, 0.85));
   color: #ffffff;
   caret-color: #57eeb2;
   font-family: var(--font-geist-mono);
-  font-size: clamp(1.4rem, 4vw, 1.85rem);
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
   font-weight: 800;
   text-align: center;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
   outline: none;
 }
 
@@ -357,24 +240,28 @@
 
 .otpDigitBox:focus {
   border-color: #57eeb2;
-  background: linear-gradient(180deg, rgba(5, 26, 20, 0.95), rgba(7, 34, 27, 0.9));
-  box-shadow: 0 0 0 3px rgba(87, 238, 178, 0.25), 0 0 30px rgba(87, 238, 178, 0.35);
-  transform: translateY(-4px) scale(1.05);
+  background: linear-gradient(180deg, rgba(7, 28, 22, 0.97), rgba(9, 38, 29, 0.9));
+  box-shadow:
+    0 0 0 3px rgba(87, 238, 178, 0.28),
+    0 0 35px rgba(87, 238, 178, 0.45);
+  transform: translateY(-4px) scale(1.06);
 }
 
 .otpDigitFilled {
-  border-color: rgba(87, 238, 178, 0.65) !important;
-  background: linear-gradient(180deg, rgba(87, 238, 178, 0.15), rgba(4, 20, 16, 0.9)) !important;
-  box-shadow: 0 0 20px rgba(87, 238, 178, 0.18), inset 0 0 10px rgba(87, 238, 178, 0.1) !important;
-  color: #57eeb2 !important;
+  border-color: rgba(87, 238, 178, 0.7) !important;
+  background: linear-gradient(180deg, rgba(87, 238, 178, 0.14), rgba(4, 22, 18, 0.9)) !important;
+  box-shadow:
+    0 0 20px rgba(87, 238, 178, 0.2),
+    inset 0 0 12px rgba(87, 238, 178, 0.08) !important;
+  color: #a8ffe0 !important;
 }
 
-/* ─── Timer Panel ───────────────────────────────────────── */
+/* ─── Timer Panel ─────────────────────────────────────── */
 .timerPanel {
-  margin-top: 1.25rem;
+  margin-top: 1.2rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.22);
   padding: 0.85rem 1rem;
 }
 
@@ -387,11 +274,12 @@
 .timerPanel span {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   color: #758d84;
-  font-size: 0.7rem;
+  font-size: 0.69rem;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .timerPanel strong {
@@ -402,7 +290,7 @@
 
 .timerTrack {
   height: 3px;
-  margin-top: 0.6rem;
+  margin-top: 0.55rem;
   overflow: hidden;
   border-radius: 99px;
   background: rgba(255, 255, 255, 0.06);
@@ -424,21 +312,23 @@
   line-height: 1.4;
 }
 
+/* ─── Verify Button ───────────────────────────────────── */
 .verifyButton {
   display: flex !important;
   width: 100%;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  margin-top: 1.2rem;
+  margin-top: 1.1rem;
 }
 
+/* ─── Resend Row ──────────────────────────────────────── */
 .resendRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: 1.1rem;
+  margin-top: 1rem;
 }
 
 .resendRow button {
@@ -454,30 +344,19 @@
   transition: color 0.2s ease;
 }
 
-.resendRow button:hover:not(:disabled) {
-  color: #7cf5c4;
-}
+.resendRow button:hover:not(:disabled) { color: #7cf5c4; }
+.resendRow button:last-child { color: #7d8f89; }
+.resendRow button:last-child:hover { color: #c5d4cf; }
+.resendRow button:disabled { cursor: not-allowed; color: #3f5650; }
 
-.resendRow button:last-child {
-  color: #7d8f89;
-}
-
-.resendRow button:last-child:hover {
-  color: #ffffff;
-}
-
-.resendRow button:disabled {
-  cursor: not-allowed;
-  color: #465a53;
-}
-
+/* ─── Back Button ─────────────────────────────────────── */
 .backButton {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  margin-bottom: 1.1rem;
+  margin-bottom: 1rem;
   color: #71877f;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 650;
   background: transparent;
   border: none;
@@ -490,42 +369,27 @@
   transform: translateX(-3px);
 }
 
-.messageRegion {
-  min-height: 0;
-}
+/* ─── Feedback / Session Notice ───────────────────────── */
+.messageRegion { min-height: 0; }
 
 .feedback {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.65rem;
   align-items: start;
-  margin-top: 1.1rem;
+  margin-top: 1rem;
   border: 1px solid rgba(116, 146, 255, .25);
   border-radius: 14px;
   background: rgba(71, 91, 182, .08);
   padding: 0.85rem 1rem;
   color: #a9b6ef;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   line-height: 1.45;
 }
 
-.feedback[data-tone="error"] {
-  border-color: rgba(255, 101, 126, .35);
-  background: rgba(168, 40, 67, .12);
-  color: #ffabb8;
-}
-
-.feedback[data-tone="aviso"] {
-  border-color: rgba(255, 191, 87, .3);
-  background: rgba(169, 104, 27, .1);
-  color: #ffd08c;
-}
-
-.feedback[data-tone="exito"] {
-  border-color: rgba(87, 238, 178, .35);
-  background: rgba(42, 161, 116, .12);
-  color: #8ff2c8;
-}
+.feedback[data-tone="error"] { border-color: rgba(255, 101, 126, .35); background: rgba(168, 40, 67, .12); color: #ffabb8; }
+.feedback[data-tone="aviso"] { border-color: rgba(255, 191, 87, .3); background: rgba(169, 104, 27, .1); color: #ffd08c; }
+.feedback[data-tone="exito"] { border-color: rgba(87, 238, 178, .35); background: rgba(42, 161, 116, .12); color: #8ff2c8; }
 
 .savedSessionNotice {
   display: grid;
@@ -539,53 +403,90 @@
   color: #aeb8ff;
 }
 
-.savedSessionNotice strong {
-  display: block;
-  color: #dce0ff;
-  font-size: 0.76rem;
-}
+.savedSessionNotice strong { display: block; color: #dce0ff; font-size: 0.76rem; }
+.savedSessionNotice p { margin-top: 0.2rem; color: #84928f; font-size: 0.68rem; line-height: 1.45; }
+.savedSessionNotice button { margin-top: 0.4rem; color: #57eeb2; font-size: 0.68rem; font-weight: 700; background: transparent; border: none; cursor: pointer; }
 
-.savedSessionNotice p {
-  margin-top: 0.2rem;
-  color: #84928f;
-  font-size: 0.68rem;
-  line-height: 1.45;
-}
-
-.savedSessionNotice button {
-  margin-top: 0.45rem;
-  color: #57eeb2;
-  font-size: 0.68rem;
-  font-weight: 700;
-  background: transparent;
-  border: none;
+/* ─── Channel Cards ───────────────────────────────────── */
+.channelCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
   cursor: pointer;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.spinning {
-  animation: portalSpin .8s linear infinite;
+.channelCard:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-2px);
 }
 
-@keyframes portalSpin {
-  to { transform: rotate(360deg); }
+.channelCardActiveMail {
+  border-color: rgba(87, 238, 178, 0.65) !important;
+  background: linear-gradient(135deg, rgba(87, 238, 178, 0.13), rgba(6, 26, 20, 0.85)) !important;
+  box-shadow: 0 0 28px rgba(87, 238, 178, 0.18), inset 0 0 0 1px rgba(87, 238, 178, 0.25);
+  transform: translateY(-2px);
 }
 
-@media (max-width: 480px) {
-  .modernStepper {
-    padding: 0.25rem 0.35rem;
-    gap: 0.25rem;
-  }
-  .stepItem {
-    padding: 0.25rem 0.4rem;
-    font-size: 0.65rem;
-  }
-  .stepLabel {
-    display: none; /* Hide text on ultra small screens, keep numbers */
-  }
-  .codeFieldset {
-    gap: 0.35rem;
-  }
-  .otpDigitBox {
-    font-size: 1.25rem;
-  }
+.channelCardActiveSms {
+  border-color: rgba(56, 189, 248, 0.65) !important;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.13), rgba(6, 20, 30, 0.85)) !important;
+  box-shadow: 0 0 28px rgba(56, 189, 248, 0.18), inset 0 0 0 1px rgba(56, 189, 248, 0.25);
+  transform: translateY(-2px);
+}
+
+.channelIconWrap {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.25s ease;
+}
+
+.channelCardActiveMail .channelIconWrap {
+  background: rgba(87, 238, 178, 0.2);
+  color: #57eeb2;
+  box-shadow: 0 0 18px rgba(87, 238, 178, 0.3);
+}
+
+.channelCardActiveSms .channelIconWrap {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.3);
+}
+
+/* ─── Institutional Notice ────────────────────────────── */
+.institutionalNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-top: 1.75rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(87, 238, 178, 0.15);
+  border-radius: 16px;
+  background: rgba(87, 238, 178, 0.05);
+  max-width: 440px;
+}
+
+.institutionalNotice strong { display: block; font-size: 0.77rem; font-weight: 700; color: #c6ffe6; margin-bottom: 0.3rem; }
+.institutionalNotice p { font-size: 0.71rem; color: #5a7a70; line-height: 1.5; margin: 0; }
+
+/* ─── Spinner ─────────────────────────────────────────── */
+.spinning { animation: portalSpin 0.8s linear infinite; }
+
+@keyframes portalSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 400px) {
+  .codeFieldset { gap: 0.3rem; }
+  .otpDigitBox { font-size: 1.15rem; border-radius: 10px; }
 }
