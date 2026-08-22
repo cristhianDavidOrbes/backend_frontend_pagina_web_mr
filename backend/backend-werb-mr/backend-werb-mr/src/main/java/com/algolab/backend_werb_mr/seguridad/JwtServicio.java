@@ -2,6 +2,7 @@ package com.algolab.backend_werb_mr.seguridad;
 
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Base64;
@@ -68,7 +69,11 @@ public class JwtServicio {
             String contenido = partes[0] + "." + partes[1];
             String firmaEsperada = firmar(contenido);
 
-            if (!firmaEsperada.equals(partes[2])) {
+            // La comparacion en tiempo constante evita filtrar progresivamente
+            // informacion de la firma mediante mediciones repetidas.
+            if (!MessageDigest.isEqual(
+                    firmaEsperada.getBytes(StandardCharsets.US_ASCII),
+                    partes[2].getBytes(StandardCharsets.US_ASCII))) {
                 return false;
             }
 

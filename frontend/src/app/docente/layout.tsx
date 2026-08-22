@@ -50,9 +50,9 @@ export default function DocenteLayout({ children }: { children: React.ReactNode 
     };
   }, [hydrated, token, router, retryKey]);
 
-  const usuarioActivo = usuario ?? (sesion?.rol === "DOCENTE" ? sesion : null);
+  const usuarioActivo = sesion?.rol === "DOCENTE" ? sesion : usuario;
 
-  if (!hydrated || (loading && !usuarioActivo)) {
+  if (!hydrated || !token || (loading && !usuarioActivo)) {
     return (
       <main className="app-surface grid min-h-screen place-items-center p-6">
         <div className="loading-card">Preparando el observatorio…</div>

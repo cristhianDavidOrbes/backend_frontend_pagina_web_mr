@@ -140,6 +140,12 @@ class SegundoFactorServicioTest {
         DesafioSegundoFactorRespuestaDTO respuesta = servicio.crearDesafio(usuario, CanalSegundoFactor.CORREO);
         String anterior = canal.ultimoCodigo();
 
+        for (int intento = 0; intento < 4; intento++) {
+            assertThrows(SegundoFactorException.class,
+                    () -> servicio.verificar(respuesta.getDesafioId(), "999999"));
+        }
+        assertEquals(4, desafioGuardado.getIntentosFallidos());
+
         SegundoFactorException temprano = assertThrows(SegundoFactorException.class,
                 () -> servicio.reenviar(respuesta.getDesafioId()));
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, temprano.getEstado());
@@ -150,6 +156,7 @@ class SegundoFactorServicioTest {
 
         assertEquals(respuesta.getDesafioId(), reenviado.getDesafioId());
         assertEquals(2, canal.codigos.size());
+        assertEquals(0, desafioGuardado.getIntentosFallidos());
         assertTrue(encoder.matches(nuevo, desafioGuardado.getCodigoHash()));
         assertFalse(encoder.matches(anterior, desafioGuardado.getCodigoHash()));
     }

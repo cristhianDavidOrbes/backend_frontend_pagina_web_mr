@@ -136,6 +136,10 @@ public class SegundoFactorServicio implements ISegundoFactorServicio {
 
         String codigo = generarCodigo();
         desafio.setCodigoHash(passwordEncoder.encode(codigo));
+        // Un codigo reenviado inicia su propio margen de intentos. Mantener los
+        // fallos del codigo anterior podia bloquear al usuario con un codigo
+        // nuevo despues de un solo error, aunque el anterior ya no fuera valido.
+        desafio.setIntentosFallidos(0);
         desafio.setExpiraEn(ahora.plusSeconds(propiedades.getExpiracionSegundos()));
         desafio.setReenvioDisponibleEn(ahora.plusSeconds(propiedades.getReenvioSegundos()));
         repositorio.save(desafio);

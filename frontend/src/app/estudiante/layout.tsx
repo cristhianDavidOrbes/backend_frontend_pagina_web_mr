@@ -8,7 +8,9 @@ import { saveAuthUser, useAuthSession, type UsuarioSesion } from "@/lib/use-auth
 export default function EstudianteLayout({ children }: { children: React.ReactNode }) {
   const { hydrated, token, usuario: sesion } = useAuthSession();
   const router = useRouter();
-  const [usuario, setUsuario] = useState<UsuarioSesion | null>(sesion);
+  const [usuario, setUsuario] = useState<UsuarioSesion | null>(
+    sesion?.rol === "ESTUDIANTE" ? sesion : null,
+  );
   const [errorSincronizacion, setErrorSincronizacion] = useState<string | null>(null);
   const [sincronizando, setSincronizando] = useState(true);
   const [intentoSincronizacion, setIntentoSincronizacion] = useState(0);
@@ -59,9 +61,11 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
     setIntentoSincronizacion((intento) => intento + 1);
   }
 
-  const activo = usuario ?? sesion;
+  // Preferimos la sesión reactiva para que cambios de perfil/avatar se reflejen
+  // de inmediato en el shell, manteniendo como respaldo el perfil validado.
+  const activo = sesion?.rol === "ESTUDIANTE" ? sesion : usuario;
   
-  if (!activo) {
+  if (!hydrated || !token || !activo) {
     return (
       <main className="app-surface grid min-h-screen place-items-center p-6">
         <div className="loading-card max-w-md text-center" role={errorSincronizacion ? "alert" : "status"}>

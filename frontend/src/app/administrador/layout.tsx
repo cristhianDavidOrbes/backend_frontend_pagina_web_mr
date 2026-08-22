@@ -48,10 +48,10 @@ export default function AdministradorLayout({ children }: { children: React.Reac
     };
   }, [hydrated, token, router, retryKey]);
 
-  const perfilActivo = usuario ?? (usuarioActual?.rol === "ADMINISTRADOR" ? usuarioActual : null);
+  const perfilActivo = usuarioActual?.rol === "ADMINISTRADOR" ? usuarioActual : usuario;
   const accesoDenegado = perfilActivo && perfilActivo.rol !== "ADMINISTRADOR";
 
-  if (!hydrated || (loading && !perfilActivo)) {
+  if (!hydrated || !token || (loading && !perfilActivo)) {
     return (
       <main className="app-surface grid min-h-screen place-items-center p-6">
         <div className="loading-card">Sincronizando permisos y telemetría…</div>
