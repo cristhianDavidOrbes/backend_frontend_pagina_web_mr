@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
-  KeyRound,
   LockKeyhole,
   Mail,
   RefreshCw,
@@ -66,8 +65,11 @@ type LoginRespuesta = {
 const EMPTY = ["", "", "", "", "", ""];
 
 async function readJson<T>(r: Response): Promise<T> {
-  try { return await r.json() as T; }
-  catch { throw new Error("Respuesta inesperada del servidor."); }
+  try {
+    return (await r.json()) as T;
+  } catch {
+    throw new Error("Respuesta inesperada del servidor.");
+  }
 }
 
 function fmtTime(s: number) {
@@ -75,7 +77,8 @@ function fmtTime(s: number) {
   return `${Math.floor(ss / 60)}:${String(ss % 60).padStart(2, "0")}`;
 }
 function extractNum(t: string, re: RegExp) {
-  const m = t.match(re); return m ? Number(m[1]) : null;
+  const m = t.match(re);
+  return m ? Number(m[1]) : null;
 }
 
 // ─── Hero / Left panel ───────────────────────────────────
@@ -84,20 +87,32 @@ function HeroPanel({ paso }: { paso: Paso }) {
     credenciales: {
       kicker: "Portal seguro",
       title: "Tu progreso sigue donde lo dejaste.",
-      desc: "Accede a niveles, análisis del mentor IA y mantén tu perfil sincronizado con las gafas de Realidad Mixta.",
-      code: { prefix: "sesion", fn: ".continuar();", comment: "// progreso · realidad mixta · compilador" },
+      desc: "Accede a niveles, análisis del mentor IA y mantén tu perfil sincronizado con las experiencias de Realidad Mixta.",
+      code: {
+        prefix: "sesion",
+        fn: ".continuar();",
+        comment: "// progreso · realidad mixta · compilador",
+      },
     },
     canal: {
       kicker: "Verificación 2FA",
       title: "Elige cómo confirmar que eres tú.",
-      desc: "Un código temporal de un solo uso garantiza que nadie más accede a tu espacio de AlgoLab.",
-      code: { prefix: "seguridad", fn: ".elegirCanal();", comment: "// correo UCC · SMS · OTP de 6 dígitos" },
+      desc: "Un código temporal de un solo uso garantiza que nadie más acceda a tu espacio de AlgoLab.",
+      code: {
+        prefix: "seguridad",
+        fn: ".elegirCanal();",
+        comment: "// correo UCC · SMS · OTP de 6 dígitos",
+      },
     },
     codigo: {
       kicker: "Segundo factor activo",
       title: "Confirma tu identidad digital.",
-      desc: "Escribe el código que enviamos. Solo tú lo tienes. Solo funciona ahora.",
-      code: { prefix: "identidad", fn: ".verificar();", comment: "// JWT generado al validarse · sesión cifrada" },
+      desc: "Escribe el código de seguridad que te enviamos para abrir tu portal.",
+      code: {
+        prefix: "identidad",
+        fn: ".verificar();",
+        comment: "// JWT generado al validarse · sesión cifrada",
+      },
     },
   };
   const s = slides[paso];
@@ -123,35 +138,53 @@ function HeroPanel({ paso }: { paso: Paso }) {
   );
 }
 
-// ─── Stepper ─────────────────────────────────────────────
-const STEPS: { key: Paso; label: string }[] = [
-  { key: "credenciales", label: "Credenciales" },
-  { key: "canal", label: "Canal 2FA" },
-  { key: "codigo", label: "Código OTP" },
-];
-function Stepper({ paso }: { paso: Paso }) {
-  const idx = STEPS.findIndex((s) => s.key === paso);
+// ─── Stepper Component ───────────────────────────────────
+function ModernStepper({ paso }: { paso: Paso }) {
+  const getStepClass = (stepName: "credenciales" | "canal" | "codigo") => {
+    if (paso === stepName) return `${styles.stepItem} ${styles.stepActive}`;
+    if (
+      (stepName === "credenciales" && (paso === "canal" || paso === "codigo")) ||
+      (stepName === "canal" && paso === "codigo")
+    ) {
+      return `${styles.stepItem} ${styles.stepDone}`;
+    }
+    return styles.stepItem;
+  };
+
+  const isLineDone = (afterStep: "credenciales" | "canal") => {
+    if (afterStep === "credenciales" && (paso === "canal" || paso === "codigo")) return true;
+    if (afterStep === "canal" && paso === "codigo") return true;
+    return false;
+  };
+
   return (
-    <div className={styles.stepRail}>
-      {STEPS.map((s, i) => (
-        <>
-          <span
-            key={s.key}
-            className={
-              i < idx ? styles.completedStep
-              : i === idx ? styles.activeStep
-              : ""
-            }
-          >
-            {i < idx && <CheckCircle2 size={13} />}
-            {i === 0 && i >= idx && <LockKeyhole size={13} />}
-            {i === 1 && i >= idx && <KeyRound size={13} />}
-            {i === 2 && i >= idx && <ShieldCheck size={13} />}
-            {" "}{s.label}
-          </span>
-          {i < STEPS.length - 1 && <i key={s.key + "-sep"} aria-hidden />}
-        </>
-      ))}
+    <div className={styles.modernStepper}>
+      <div className={getStepClass("credenciales")}>
+        <span className={styles.stepNum}>
+          {paso === "canal" || paso === "codigo" ? <CheckCircle2 size={12} /> : "1"}
+        </span>
+        <span className={styles.stepLabel}>Credenciales</span>
+      </div>
+
+      <div
+        className={`${styles.stepLine} ${isLineDone("credenciales") ? styles.stepLineDone : ""}`}
+      />
+
+      <div className={getStepClass("canal")}>
+        <span className={styles.stepNum}>
+          {paso === "codigo" ? <CheckCircle2 size={12} /> : "2"}
+        </span>
+        <span className={styles.stepLabel}>Método 2FA</span>
+      </div>
+
+      <div
+        className={`${styles.stepLine} ${isLineDone("canal") ? styles.stepLineDone : ""}`}
+      />
+
+      <div className={getStepClass("codigo")}>
+        <span className={styles.stepNum}>3</span>
+        <span className={styles.stepLabel}>Código OTP</span>
+      </div>
     </div>
   );
 }
@@ -198,55 +231,64 @@ export default function IniciarSesionPage() {
     return correo ? correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2") : "tu correo";
   }, [correo, desafio?.destinoEnmascarado]);
 
-  // Redirect if already logged in
   useEffect(() => {
     if (!hydrated || !existingToken || !usuario) return;
     const controller = new AbortController();
     fetch("/api/me", {
       headers: { Authorization: `Bearer ${existingToken}` },
-      cache: "no-store", signal: controller.signal,
-    }).then((r) => {
-      if (r.ok) {
-        const route = usuario.rol === "ADMINISTRADOR" ? "/administrador"
-          : usuario.rol === "DOCENTE" ? "/docente" : "/estudiante";
-        router.replace(route);
-        return;
-      }
-      if (r.status === 401) setAvisoSesion("La sesión guardada necesita verificarse. Puedes reingresar o cambiar de cuenta.");
-      else setAvisoSesion("No pudimos comprobar tu sesión. Tus datos siguen guardados.");
-    }).catch((e: unknown) => {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      setAvisoSesion("Sin conexión con AlgoLab. Tu sesión local permanece intacta.");
-    });
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((r) => {
+        if (r.ok) {
+          const route =
+            usuario.rol === "ADMINISTRADOR"
+              ? "/administrador"
+              : usuario.rol === "DOCENTE"
+              ? "/docente"
+              : "/estudiante";
+          router.replace(route);
+          return;
+        }
+        if (r.status === 401)
+          setAvisoSesion(
+            "La sesión guardada necesita verificarse. Puedes reingresar o cambiar de cuenta."
+          );
+        else setAvisoSesion("No pudimos comprobar tu sesión. Tus datos siguen guardados.");
+      })
+      .catch((e: unknown) => {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setAvisoSesion("Sin conexión con AlgoLab. Tu sesión local permanece intacta.");
+      });
     return () => controller.abort();
   }, [hydrated, existingToken, usuario, router]);
 
-  // Timer tick
   useEffect(() => {
     if (paso !== "codigo") return;
     const t = setInterval(() => setAhora(Date.now()), 1000);
     return () => clearInterval(t);
   }, [paso]);
 
-  // Autofocus OTP
   useEffect(() => {
     if (paso !== "codigo") return;
     const f = requestAnimationFrame(() => codeRefs.current[0]?.focus());
     return () => cancelAnimationFrame(f);
   }, [paso, otpKey]);
 
-  // ── Paso 1: validar credenciales
   async function validarCredenciales(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setCorreoTocado(true);
     const email = normalizeInstitutionalEmail(correo);
     const eE = institutionalEmailError(email);
-    if (eE) { setMensaje({ texto: eE, tono: "error" }); emailRef.current?.focus(); return; }
+    if (eE) {
+      setMensaje({ texto: eE, tono: "error" });
+      emailRef.current?.focus();
+      return;
+    }
 
     setEnviando(true);
     setMensaje(null);
     try {
-      // Validate credentials first (quick check with CORREO)
       const r = await fetch("/api/iniciar-sesion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -255,24 +297,28 @@ export default function IniciarSesionPage() {
       const data = await readJson<DesafioRespuesta>(r);
 
       if (!r.ok || !data.requiereSegundoFactor) {
-        const msg = data.mensaje ?? (r.status === 401 ? "Correo o contraseña incorrectos." : "No fue posible validar tus credenciales.");
+        const msg =
+          data.mensaje ??
+          (r.status === 401
+            ? "Correo o contraseña incorrectos."
+            : "No fue posible validar tus credenciales.");
         setMensaje({ texto: msg, tono: r.status >= 500 ? "aviso" : "error" });
         return;
       }
-      // Credentials OK → go to channel selection
       setCorreo(email);
-      // Store provisional desafio data
       setDesafio(data);
       setPaso("canal");
       setMensaje(null);
     } catch (err) {
-      setMensaje({ texto: err instanceof Error ? err.message : "Error de conexión.", tono: "aviso" });
+      setMensaje({
+        texto: err instanceof Error ? err.message : "Error de conexión.",
+        tono: "aviso",
+      });
     } finally {
       setEnviando(false);
     }
   }
 
-  // ── Paso 2: enviar código por canal elegido
   async function enviarCodigo() {
     setEnviando(true);
     setMensaje(null);
@@ -281,7 +327,6 @@ export default function IniciarSesionPage() {
       let data: DesafioRespuesta;
 
       if (canal !== (desafio?.canal ?? "CORREO")) {
-        // Re-request with different channel
         const r = await fetch("/api/iniciar-sesion", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -316,24 +361,41 @@ export default function IniciarSesionPage() {
       });
     } catch {
       const ts = Date.now();
-      setExpTotal(300); setExpiraEn(ts + 300_000); setReenvioEn(ts + 30_000); setAhora(ts);
-      setCodigo([...EMPTY]); setOtpKey((k) => k + 1); setPaso("codigo");
+      setExpTotal(300);
+      setExpiraEn(ts + 300_000);
+      setReenvioEn(ts + 30_000);
+      setAhora(ts);
+      setCodigo([...EMPTY]);
+      setOtpKey((k) => k + 1);
+      setPaso("codigo");
     } finally {
       setEnviando(false);
     }
   }
 
-  // ── OTP helpers
   function updateDigit(idx: number, raw: string) {
     const d = raw.replace(/\D/g, "");
-    if (d.length > 1) { distribuir(d, idx); return; }
-    setCodigo((c) => { const n = [...c]; n[idx] = d.slice(-1); return n; });
+    if (d.length > 1) {
+      distribuir(d, idx);
+      return;
+    }
+    setCodigo((c) => {
+      const n = [...c];
+      n[idx] = d.slice(-1);
+      return n;
+    });
     if (d && idx < 5) codeRefs.current[idx + 1]?.focus();
   }
   function distribuir(raw: string, start = 0) {
     const d = raw.replace(/\D/g, "").slice(0, 6 - start);
     if (!d) return;
-    setCodigo((c) => { const n = [...c]; d.split("").forEach((ch, i) => { n[start + i] = ch; }); return n; });
+    setCodigo((c) => {
+      const n = [...c];
+      d.split("").forEach((ch, i) => {
+        n[start + i] = ch;
+      });
+      return n;
+    });
     requestAnimationFrame(() => codeRefs.current[Math.min(start + d.length, 5)]?.focus());
   }
   function pegar(e: ReactClipboardEvent<HTMLFieldSetElement>) {
@@ -344,15 +406,21 @@ export default function IniciarSesionPage() {
   }
   function navKey(e: ReactKeyboardEvent<HTMLInputElement>, idx: number) {
     if (e.key === "Backspace" && !codigo[idx] && idx > 0) codeRefs.current[idx - 1]?.focus();
-    if (e.key === "ArrowLeft" && idx > 0) { e.preventDefault(); codeRefs.current[idx - 1]?.focus(); }
-    if (e.key === "ArrowRight" && idx < 5) { e.preventDefault(); codeRefs.current[idx + 1]?.focus(); }
+    if (e.key === "ArrowLeft" && idx > 0) {
+      e.preventDefault();
+      codeRefs.current[idx - 1]?.focus();
+    }
+    if (e.key === "ArrowRight" && idx < 5) {
+      e.preventDefault();
+      codeRefs.current[idx + 1]?.focus();
+    }
   }
 
-  // ── Paso 3: verificar código
   async function verificarCodigo(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!completo || bloqueado || segsExp <= 0) {
-      if (segsExp <= 0) setMensaje({ texto: "El código expiró. Solicita uno nuevo.", tono: "aviso" });
+      if (segsExp <= 0)
+        setMensaje({ texto: "El código expiró. Solicita uno nuevo.", tono: "aviso" });
       return;
     }
     setVerificando(true);
@@ -361,7 +429,10 @@ export default function IniciarSesionPage() {
       const r = await fetch("/api/segundo-factor/verificar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ desafioId: desafio?.desafioId ?? "demo", codigo: codigo.join("") }),
+        body: JSON.stringify({
+          desafioId: desafio?.desafioId ?? "demo",
+          codigo: codigo.join(""),
+        }),
       });
       const data = await readJson<LoginRespuesta>(r);
       if (!r.ok || !data.token || !data.usuario) {
@@ -369,15 +440,20 @@ export default function IniciarSesionPage() {
         const rem = extractNum(msg, /intentos restantes:\s*(\d+)/i);
         if (rem !== null) setIntentosRest(rem);
         if (r.status === 429) setBloqueado(true);
-        setCodigo([...EMPTY]); setOtpKey((k) => k + 1);
+        setCodigo([...EMPTY]);
+        setOtpKey((k) => k + 1);
         requestAnimationFrame(() => codeRefs.current[0]?.focus());
         setMensaje({ texto: msg, tono: "error" });
         return;
       }
       saveAuthToken(data.token);
       saveAuthUser(data.usuario);
-      const route = data.usuario.rol === "ADMINISTRADOR" ? "/administrador"
-        : data.usuario.rol === "DOCENTE" ? "/docente" : "/estudiante";
+      const route =
+        data.usuario.rol === "ADMINISTRADOR"
+          ? "/administrador"
+          : data.usuario.rol === "DOCENTE"
+          ? "/docente"
+          : "/estudiante";
       router.replace(route);
     } catch {
       setMensaje({ texto: "Error de conexión. Intenta de nuevo.", tono: "aviso" });
@@ -386,7 +462,6 @@ export default function IniciarSesionPage() {
     }
   }
 
-  // ── Reenviar código
   async function reenviar() {
     if (!desafio?.desafioId || segsRenv > 0 || reenviando || bloqueado) return;
     setReenviando(true);
@@ -402,57 +477,75 @@ export default function IniciarSesionPage() {
         const exp = Math.max(1, Number(data.expiraEnSegundos) || 300);
         const resend = Math.max(0, Number(data.reenvioDisponibleEnSegundos) || 30);
         const ts = Date.now();
-        setDesafio(data); setExpTotal(exp); setExpiraEn(ts + exp * 1000);
-        setReenvioEn(ts + resend * 1000); setAhora(ts);
+        setDesafio(data);
+        setExpTotal(exp);
+        setExpiraEn(ts + exp * 1000);
+        setReenvioEn(ts + resend * 1000);
+        setAhora(ts);
       } else {
         setReenvioEn(Date.now() + 30_000);
       }
-      setCodigo([...EMPTY]); setOtpKey((k) => k + 1);
+      setCodigo([...EMPTY]);
+      setOtpKey((k) => k + 1);
       setMensaje({ texto: "Nuevo código enviado a " + destino, tono: "exito" });
     } catch {
-      setReenvioEn(Date.now() + 30_000); setCodigo([...EMPTY]); setOtpKey((k) => k + 1);
+      setReenvioEn(Date.now() + 30_000);
+      setCodigo([...EMPTY]);
+      setOtpKey((k) => k + 1);
       setMensaje({ texto: "Código reenviado.", tono: "exito" });
     } finally {
       setReenviando(false);
     }
   }
 
-  const ease = rm ? { duration: 0 } : { duration: 0.38, ease: "easeOut" as const };
-  const slide = (dir: number) => ({
-    initial: { opacity: 0, x: rm ? 0 : dir * 20 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: rm ? 0 : -dir * 20 },
-    transition: ease,
-  });
+  const springTransition = rm
+    ? { duration: 0 }
+    : { type: "spring" as const, stiffness: 280, damping: 26, mass: 0.85 };
+
+  const screenVariants = {
+    initial: { opacity: 0, x: 45, scale: 0.96, filter: "blur(6px)" },
+    animate: { opacity: 1, x: 0, scale: 1, filter: "blur(0px)" },
+    exit: { opacity: 0, x: -45, scale: 0.96, filter: "blur(6px)" },
+  };
 
   return (
     <main className="auth-shell min-h-screen">
-      {/* Brand logo */}
       <Link className="auth-brand" href="/">
         <span className="brand-mark">A</span>
         <strong>AlgoLab</strong>
       </Link>
 
       <section className="auth-layout">
-        {/* ── LEFT: Story panel ── */}
+        {/* Columna Izquierda: Story */}
         <AnimatePresence mode="wait">
           <HeroPanel paso={paso} />
         </AnimatePresence>
 
-        {/* ── RIGHT: Auth card ── */}
-        <div className={`auth-card ${styles.securityCard} relative`}>
+        {/* Columna Derecha: Auth card */}
+        <motion.div
+          className={`auth-card ${styles.securityCard} relative`}
+          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, scale: rm ? 1 : 0.97 }}
+          transition={{ duration: 0.35 }}
+        >
           <div aria-hidden className={styles.cardCircuit} />
-          <Stepper paso={paso} />
+          <ModernStepper paso={paso} />
 
           <AnimatePresence mode="wait">
             {/* ══════════════════ PASO 1: CREDENCIALES ══════════════════ */}
             {paso === "credenciales" && (
-              <motion.div key="creds" {...slide(1)}>
+              <motion.div
+                key="creds"
+                variants={screenVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={springTransition}
+              >
                 <p className="section-kicker">Acceso institucional</p>
                 <h2>Iniciar sesión</h2>
                 <p className="auth-copy">Ingresa tus credenciales UCC para continuar al portal.</p>
 
-                {/* Session warning */}
                 {avisoSesion && (
                   <div className={styles.savedSessionNotice} role="status">
                     <ShieldCheck size={18} aria-hidden />
@@ -461,7 +554,10 @@ export default function IniciarSesionPage() {
                       <p>{avisoSesion}</p>
                       <button
                         type="button"
-                        onClick={() => { clearAuthSession(); setAvisoSesion(""); }}
+                        onClick={() => {
+                          clearAuthSession();
+                          setAvisoSesion("");
+                        }}
                       >
                         Cambiar de cuenta
                       </button>
@@ -473,12 +569,14 @@ export default function IniciarSesionPage() {
                   {/* Email */}
                   <label className="field-label" htmlFor="login-email">
                     Correo institucional
-                    <span className={styles.inputShell}>
-                      <Mail aria-hidden size={18} />
+                    <div className={styles.inputWrapper}>
+                      <div className={styles.inputIcon}>
+                        <Mail size={18} />
+                      </div>
                       <input
                         id="login-email"
                         ref={emailRef}
-                        className="field-input"
+                        className={styles.inputField}
                         type="email"
                         autoComplete="email"
                         autoCapitalize="none"
@@ -489,9 +587,12 @@ export default function IniciarSesionPage() {
                         aria-invalid={Boolean(errCorreo)}
                         aria-describedby="login-email-help"
                         onBlur={() => setCorreoTocado(true)}
-                        onChange={(e) => { setCorreo(e.target.value); if (correoTocado) setMensaje(null); }}
+                        onChange={(e) => {
+                          setCorreo(e.target.value);
+                          if (correoTocado) setMensaje(null);
+                        }}
                       />
-                    </span>
+                    </div>
                     <small
                       id="login-email-help"
                       className={errCorreo ? styles.fieldError : styles.fieldHelp}
@@ -503,11 +604,13 @@ export default function IniciarSesionPage() {
                   {/* Password */}
                   <label className="field-label" htmlFor="login-pass">
                     Contraseña
-                    <span className={styles.inputShell}>
-                      <LockKeyhole aria-hidden size={18} />
+                    <div className={styles.inputWrapper}>
+                      <div className={styles.inputIcon}>
+                        <LockKeyhole size={18} />
+                      </div>
                       <input
                         id="login-pass"
-                        className="field-input"
+                        className={styles.inputField}
                         type={verPass ? "text" : "password"}
                         autoComplete="current-password"
                         placeholder="••••••••"
@@ -522,20 +625,22 @@ export default function IniciarSesionPage() {
                         onClick={() => setVerPass((v) => !v)}
                         aria-label={verPass ? "Ocultar contraseña" : "Mostrar contraseña"}
                       >
-                        {verPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                        {verPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
-                    </span>
+                    </div>
                   </label>
 
                   <button
-                    className="primary-button flex w-full items-center justify-center gap-2 mt-2"
+                    className="primary-button flex w-full items-center justify-center gap-2 mt-3"
                     disabled={enviando || !pass || (correoTocado && !isInstitutionalEmail(correo))}
                     type="submit"
                   >
-                    {enviando
-                      ? <RefreshCw aria-hidden className={styles.spinning} size={18} />
-                      : <Zap aria-hidden size={18} />}
-                    {enviando ? "Verificando credenciales…" : "Continuar"}
+                    {enviando ? (
+                      <RefreshCw aria-hidden className={styles.spinning} size={18} />
+                    ) : (
+                      <Zap aria-hidden size={18} />
+                    )}
+                    {enviando ? "Verificando credenciales…" : "Continuar a Verificación →"}
                   </button>
                 </form>
 
@@ -547,11 +652,21 @@ export default function IniciarSesionPage() {
 
             {/* ══════════════════ PASO 2: SELECCIÓN CANAL ══════════════════ */}
             {paso === "canal" && (
-              <motion.div key="canal" {...slide(1)}>
+              <motion.div
+                key="canal"
+                variants={screenVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={springTransition}
+              >
                 <button
                   className={styles.backButton}
                   type="button"
-                  onClick={() => { setPaso("credenciales"); setMensaje(null); }}
+                  onClick={() => {
+                    setPaso("credenciales");
+                    setMensaje(null);
+                  }}
                 >
                   <ArrowLeft size={14} /> Volver
                 </button>
@@ -559,34 +674,32 @@ export default function IniciarSesionPage() {
                 <p className="section-kicker">Verificación en dos pasos</p>
                 <h2>¿Cómo recibes el código?</h2>
                 <p className="auth-copy">
-                  Selecciona el canal por donde quieres que te enviemos el código temporal.
+                  Selecciona el canal por donde deseas que te enviemos el código temporal.
                 </p>
 
-                <div className="mt-6 space-y-3">
+                <div className="mt-6 space-y-3.5">
                   {/* Correo */}
                   <button
                     type="button"
                     role="radio"
                     aria-checked={canal === "CORREO"}
                     onClick={() => setCanal("CORREO")}
-                    className={`w-full flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-200 ${
-                      canal === "CORREO"
-                        ? "border-emerald-500/55 bg-emerald-500/10 shadow-lg shadow-emerald-500/10"
-                        : "border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
+                    className={`${styles.channelCard} ${
+                      canal === "CORREO" ? styles.channelCardActiveMail : ""
                     }`}
                   >
-                    <div className={`grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl transition-colors ${canal === "CORREO" ? "bg-emerald-500/20" : "bg-white/5"}`}>
-                      <Mail size={20} className={canal === "CORREO" ? "text-emerald-400" : "text-slate-500"} />
+                    <div className={styles.channelIconWrap}>
+                      <Mail size={22} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-bold leading-none ${canal === "CORREO" ? "text-emerald-200" : "text-slate-200"}`}>
-                        Correo institucional UCC
-                      </p>
-                      <p className="text-xs text-slate-500 mt-1 truncate">
+                      <p className="text-sm font-bold text-white">Correo institucional UCC</p>
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
                         {correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2")}
                       </p>
                     </div>
-                    {canal === "CORREO" && <CheckCircle2 size={18} className="text-emerald-400 flex-shrink-0" />}
+                    {canal === "CORREO" && (
+                      <CheckCircle2 size={20} className="text-emerald-400 flex-shrink-0" />
+                    )}
                   </button>
 
                   {/* SMS */}
@@ -595,24 +708,22 @@ export default function IniciarSesionPage() {
                     role="radio"
                     aria-checked={canal === "SMS"}
                     onClick={() => setCanal("SMS")}
-                    className={`w-full flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-200 ${
-                      canal === "SMS"
-                        ? "border-cyan-500/55 bg-cyan-500/10 shadow-lg shadow-cyan-500/10"
-                        : "border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
+                    className={`${styles.channelCard} ${
+                      canal === "SMS" ? styles.channelCardActiveSms : ""
                     }`}
                   >
-                    <div className={`grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl transition-colors ${canal === "SMS" ? "bg-cyan-500/20" : "bg-white/5"}`}>
-                      <Smartphone size={20} className={canal === "SMS" ? "text-cyan-400" : "text-slate-500"} />
+                    <div className={styles.channelIconWrap}>
+                      <Smartphone size={22} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-bold leading-none ${canal === "SMS" ? "text-cyan-200" : "text-slate-200"}`}>
-                        Celular / SMS
-                      </p>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-sm font-bold text-white">Celular / SMS</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
                         Mensaje de texto a tu número registrado
                       </p>
                     </div>
-                    {canal === "SMS" && <CheckCircle2 size={18} className="text-cyan-400 flex-shrink-0" />}
+                    {canal === "SMS" && (
+                      <CheckCircle2 size={20} className="text-cyan-400 flex-shrink-0" />
+                    )}
                   </button>
                 </div>
 
@@ -622,9 +733,11 @@ export default function IniciarSesionPage() {
                   disabled={enviando}
                   onClick={enviarCodigo}
                 >
-                  {enviando
-                    ? <RefreshCw aria-hidden className={styles.spinning} size={18} />
-                    : <ShieldCheck aria-hidden size={18} />}
+                  {enviando ? (
+                    <RefreshCw aria-hidden className={styles.spinning} size={18} />
+                  ) : (
+                    <ShieldCheck aria-hidden size={18} />
+                  )}
                   {enviando
                     ? "Enviando código…"
                     : `Enviar código por ${canal === "SMS" ? "SMS" : "Correo"}`}
@@ -634,26 +747,39 @@ export default function IniciarSesionPage() {
 
             {/* ══════════════════ PASO 3: OTP ══════════════════ */}
             {paso === "codigo" && (
-              <motion.div key="otp" {...slide(1)}>
+              <motion.div
+                key="otp"
+                variants={screenVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={springTransition}
+              >
                 <button
                   className={styles.backButton}
                   type="button"
-                  onClick={() => { setPaso("canal"); setMensaje(null); }}
+                  onClick={() => {
+                    setPaso("canal");
+                    setMensaje(null);
+                  }}
                 >
                   <ArrowLeft size={14} /> Cambiar canal
                 </button>
 
-                {/* Portal header */}
                 <div className={styles.portalHeader}>
                   <div aria-hidden className={styles.portalCore}>
-                    <span /><span /><span />
+                    <span />
+                    <span />
+                    <span />
                     {canal === "SMS" ? <Smartphone size={22} /> : <Mail size={22} />}
                   </div>
                   <div>
                     <p className="section-kicker">
                       {canal === "SMS" ? "SMS enviado" : "Correo enviado"}
                     </p>
-                    <h2 aria-label="Código OTP" data-text="Código OTP">Código OTP</h2>
+                    <h2 aria-label="Código OTP" data-text="Código OTP">
+                      Código OTP
+                    </h2>
                     <p className="auth-copy text-xs">
                       Enviado a <strong className="text-emerald-300">{destino}</strong>
                     </p>
@@ -665,31 +791,42 @@ export default function IniciarSesionPage() {
                     key={otpKey}
                     className={styles.codeFieldset}
                     onPaste={pegar}
-                    style={{ perspective: "800px" }}
                   >
                     <legend className="sr-only">Código de verificación de 6 dígitos</legend>
                     {codigo.map((d, i) => (
-                      <input
+                      <motion.input
                         key={i}
                         aria-label={`Dígito ${i + 1} de 6`}
                         autoComplete={i === 0 ? "one-time-code" : "off"}
-                        className={d ? styles.filledCode : ""}
+                        className={`${styles.otpDigitBox} ${d ? styles.otpDigitFilled : ""}`}
                         disabled={bloqueado}
                         inputMode="numeric"
                         maxLength={1}
                         pattern="[0-9]*"
                         value={d}
-                        ref={(n) => { codeRefs.current[i] = n; }}
+                        ref={(n) => {
+                          codeRefs.current[i] = n;
+                        }}
                         onChange={(e) => updateDigit(i, e.target.value)}
                         onFocus={(e) => e.currentTarget.select()}
                         onKeyDown={(e) => navKey(e, i)}
+                        initial={{ opacity: 0, y: 30, rotateY: 70, scale: 0.8 }}
+                        animate={{ opacity: 1, y: 0, rotateY: 0, scale: 1 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 20,
+                          delay: i * 0.07,
+                        }}
                       />
                     ))}
                   </fieldset>
 
                   <div className={styles.timerPanel}>
                     <div>
-                      <span><TimerReset aria-hidden size={13} /> Vigencia</span>
+                      <span>
+                        <TimerReset aria-hidden size={13} /> Vigencia
+                      </span>
                       <strong>{fmtTime(segsExp)}</strong>
                     </div>
                     <div aria-hidden className={styles.timerTrack}>
@@ -699,7 +836,9 @@ export default function IniciarSesionPage() {
                       {segsExp <= 0
                         ? "Código expirado. Solicita uno nuevo."
                         : intentosRest !== null
-                        ? `${intentosRest} intento${intentosRest !== 1 ? "s" : ""} restante${intentosRest !== 1 ? "s" : ""}.`
+                        ? `${intentosRest} intento${intentosRest !== 1 ? "s" : ""} restante${
+                            intentosRest !== 1 ? "s" : ""
+                          }.`
                         : "El código expira automáticamente por seguridad."}
                     </p>
                   </div>
@@ -709,11 +848,15 @@ export default function IniciarSesionPage() {
                     disabled={!completo || verificando || segsExp <= 0 || bloqueado}
                     type="submit"
                   >
+                    {verificando ? (
+                      <RefreshCw aria-hidden className={styles.spinning} size={18} />
+                    ) : (
+                      <ShieldCheck aria-hidden size={18} />
+                    )}
                     {verificando
-                      ? <RefreshCw aria-hidden className={styles.spinning} size={18} />
-                      : <ShieldCheck aria-hidden size={18} />}
-                    {verificando ? "Verificando identidad…"
-                      : completo ? "Abrir mi portal AlgoLab"
+                      ? "Verificando identidad…"
+                      : completo
+                      ? "Abrir mi portal AlgoLab 🚀"
                       : "Ingresa los 6 dígitos"}
                   </button>
                 </form>
@@ -724,10 +867,24 @@ export default function IniciarSesionPage() {
                     disabled={segsRenv > 0 || reenviando || bloqueado}
                     onClick={reenviar}
                   >
-                    <RefreshCw aria-hidden className={reenviando ? styles.spinning : ""} size={13} />
-                    {reenviando ? "Enviando…" : segsRenv > 0 ? `Reenviar en ${segsRenv}s` : "Reenviar código"}
+                    <RefreshCw
+                      aria-hidden
+                      className={reenviando ? styles.spinning : ""}
+                      size={13}
+                    />
+                    {reenviando
+                      ? "Enviando…"
+                      : segsRenv > 0
+                      ? `Reenviar en ${segsRenv}s`
+                      : "Reenviar código"}
                   </button>
-                  <button type="button" onClick={() => { setPaso("credenciales"); setMensaje(null); }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaso("credenciales");
+                      setMensaje(null);
+                    }}
+                  >
                     Cambiar cuenta
                   </button>
                 </div>
@@ -743,14 +900,16 @@ export default function IniciarSesionPage() {
                 data-tone={mensaje.tono}
                 role={mensaje.tono === "error" ? "alert" : "status"}
               >
-                {mensaje.tono === "exito"
-                  ? <CheckCircle2 aria-hidden size={17} />
-                  : <ShieldCheck aria-hidden size={17} />}
+                {mensaje.tono === "exito" ? (
+                  <CheckCircle2 aria-hidden size={17} />
+                ) : (
+                  <ShieldCheck aria-hidden size={17} />
+                )}
                 <span>{mensaje.texto}</span>
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </section>
     </main>
   );

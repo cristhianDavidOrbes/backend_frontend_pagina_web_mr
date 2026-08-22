@@ -14,6 +14,7 @@ import {
   Sparkles,
   TimerReset,
   User,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -64,7 +65,6 @@ type LoginRespuesta = {
   usuario?: UsuarioSesion;
 };
 
-// ─── Helpers ─────────────────────────────────────────────
 const EMPTY_CODE = ["", "", "", "", "", ""];
 const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/;
 
@@ -74,7 +74,7 @@ function normalizePhone(v: string) {
 function phoneError(v: string) {
   const n = normalizePhone(v);
   if (!n) return "";
-  return PHONE_PATTERN.test(n) ? "" : "Usa formato +573001234567 (E.164).";
+  return PHONE_PATTERN.test(n) ? "" : "Usa formato internacional +573001234567.";
 }
 function fmtTime(s: number) {
   const ss = Math.max(0, s);
@@ -97,77 +97,94 @@ function fortaleza(p: string) {
   return { pct: 100, label: "Muy segura", color: "#57eeb2" };
 }
 async function readJson<T>(r: Response): Promise<T> {
-  try { return await r.json() as T; }
-  catch { throw new Error("Respuesta inesperada del servidor."); }
+  try {
+    return (await r.json()) as T;
+  } catch {
+    throw new Error("Respuesta inesperada del servidor.");
+  }
 }
 
-// ─── Stepper header ───────────────────────────────────────
-const PASOS_LABEL: Record<Exclude<Paso, "bienvenida">, string> = {
-  datos: "1. Datos",
-  canal: "2. Canal 2FA",
-  codigo: "3. Código",
-};
-function Stepper({ paso }: { paso: Paso }) {
+// ─── Stepper Component ───────────────────────────────────
+function ModernStepper({ paso }: { paso: Paso }) {
   if (paso === "bienvenida") return null;
-  const order: (keyof typeof PASOS_LABEL)[] = ["datos", "canal", "codigo"];
-  const ci = order.indexOf(paso as keyof typeof PASOS_LABEL);
+
+  const getStepClass = (stepName: "datos" | "canal" | "codigo") => {
+    if (paso === stepName) return `${styles.stepItem} ${styles.stepActive}`;
+    if (
+      (stepName === "datos" && (paso === "canal" || paso === "codigo")) ||
+      (stepName === "canal" && paso === "codigo")
+    ) {
+      return `${styles.stepItem} ${styles.stepDone}`;
+    }
+    return styles.stepItem;
+  };
+
+  const isLineDone = (afterStep: "datos" | "canal") => {
+    if (afterStep === "datos" && (paso === "canal" || paso === "codigo")) return true;
+    if (afterStep === "canal" && paso === "codigo") return true;
+    return false;
+  };
+
   return (
-    <div className={styles.stepRail}>
-      {order.map((p, i) => (
-        <>
-          <span
-            key={p}
-            className={
-              i < ci
-                ? styles.completedStep
-                : i === ci
-                ? styles.activeStep
-                : ""
-            }
-          >
-            {i < ci ? <CheckCircle2 size={13} /> : null}
-            {PASOS_LABEL[p]}
-          </span>
-          {i < order.length - 1 && <i key={p + "-sep"} aria-hidden="true" />}
-        </>
-      ))}
+    <div className={styles.modernStepper}>
+      <div className={getStepClass("datos")}>
+        <span className={styles.stepNum}>
+          {paso === "canal" || paso === "codigo" ? <CheckCircle2 size={12} /> : "1"}
+        </span>
+        <span className={styles.stepLabel}>Datos</span>
+      </div>
+
+      <div
+        className={`${styles.stepLine} ${isLineDone("datos") ? styles.stepLineDone : ""}`}
+      />
+
+      <div className={getStepClass("canal")}>
+        <span className={styles.stepNum}>
+          {paso === "codigo" ? <CheckCircle2 size={12} /> : "2"}
+        </span>
+        <span className={styles.stepLabel}>Método 2FA</span>
+      </div>
+
+      <div
+        className={`${styles.stepLine} ${isLineDone("canal") ? styles.stepLineDone : ""}`}
+      />
+
+      <div className={getStepClass("codigo")}>
+        <span className={styles.stepNum}>3</span>
+        <span className={styles.stepLabel}>Código OTP</span>
+      </div>
     </div>
   );
 }
 
-// ─── Componente principal ─────────────────────────────────
+// ─── Componente Principal ─────────────────────────────────
 export default function RegistrarsePage() {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
+  const rm = useReducedMotion();
   const { hydrated, token: existingToken, usuario } = useAuthSession();
 
   const emailRef = useRef<HTMLInputElement | null>(null);
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  // ── Campos del formulario
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
   const [celular, setCelular] = useState("");
   const [pass, setPass] = useState("");
   const [verPass, setVerPass] = useState(false);
 
-  // ── Navegación y canal
   const [paso, setPaso] = useState<Paso>("datos");
   const [canal, setCanal] = useState<Canal>("CORREO");
 
-  // ── Validación
   const [correoTocado, setCorreoTocado] = useState(false);
   const [celularTocado, setCelularTocado] = useState(false);
   const errCorreo = correoTocado ? institutionalEmailError(correo) : "";
   const errCelular = celularTocado ? phoneError(celular) : "";
 
-  // ── Estados de carga
   const [enviando, setEnviando] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [mensaje, setMensaje] = useState<{ texto: string; tono: Tono } | null>(null);
 
-  // ── 2FA state
   const [desafio, setDesafio] = useState<DesafioRespuesta | null>(null);
   const [codigo, setCodigo] = useState<string[]>(EMPTY_CODE);
   const [ahora, setAhora] = useState(() => Date.now());
@@ -176,7 +193,7 @@ export default function RegistrarsePage() {
   const [reenvioEn, setReenvioEn] = useState(0);
   const [intentosRest, setIntentosRest] = useState<number | null>(null);
   const [bloqueado, setBloqueado] = useState(false);
-  const [otpKey, setOtpKey] = useState(0); // fuerza re-render para re-animar
+  const [otpKey, setOtpKey] = useState(0);
   const [usuarioReg, setUsuarioReg] = useState<UsuarioSesion | null>(null);
 
   const completo = codigo.every(Boolean);
@@ -194,29 +211,29 @@ export default function RegistrarsePage() {
     return correo ? correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2") : "tu correo";
   }, [correo, celular, canal, desafio?.destinoEnmascarado]);
 
-  // Redirect if already logged in
   useEffect(() => {
     if (!hydrated || !existingToken || !usuario || paso === "bienvenida") return;
-    const route = usuario.rol === "ADMINISTRADOR" ? "/administrador"
-      : usuario.rol === "DOCENTE" ? "/docente" : "/estudiante";
+    const route =
+      usuario.rol === "ADMINISTRADOR"
+        ? "/administrador"
+        : usuario.rol === "DOCENTE"
+        ? "/docente"
+        : "/estudiante";
     router.replace(route);
   }, [hydrated, existingToken, usuario, router, paso]);
 
-  // Timer tick
   useEffect(() => {
     if (paso !== "codigo") return;
     const t = window.setInterval(() => setAhora(Date.now()), 1000);
     return () => window.clearInterval(t);
   }, [paso]);
 
-  // Autofocus primer input OTP
   useEffect(() => {
     if (paso !== "codigo") return;
     const f = window.requestAnimationFrame(() => codeRefs.current[0]?.focus());
     return () => window.cancelAnimationFrame(f);
   }, [paso, otpKey]);
 
-  // ── Paso 1 → crear cuenta
   async function registrar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setCorreoTocado(true);
@@ -249,23 +266,29 @@ export default function RegistrarsePage() {
       const data = await readJson<{ exitoso?: boolean; mensaje?: string }>(res);
       if (!res.ok || data.exitoso === false) {
         const fallback =
-          res.status === 429 ? "Demasiados intentos. Espera un momento."
-          : res.status >= 500 ? "Servicio no disponible. Intenta más tarde."
-          : "No se pudo crear la cuenta.";
-        setMensaje({ texto: data.mensaje ?? fallback, tono: res.status >= 500 ? "aviso" : "error" });
+          res.status === 429
+            ? "Demasiados intentos. Espera un momento."
+            : res.status >= 500
+            ? "Servicio no disponible. Intenta más tarde."
+            : "No se pudo crear la cuenta.";
+        setMensaje({
+          texto: data.mensaje ?? fallback,
+          tono: res.status >= 500 ? "aviso" : "error",
+        });
         return;
       }
-      // Avanzar a selección de canal
       setPaso("canal");
       setMensaje(null);
     } catch (err) {
-      setMensaje({ texto: err instanceof Error ? err.message : "Error de conexión.", tono: "aviso" });
+      setMensaje({
+        texto: err instanceof Error ? err.message : "Error de conexión.",
+        tono: "aviso",
+      });
     } finally {
       setEnviando(false);
     }
   }
 
-  // ── Paso 2 → elegir canal y enviar código
   async function enviarCodigo() {
     setEnviando(true);
     setMensaje(null);
@@ -288,7 +311,16 @@ export default function RegistrarsePage() {
       const resend = Math.max(0, Number(data.reenvioDisponibleEnSegundos) || 30);
       const ts = Date.now();
 
-      setDesafio(data.desafioId ? data : { desafioId: "reg-" + ts, canal, destinoEnmascarado: destino, expiraEnSegundos: exp });
+      setDesafio(
+        data.desafioId
+          ? data
+          : {
+              desafioId: "reg-" + ts,
+              canal,
+              destinoEnmascarado: destino,
+              expiraEnSegundos: exp,
+            }
+      );
       setExpTotal(exp);
       setExpiraEn(ts + exp * 1000);
       setReenvioEn(ts + resend * 1000);
@@ -299,15 +331,20 @@ export default function RegistrarsePage() {
       setOtpKey((k) => k + 1);
       setPaso("codigo");
       setMensaje({
-        texto: canal === "SMS"
-          ? "Código enviado por SMS a tu celular 📱"
-          : "Código enviado a tu correo institucional 📧",
+        texto:
+          canal === "SMS"
+            ? "Código enviado por SMS a tu celular 📱"
+            : "Código enviado a tu correo institucional 📧",
         tono: "exito",
       });
     } catch {
-      // Fallback demo
       const ts = Date.now();
-      setDesafio({ desafioId: "demo-" + ts, canal, destinoEnmascarado: destino, expiraEnSegundos: 300 });
+      setDesafio({
+        desafioId: "demo-" + ts,
+        canal,
+        destinoEnmascarado: destino,
+        expiraEnSegundos: 300,
+      });
       setExpTotal(300);
       setExpiraEn(ts + 300_000);
       setReenvioEn(ts + 30_000);
@@ -320,11 +357,17 @@ export default function RegistrarsePage() {
     }
   }
 
-  // ── OTP: actualizar dígito
   function updateDigit(idx: number, raw: string) {
     const d = raw.replace(/\D/g, "");
-    if (d.length > 1) { distribuir(d, idx); return; }
-    setCodigo((c) => { const n = [...c]; n[idx] = d.slice(-1); return n; });
+    if (d.length > 1) {
+      distribuir(d, idx);
+      return;
+    }
+    setCodigo((c) => {
+      const n = [...c];
+      n[idx] = d.slice(-1);
+      return n;
+    });
     if (d && idx < 5) codeRefs.current[idx + 1]?.focus();
   }
 
@@ -333,7 +376,9 @@ export default function RegistrarsePage() {
     if (!d) return;
     setCodigo((c) => {
       const n = [...c];
-      d.split("").forEach((ch, i) => { n[start + i] = ch; });
+      d.split("").forEach((ch, i) => {
+        n[start + i] = ch;
+      });
       return n;
     });
     window.requestAnimationFrame(() =>
@@ -350,15 +395,23 @@ export default function RegistrarsePage() {
 
   function navKey(e: ReactKeyboardEvent<HTMLInputElement>, idx: number) {
     if (e.key === "Backspace" && !codigo[idx] && idx > 0) codeRefs.current[idx - 1]?.focus();
-    if (e.key === "ArrowLeft" && idx > 0) { e.preventDefault(); codeRefs.current[idx - 1]?.focus(); }
-    if (e.key === "ArrowRight" && idx < 5) { e.preventDefault(); codeRefs.current[idx + 1]?.focus(); }
+    if (e.key === "ArrowLeft" && idx > 0) {
+      e.preventDefault();
+      codeRefs.current[idx - 1]?.focus();
+    }
+    if (e.key === "ArrowRight" && idx < 5) {
+      e.preventDefault();
+      codeRefs.current[idx + 1]?.focus();
+    }
   }
 
-  // ── Paso 3 → verificar código
   async function verificar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!completo || bloqueado) return;
-    if (segsExp <= 0) { setMensaje({ texto: "El código expiró. Reenvía uno nuevo.", tono: "aviso" }); return; }
+    if (segsExp <= 0) {
+      setMensaje({ texto: "El código expiró. Reenvía uno nuevo.", tono: "aviso" });
+      return;
+    }
 
     setVerificando(true);
     setMensaje(null);
@@ -366,7 +419,10 @@ export default function RegistrarsePage() {
       const res = await fetch("/api/segundo-factor/verificar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ desafioId: desafio?.desafioId ?? "demo", codigo: codigo.join("") }),
+        body: JSON.stringify({
+          desafioId: desafio?.desafioId ?? "demo",
+          codigo: codigo.join(""),
+        }),
       });
       const data = await readJson<LoginRespuesta>(res);
 
@@ -387,11 +443,14 @@ export default function RegistrarsePage() {
       setUsuarioReg(data.usuario);
       setPaso("bienvenida");
     } catch {
-      // Demo: cualquier código de 6 dígitos pasa
       const demoUser: UsuarioSesion = {
-        id: 1, nombre: nombre || "Estudiante",
+        id: 1,
+        nombre: nombre || "Estudiante",
         correo: normalizeInstitutionalEmail(correo),
-        rol: "ESTUDIANTE", nivelActual: 1, puntaje: 0, avatar: "orbita",
+        rol: "ESTUDIANTE",
+        nivelActual: 1,
+        puntaje: 0,
+        avatar: "orbita",
       };
       saveAuthUser(demoUser);
       setUsuarioReg(demoUser);
@@ -401,7 +460,6 @@ export default function RegistrarsePage() {
     }
   }
 
-  // ── Reenviar código
   async function reenviar() {
     if (!desafio?.desafioId || segsRenv > 0 || reenviando || bloqueado) return;
     setReenviando(true);
@@ -438,16 +496,19 @@ export default function RegistrarsePage() {
     }
   }
 
-  const ease = reduceMotion ? { duration: 0 } : { duration: 0.38, ease: "easeOut" as const };
-  const slideProps = (dir: number) => ({
-    initial: { opacity: 0, x: reduceMotion ? 0 : dir * 24 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: reduceMotion ? 0 : -dir * 24 },
-    transition: ease,
-  });
+  // Animaciones de transición fluidas con Spring
+  const springTransition = rm
+    ? { duration: 0 }
+    : { type: "spring" as const, stiffness: 280, damping: 26, mass: 0.85 };
+
+  const screenVariants = {
+    initial: { opacity: 0, x: 45, scale: 0.96, filter: "blur(6px)" },
+    animate: { opacity: 1, x: 0, scale: 1, filter: "blur(0px)" },
+    exit: { opacity: 0, x: -45, scale: 0.96, filter: "blur(6px)" },
+  };
 
   // ──────────────────────────────────────────────────────
-  // PASO 4: BIENVENIDA / ONBOARDING
+  // PASO 4: BIENVENIDA (ONBOARDING)
   // ──────────────────────────────────────────────────────
   if (paso === "bienvenida") {
     return (
@@ -463,7 +524,7 @@ export default function RegistrarsePage() {
   }
 
   // ──────────────────────────────────────────────────────
-  // PASOS 1-3: Layout auth estándar
+  // PASOS 1-3: REGISTRO, CANAL Y OTP
   // ──────────────────────────────────────────────────────
   return (
     <main className="auth-shell min-h-screen">
@@ -473,31 +534,37 @@ export default function RegistrarsePage() {
       </Link>
 
       <section className="auth-layout">
-        {/* ── Columna izquierda: historia ── */}
+        {/* Columna Izquierda: Story */}
         <motion.div
           className="auth-story"
           animate={{ opacity: 1, x: 0 }}
-          initial={{ opacity: 0, x: reduceMotion ? 0 : -20 }}
-          transition={ease}
+          initial={{ opacity: 0, x: rm ? 0 : -20 }}
+          transition={{ duration: 0.4 }}
         >
-          <p className="section-kicker">
+          <span className="section-kicker">
             {paso === "datos" && "Identidad institucional"}
             {paso === "canal" && "Segundo factor de seguridad"}
             {paso === "codigo" && "Verificación en curso"}
-          </p>
+          </span>
 
           <AnimatePresence mode="wait">
-            <motion.div key={paso} {...slideProps(1)}>
+            <motion.div
+              key={paso}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+            >
               <h1>
                 {paso === "datos" && "Crea tu perfil y entra a otra dimensión."}
                 {paso === "canal" && "Elige cómo proteger tu acceso."}
-                {paso === "codigo" && "Confirma que eres tú."}
+                {paso === "codigo" && "Confirma tu identidad digital."}
               </h1>
               <p>
                 {paso === "datos" &&
-                  "Tu cuenta conecta el portal web, el compilador local y las gafas de Realidad Mixta de la UCC."}
+                  "Tu cuenta conecta el portal web, el compilador local y las experiencias espaciales en realidad mixta."}
                 {paso === "canal" &&
-                  "El código de verificación temporal garantiza que solo tú puedes abrir tu espacio de AlgoLab."}
+                  "El código temporal garantiza que únicamente tú puedes acceder a tus calificaciones y entorno de aprendizaje."}
                 {paso === "codigo" &&
                   `Revisa ${canal === "SMS" ? "tu celular" : "tu correo institucional"} y escribe el código de 6 dígitos que te enviamos.`}
               </p>
@@ -519,7 +586,7 @@ export default function RegistrarsePage() {
           </div>
 
           {paso === "datos" && (
-            <div className={styles.institutionalNotice}>
+            <div className="institutionalNotice">
               <ShieldCheck aria-hidden="true" size={22} />
               <div>
                 <strong>Acceso exclusivo UCC</strong>
@@ -529,22 +596,27 @@ export default function RegistrarsePage() {
           )}
         </motion.div>
 
-        {/* ── Columna derecha: card ── */}
+        {/* Columna Derecha: Card */}
         <motion.div
           className={`auth-card ${styles.securityCard}`}
           animate={{ opacity: 1, scale: 1 }}
-          initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.97 }}
-          transition={ease}
+          initial={{ opacity: 0, scale: rm ? 1 : 0.97 }}
+          transition={{ duration: 0.35 }}
         >
-          <div aria-hidden="true" className={styles.cardCircuit} />
-          <Stepper paso={paso} />
+          <div aria-hidden className={styles.cardCircuit} />
+          <ModernStepper paso={paso} />
 
           <AnimatePresence mode="wait">
-            {/* ══════════════════════════════════════
-                PASO 1: FORMULARIO DE DATOS
-            ══════════════════════════════════════ */}
+            {/* ══════════════════ PASO 1: DATOS ══════════════════ */}
             {paso === "datos" && (
-              <motion.div key="datos" {...slideProps(1)}>
+              <motion.div
+                key="datos"
+                variants={screenVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={springTransition}
+              >
                 <p className="section-kicker">Paso 1 de 3</p>
                 <h2>Crear perfil UCC</h2>
                 <p className="auth-copy">Completa tus datos para ingresar al laboratorio de AlgoLab.</p>
@@ -553,28 +625,32 @@ export default function RegistrarsePage() {
                   {/* Nombre */}
                   <label className="field-label" htmlFor="reg-nombre">
                     Nombre completo
-                    <span className={styles.inputShell}>
-                      <User aria-hidden size={18} />
+                    <div className={styles.inputWrapper}>
+                      <div className={styles.inputIcon}>
+                        <User size={18} />
+                      </div>
                       <input
                         id="reg-nombre"
-                        className="field-input"
+                        className={styles.inputField}
                         autoComplete="name"
                         placeholder="Ej: David Orbes"
                         required
                         value={nombre}
                         onChange={(e) => setNombre(e.target.value)}
                       />
-                    </span>
+                    </div>
                   </label>
 
                   {/* Correo */}
                   <label className="field-label" htmlFor="reg-email">
                     Correo institucional UCC
-                    <span className={styles.inputShell}>
-                      <Mail aria-hidden size={18} />
+                    <div className={styles.inputWrapper}>
+                      <div className={styles.inputIcon}>
+                        <Mail size={18} />
+                      </div>
                       <input
                         id="reg-email"
-                        className="field-input"
+                        className={styles.inputField}
                         type="email"
                         autoComplete="email"
                         autoCapitalize="none"
@@ -586,25 +662,30 @@ export default function RegistrarsePage() {
                         aria-invalid={Boolean(errCorreo)}
                         aria-describedby="reg-email-help"
                         onBlur={() => setCorreoTocado(true)}
-                        onChange={(e) => { setCorreo(e.target.value); if (correoTocado) setMensaje(null); }}
+                        onChange={(e) => {
+                          setCorreo(e.target.value);
+                          if (correoTocado) setMensaje(null);
+                        }}
                       />
-                    </span>
+                    </div>
                     <small
                       id="reg-email-help"
                       className={errCorreo ? styles.fieldError : styles.fieldHelp}
                     >
-                      {errCorreo || "Solo cuentas @campusucc.edu.co"}
+                      {errCorreo || "Solo cuentas terminadas en @campusucc.edu.co"}
                     </small>
                   </label>
 
                   {/* Celular */}
                   <label className="field-label" htmlFor="reg-phone">
                     Celular · opcional (para 2FA por SMS)
-                    <span className={styles.inputShell}>
-                      <Smartphone aria-hidden size={18} />
+                    <div className={styles.inputWrapper}>
+                      <div className={styles.inputIcon}>
+                        <Smartphone size={18} />
+                      </div>
                       <input
                         id="reg-phone"
-                        className="field-input"
+                        className={styles.inputField}
                         type="tel"
                         inputMode="tel"
                         autoComplete="tel"
@@ -613,9 +694,12 @@ export default function RegistrarsePage() {
                         aria-invalid={Boolean(errCelular)}
                         aria-describedby="reg-phone-help"
                         onBlur={() => setCelularTocado(true)}
-                        onChange={(e) => { setCelular(e.target.value); if (celularTocado) setMensaje(null); }}
+                        onChange={(e) => {
+                          setCelular(e.target.value);
+                          if (celularTocado) setMensaje(null);
+                        }}
                       />
-                    </span>
+                    </div>
                     <small
                       id="reg-phone-help"
                       className={errCelular ? styles.fieldError : styles.fieldHelp}
@@ -627,11 +711,13 @@ export default function RegistrarsePage() {
                   {/* Contraseña */}
                   <label className="field-label" htmlFor="reg-pass">
                     Contraseña
-                    <span className={styles.inputShell}>
-                      <LockKeyhole aria-hidden size={18} />
+                    <div className={styles.inputWrapper}>
+                      <div className={styles.inputIcon}>
+                        <LockKeyhole size={18} />
+                      </div>
                       <input
                         id="reg-pass"
-                        className="field-input"
+                        className={styles.inputField}
                         type={verPass ? "text" : "password"}
                         autoComplete="new-password"
                         placeholder="Mínimo 6 caracteres"
@@ -648,7 +734,7 @@ export default function RegistrarsePage() {
                       >
                         {verPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
-                    </span>
+                    </div>
                     {pass && (
                       <div className={styles.strengthMeter}>
                         <div className={styles.strengthBarTrack}>
@@ -666,7 +752,7 @@ export default function RegistrarsePage() {
                   </label>
 
                   <button
-                    className="primary-button flex w-full items-center justify-center gap-2 mt-2"
+                    className="primary-button flex w-full items-center justify-center gap-2 mt-3"
                     disabled={
                       enviando ||
                       !nombre.trim() ||
@@ -676,24 +762,34 @@ export default function RegistrarsePage() {
                     }
                     type="submit"
                   >
-                    {enviando
-                      ? <RefreshCw aria-hidden className={styles.spinning} size={18} />
-                      : <Sparkles aria-hidden size={18} />}
-                    {enviando ? "Creando cuenta…" : "Continuar →"}
+                    {enviando ? (
+                      <RefreshCw aria-hidden className={styles.spinning} size={18} />
+                    ) : (
+                      <Sparkles aria-hidden size={18} />
+                    )}
+                    {enviando ? "Creando cuenta…" : "Continuar a Verificación →"}
                   </button>
                 </form>
               </motion.div>
             )}
 
-            {/* ══════════════════════════════════════
-                PASO 2: SELECCIÓN DE CANAL 2FA
-            ══════════════════════════════════════ */}
+            {/* ══════════════════ PASO 2: CANAL 2FA ══════════════════ */}
             {paso === "canal" && (
-              <motion.div key="canal" {...slideProps(1)}>
+              <motion.div
+                key="canal"
+                variants={screenVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={springTransition}
+              >
                 <button
                   className={styles.backButton}
                   type="button"
-                  onClick={() => { setPaso("datos"); setMensaje(null); }}
+                  onClick={() => {
+                    setPaso("datos");
+                    setMensaje(null);
+                  }}
                 >
                   <ArrowLeft size={15} /> Volver a datos
                 </button>
@@ -701,32 +797,27 @@ export default function RegistrarsePage() {
                 <p className="section-kicker">Paso 2 de 3</p>
                 <h2>¿Cómo recibes tu código?</h2>
                 <p className="auth-copy">
-                  Selecciona el canal por donde quieres recibir el código temporal de 6 dígitos.
+                  Selecciona el medio por donde deseas recibir el código temporal de 6 dígitos.
                 </p>
 
-                <div className="mt-6 space-y-3">
+                <div className="mt-6 space-y-3.5">
                   {/* Opción Correo */}
                   <button
                     type="button"
                     role="radio"
                     aria-checked={canal === "CORREO"}
-                    data-active={canal === "CORREO"}
                     onClick={() => setCanal("CORREO")}
-                    className={`w-full flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-200 ${
-                      canal === "CORREO"
-                        ? "border-emerald-500/50 bg-emerald-500/10 shadow-lg shadow-emerald-500/10"
-                        : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
+                    className={`${styles.channelCard} ${
+                      canal === "CORREO" ? styles.channelCardActiveMail : ""
                     }`}
                   >
-                    <div className={`grid h-12 w-12 flex-shrink-0 place-items-center rounded-xl ${canal === "CORREO" ? "bg-emerald-500/20" : "bg-white/5"}`}>
-                      <Mail size={22} className={canal === "CORREO" ? "text-emerald-400" : "text-slate-500"} />
+                    <div className={styles.channelIconWrap}>
+                      <Mail size={22} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-bold ${canal === "CORREO" ? "text-emerald-200" : "text-slate-300"}`}>
-                        Correo institucional UCC
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">
-                        {correo ? correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2") : "tu correo @campusucc.edu.co"}
+                      <p className="text-sm font-bold text-white">Correo institucional UCC</p>
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        {correo ? correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2") : "tu correo"}
                       </p>
                     </div>
                     {canal === "CORREO" && (
@@ -739,26 +830,21 @@ export default function RegistrarsePage() {
                     type="button"
                     role="radio"
                     aria-checked={canal === "SMS"}
-                    data-active={canal === "SMS"}
                     onClick={() => setCanal("SMS")}
                     disabled={!celular}
-                    className={`w-full flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-200 ${
-                      !celular
-                        ? "border-white/5 bg-white/[0.02] cursor-not-allowed opacity-40"
-                        : canal === "SMS"
-                          ? "border-cyan-500/50 bg-cyan-500/10 shadow-lg shadow-cyan-500/10"
-                          : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
-                    }`}
+                    className={`${styles.channelCard} ${
+                      canal === "SMS" ? styles.channelCardActiveSms : ""
+                    } ${!celular ? "opacity-40 cursor-not-allowed" : ""}`}
                   >
-                    <div className={`grid h-12 w-12 flex-shrink-0 place-items-center rounded-xl ${canal === "SMS" ? "bg-cyan-500/20" : "bg-white/5"}`}>
-                      <Smartphone size={22} className={canal === "SMS" ? "text-cyan-400" : "text-slate-500"} />
+                    <div className={styles.channelIconWrap}>
+                      <Smartphone size={22} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-bold ${canal === "SMS" ? "text-cyan-200" : "text-slate-300"}`}>
-                        Celular / SMS
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">
-                        {celular ? normalizePhone(celular).replace(/^(\+\d{2,4})\d+(\d{4})$/, "$1••••$2") : "Agrega un celular en el paso anterior"}
+                      <p className="text-sm font-bold text-white">Celular / SMS</p>
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        {celular
+                          ? normalizePhone(celular).replace(/^(\+\d{2,4})\d+(\d{4})$/, "$1••••$2")
+                          : "Requiere celular registrado en el paso 1"}
                       </p>
                     </div>
                     {canal === "SMS" && (
@@ -773,9 +859,11 @@ export default function RegistrarsePage() {
                   type="button"
                   onClick={enviarCodigo}
                 >
-                  {enviando
-                    ? <RefreshCw aria-hidden className={styles.spinning} size={18} />
-                    : <ShieldCheck aria-hidden size={18} />}
+                  {enviando ? (
+                    <RefreshCw aria-hidden className={styles.spinning} size={18} />
+                  ) : (
+                    <Zap aria-hidden size={18} />
+                  )}
                   {enviando
                     ? "Enviando código…"
                     : `Enviar código por ${canal === "SMS" ? "SMS" : "Correo"}`}
@@ -783,28 +871,39 @@ export default function RegistrarsePage() {
               </motion.div>
             )}
 
-            {/* ══════════════════════════════════════
-                PASO 3: INGRESAR CÓDIGO OTP
-            ══════════════════════════════════════ */}
+            {/* ══════════════════ PASO 3: CÓDIGO OTP CON 3D STAGGER ══════════════════ */}
             {paso === "codigo" && (
-              <motion.div key="codigo" {...slideProps(1)}>
+              <motion.div
+                key="codigo"
+                variants={screenVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={springTransition}
+              >
                 <button
                   className={styles.backButton}
                   type="button"
-                  onClick={() => { setPaso("canal"); setMensaje(null); }}
+                  onClick={() => {
+                    setPaso("canal");
+                    setMensaje(null);
+                  }}
                 >
                   <ArrowLeft size={15} /> Cambiar canal
                 </button>
 
-                {/* Portal icon header */}
                 <div className={styles.portalHeader}>
                   <div aria-hidden className={styles.portalCore}>
-                    <span /><span /><span />
+                    <span />
+                    <span />
+                    <span />
                     {canal === "SMS" ? <Smartphone size={24} /> : <Mail size={24} />}
                   </div>
                   <div>
-                    <p className="section-kicker">Paso 3 de 3</p>
-                    <h2 aria-label="Código de verificación" data-text="Código OTP">
+                    <p className="section-kicker">
+                      {canal === "SMS" ? "SMS verificado" : "Correo verificado"}
+                    </p>
+                    <h2 aria-label="Código OTP" data-text="Código OTP">
                       Código OTP
                     </h2>
                     <p className="auth-copy text-xs">
@@ -814,37 +913,47 @@ export default function RegistrarsePage() {
                 </div>
 
                 <form className={styles.codeForm} onSubmit={verificar} noValidate>
-                  {/* ── 6 cajas OTP con animación escalonada ── */}
+                  {/* 6 Cajas OTP con animación 3D de entrada escalonada */}
                   <fieldset
                     key={otpKey}
                     className={styles.codeFieldset}
                     onPaste={pegar}
-                    style={{ perspective: "800px" }}
                   >
                     <legend className="sr-only">Código de verificación de 6 dígitos</legend>
-                    {codigo.map((digit, i) => (
-                      <input
+                    {codigo.map((d, i) => (
+                      <motion.input
                         key={i}
                         aria-label={`Dígito ${i + 1} de 6`}
                         autoComplete={i === 0 ? "one-time-code" : "off"}
-                        className={digit ? styles.filledCode : ""}
+                        className={`${styles.otpDigitBox} ${d ? styles.otpDigitFilled : ""}`}
                         disabled={bloqueado}
                         inputMode="numeric"
                         maxLength={1}
                         pattern="[0-9]*"
-                        value={digit}
-                        ref={(n) => { codeRefs.current[i] = n; }}
+                        value={d}
+                        ref={(n) => {
+                          codeRefs.current[i] = n;
+                        }}
                         onChange={(e) => updateDigit(i, e.target.value)}
                         onFocus={(e) => e.currentTarget.select()}
                         onKeyDown={(e) => navKey(e, i)}
+                        initial={{ opacity: 0, y: 30, rotateY: 70, scale: 0.8 }}
+                        animate={{ opacity: 1, y: 0, rotateY: 0, scale: 1 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 20,
+                          delay: i * 0.07,
+                        }}
                       />
                     ))}
                   </fieldset>
 
-                  {/* Timer panel */}
                   <div className={styles.timerPanel}>
                     <div>
-                      <span><TimerReset aria-hidden size={14} /> Vigencia</span>
+                      <span>
+                        <TimerReset aria-hidden size={14} /> Vigencia
+                      </span>
                       <strong>{fmtTime(segsExp)}</strong>
                     </div>
                     <div aria-hidden className={styles.timerTrack}>
@@ -852,10 +961,12 @@ export default function RegistrarsePage() {
                     </div>
                     <p>
                       {segsExp <= 0
-                        ? "Código expirado. Solicita uno nuevo."
+                        ? "Código expirado. Solicita uno nuevo con el botón de abajo."
                         : intentosRest !== null
-                        ? `${intentosRest} intento${intentosRest !== 1 ? "s" : ""} restante${intentosRest !== 1 ? "s" : ""}.`
-                        : "El código es de un solo uso y expira automáticamente."}
+                        ? `${intentosRest} intento${intentosRest !== 1 ? "s" : ""} restante${
+                            intentosRest !== 1 ? "s" : ""
+                          }.`
+                        : "El código es de un solo uso para proteger tu perfil institucional."}
                     </p>
                   </div>
 
@@ -864,13 +975,15 @@ export default function RegistrarsePage() {
                     disabled={!completo || verificando || segsExp <= 0 || bloqueado}
                     type="submit"
                   >
-                    {verificando
-                      ? <RefreshCw aria-hidden className={styles.spinning} size={18} />
-                      : <ShieldCheck aria-hidden size={18} />}
+                    {verificando ? (
+                      <RefreshCw aria-hidden className={styles.spinning} size={18} />
+                    ) : (
+                      <ShieldCheck aria-hidden size={18} />
+                    )}
                     {verificando
                       ? "Verificando…"
                       : completo
-                      ? "Verificar y Explorar AlgoLab 🚀"
+                      ? "Verificar y Entrar a AlgoLab 🚀"
                       : "Ingresa los 6 dígitos"}
                   </button>
                 </form>
@@ -881,10 +994,24 @@ export default function RegistrarsePage() {
                     disabled={segsRenv > 0 || reenviando || bloqueado}
                     onClick={reenviar}
                   >
-                    <RefreshCw aria-hidden className={reenviando ? styles.spinning : ""} size={14} />
-                    {reenviando ? "Enviando…" : segsRenv > 0 ? `Reenviar en ${segsRenv}s` : "Reenviar código"}
+                    <RefreshCw
+                      aria-hidden
+                      className={reenviando ? styles.spinning : ""}
+                      size={14}
+                    />
+                    {reenviando
+                      ? "Enviando…"
+                      : segsRenv > 0
+                      ? `Reenviar en ${segsRenv}s`
+                      : "Reenviar código"}
                   </button>
-                  <button type="button" onClick={() => { setPaso("canal"); setMensaje(null); }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaso("canal");
+                      setMensaje(null);
+                    }}
+                  >
                     Cambiar canal
                   </button>
                 </div>
@@ -892,17 +1019,19 @@ export default function RegistrarsePage() {
             )}
           </AnimatePresence>
 
-          {/* Feedback messages */}
-          <div aria-atomic="true" aria-live="polite" className={styles.messageRegion}>
+          {/* Feedback */}
+          <div aria-atomic aria-live="polite" className={styles.messageRegion}>
             {mensaje && (
               <div
                 className={styles.feedback}
                 data-tone={mensaje.tono}
                 role={mensaje.tono === "error" ? "alert" : "status"}
               >
-                {mensaje.tono === "exito"
-                  ? <CheckCircle2 aria-hidden size={18} />
-                  : <ShieldCheck aria-hidden size={18} />}
+                {mensaje.tono === "exito" ? (
+                  <CheckCircle2 aria-hidden size={18} />
+                ) : (
+                  <ShieldCheck aria-hidden size={18} />
+                )}
                 <span>{mensaje.texto}</span>
               </div>
             )}
