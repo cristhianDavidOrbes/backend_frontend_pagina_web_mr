@@ -698,9 +698,10 @@ button, a {
 .landing-shell, .auth-shell {
   position: relative;
   background:
-    radial-gradient(circle at 70% 18%, rgba(35,220,151,.12), transparent 32rem),
-    radial-gradient(circle at 18% 75%, rgba(13,184,235,.08), transparent 30rem),
-    linear-gradient(140deg, #050b0a, #071611 55%, #040908);
+    radial-gradient(ellipse at 75% 12%, rgba(35,220,151,.18) 0%, transparent 40%),
+    radial-gradient(ellipse at 15% 80%, rgba(13,184,235,.12) 0%, transparent 38%),
+    radial-gradient(ellipse at 50% 50%, rgba(92,50,210,.07) 0%, transparent 55%),
+    linear-gradient(150deg, #050c0a 0%, #07180f 50%, #050a08 100%);
 }
 
 .landing-shell::before, .auth-shell::before {
@@ -708,11 +709,11 @@ button, a {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: .2;
+  opacity: .18;
   background-image:
-    linear-gradient(rgba(111,255,200,.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(111,255,200,.03) 1px, transparent 1px);
-  background-size: 48px 48px;
+    linear-gradient(rgba(111,255,200,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(111,255,200,.05) 1px, transparent 1px);
+  background-size: 44px 44px;
 }
 
 .ambient-orb {

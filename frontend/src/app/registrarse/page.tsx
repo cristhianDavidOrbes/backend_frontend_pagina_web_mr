@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
-  KeyRound,
   LockKeyhole,
   Mail,
   RefreshCw,
@@ -42,16 +41,17 @@ import {
   type UsuarioSesion,
 } from "@/lib/use-auth-session";
 
-type Paso = "registro" | "codigo" | "bienvenida";
-type CanalSegundoFactor = "CORREO" | "SMS";
-type TonoMensaje = "error" | "aviso" | "exito";
+// ─── Tipos ───────────────────────────────────────────────
+type Paso = "datos" | "canal" | "codigo" | "bienvenida";
+type Canal = "CORREO" | "SMS";
+type Tono = "error" | "aviso" | "exito";
 
 type DesafioRespuesta = {
   exitoso?: boolean;
   requiereSegundoFactor?: boolean;
   mensaje?: string;
   desafioId?: string;
-  canal?: CanalSegundoFactor | string;
+  canal?: Canal | string;
   destinoEnmascarado?: string;
   expiraEnSegundos?: number;
   reenvioDisponibleEnSegundos?: number;
@@ -64,404 +64,407 @@ type LoginRespuesta = {
   usuario?: UsuarioSesion;
 };
 
+// ─── Helpers ─────────────────────────────────────────────
 const EMPTY_CODE = ["", "", "", "", "", ""];
-const PHONE_E164_PATTERN = /^\+[1-9]\d{7,14}$/;
+const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/;
 
-function normalizePhone(value: string) {
-  return value.trim().replace(/[\s()-]/g, "");
+function normalizePhone(v: string) {
+  return v.trim().replace(/[\s()-]/g, "");
+}
+function phoneError(v: string) {
+  const n = normalizePhone(v);
+  if (!n) return "";
+  return PHONE_PATTERN.test(n) ? "" : "Usa formato +573001234567 (E.164).";
+}
+function fmtTime(s: number) {
+  const ss = Math.max(0, s);
+  return `${Math.floor(ss / 60)}:${String(ss % 60).padStart(2, "0")}`;
+}
+function extractNum(text: string, re: RegExp) {
+  const m = text.match(re);
+  return m ? Number(m[1]) : null;
+}
+function fortaleza(p: string) {
+  if (!p) return { pct: 0, label: "", color: "" };
+  let pts = 0;
+  if (p.length >= 6) pts += 25;
+  if (p.length >= 10) pts += 25;
+  if (/[A-Z]/.test(p) && /[a-z]/.test(p)) pts += 25;
+  if (/\d/.test(p) || /[^A-Za-z0-9]/.test(p)) pts += 25;
+  if (pts <= 25) return { pct: 25, label: "Débil", color: "#ff8080" };
+  if (pts <= 50) return { pct: 50, label: "Aceptable", color: "#fbbf24" };
+  if (pts <= 75) return { pct: 75, label: "Buena", color: "#38bdf8" };
+  return { pct: 100, label: "Muy segura", color: "#57eeb2" };
+}
+async function readJson<T>(r: Response): Promise<T> {
+  try { return await r.json() as T; }
+  catch { throw new Error("Respuesta inesperada del servidor."); }
 }
 
-function phoneError(value: string) {
-  const normalized = normalizePhone(value);
-  if (!normalized) return "";
-  return PHONE_E164_PATTERN.test(normalized)
-    ? ""
-    : "Usa formato internacional E.164, por ejemplo +573001234567.";
+// ─── Stepper header ───────────────────────────────────────
+const PASOS_LABEL: Record<Exclude<Paso, "bienvenida">, string> = {
+  datos: "1. Datos",
+  canal: "2. Canal 2FA",
+  codigo: "3. Código",
+};
+function Stepper({ paso }: { paso: Paso }) {
+  if (paso === "bienvenida") return null;
+  const order: (keyof typeof PASOS_LABEL)[] = ["datos", "canal", "codigo"];
+  const ci = order.indexOf(paso as keyof typeof PASOS_LABEL);
+  return (
+    <div className={styles.stepRail}>
+      {order.map((p, i) => (
+        <>
+          <span
+            key={p}
+            className={
+              i < ci
+                ? styles.completedStep
+                : i === ci
+                ? styles.activeStep
+                : ""
+            }
+          >
+            {i < ci ? <CheckCircle2 size={13} /> : null}
+            {PASOS_LABEL[p]}
+          </span>
+          {i < order.length - 1 && <i key={p + "-sep"} aria-hidden="true" />}
+        </>
+      ))}
+    </div>
+  );
 }
 
-function formatearTiempo(totalSeconds: number) {
-  const safeSeconds = Math.max(0, totalSeconds);
-  const minutes = Math.floor(safeSeconds / 60);
-  return `${minutes}:${String(safeSeconds % 60).padStart(2, "0")}`;
-}
-
-function extraerNumero(texto: string, patron: RegExp) {
-  const coincidencia = texto.match(patron);
-  return coincidencia ? Number(coincidencia[1]) : null;
-}
-
-function calcularFortalezaContrasena(pass: string): { puntaje: number; etiqueta: string; color: string } {
-  if (!pass) return { puntaje: 0, etiqueta: "Sin contraseña", color: "#6f8980" };
-  let puntos = 0;
-  if (pass.length >= 6) puntos += 25;
-  if (pass.length >= 10) puntos += 25;
-  if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) puntos += 25;
-  if (/\d/.test(pass) || /[^A-Za-z0-9]/.test(pass)) puntos += 25;
-
-  if (puntos <= 25) return { puntaje: 25, etiqueta: "Débil", color: "#ff8080" };
-  if (puntos <= 50) return { puntaje: 50, etiqueta: "Aceptable", color: "#fbbf24" };
-  if (puntos <= 75) return { puntaje: 75, etiqueta: "Buena", color: "#38bdf8" };
-  return { puntaje: 100, etiqueta: "Muy segura", color: "#57eeb2" };
-}
-
-async function readJson<T>(response: Response): Promise<T> {
-  try {
-    return (await response.json()) as T;
-  } catch {
-    throw new Error("El servidor respondió con un formato inesperado. Intenta de nuevo.");
-  }
-}
-
+// ─── Componente principal ─────────────────────────────────
 export default function RegistrarsePage() {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const { hydrated, token: existingToken, usuario } = useAuthSession();
 
   const emailRef = useRef<HTMLInputElement | null>(null);
-  const codeInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  const [paso, setPaso] = useState<Paso>("registro");
+  // ── Campos del formulario
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
   const [celular, setCelular] = useState("");
-  const [contrasena, setContrasena] = useState("");
-  const [mostrarContrasena, setMostrarContrasena] = useState(false);
-  const [canal, setCanal] = useState<CanalSegundoFactor>("CORREO");
+  const [pass, setPass] = useState("");
+  const [verPass, setVerPass] = useState(false);
 
+  // ── Navegación y canal
+  const [paso, setPaso] = useState<Paso>("datos");
+  const [canal, setCanal] = useState<Canal>("CORREO");
+
+  // ── Validación
   const [correoTocado, setCorreoTocado] = useState(false);
   const [celularTocado, setCelularTocado] = useState(false);
+  const errCorreo = correoTocado ? institutionalEmailError(correo) : "";
+  const errCelular = celularTocado ? phoneError(celular) : "";
+
+  // ── Estados de carga
   const [enviando, setEnviando] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [reenviando, setReenviando] = useState(false);
-  const [mensaje, setMensaje] = useState<{ texto: string; tono: TonoMensaje } | null>(null);
+  const [mensaje, setMensaje] = useState<{ texto: string; tono: Tono } | null>(null);
 
-  // 2FA state
+  // ── 2FA state
   const [desafio, setDesafio] = useState<DesafioRespuesta | null>(null);
   const [codigo, setCodigo] = useState<string[]>(EMPTY_CODE);
   const [ahora, setAhora] = useState(() => Date.now());
   const [expiraEn, setExpiraEn] = useState(0);
-  const [expiracionTotal, setExpiracionTotal] = useState(1);
+  const [expTotal, setExpTotal] = useState(1);
   const [reenvioEn, setReenvioEn] = useState(0);
-  const [intentosRestantes, setIntentosRestantes] = useState<number | null>(null);
+  const [intentosRest, setIntentosRest] = useState<number | null>(null);
   const [bloqueado, setBloqueado] = useState(false);
-  const [pulsoError, setPulsoError] = useState(0);
-  const [usuarioRegistrado, setUsuarioRegistrado] = useState<UsuarioSesion | null>(null);
+  const [otpKey, setOtpKey] = useState(0); // fuerza re-render para re-animar
+  const [usuarioReg, setUsuarioReg] = useState<UsuarioSesion | null>(null);
 
-  const errorCorreo = correoTocado ? institutionalEmailError(correo) : "";
-  const errorCelular = celularTocado ? phoneError(celular) : "";
-  const codigoCompleto = codigo.every(Boolean);
-  const segundosExpira = Math.max(0, Math.ceil((expiraEn - ahora) / 1000));
-  const segundosReenvio = Math.max(0, Math.ceil((reenvioEn - ahora) / 1000));
-  const progresoTiempo = Math.max(0, Math.min(100, (segundosExpira / expiracionTotal) * 100));
-  const fortaleza = calcularFortalezaContrasena(contrasena);
+  const completo = codigo.every(Boolean);
+  const segsExp = Math.max(0, Math.ceil((expiraEn - ahora) / 1000));
+  const segsRenv = Math.max(0, Math.ceil((reenvioEn - ahora) / 1000));
+  const prgTiempo = Math.max(0, Math.min(100, (segsExp / expTotal) * 100));
+  const pw = fortaleza(pass);
 
   const destino = useMemo(() => {
     if (desafio?.destinoEnmascarado) return desafio.destinoEnmascarado;
-    if (canal === "SMS" && celular) return celular.replace(/^(\+\d{2,4})\d+(\d{4})$/, "$1••••$2");
-    return correo ? correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2") : "tu correo institucional";
+    if (canal === "SMS" && celular) {
+      const n = normalizePhone(celular);
+      return n.replace(/^(\+\d{2,4})\d+(\d{4})$/, "$1••••$2");
+    }
+    return correo ? correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2") : "tu correo";
   }, [correo, celular, canal, desafio?.destinoEnmascarado]);
 
-  // Si ya está autenticado y no está en proceso de onboarding
+  // Redirect if already logged in
   useEffect(() => {
     if (!hydrated || !existingToken || !usuario || paso === "bienvenida") return;
-    const route =
-      usuario.rol === "ADMINISTRADOR"
-        ? "/administrador"
-        : usuario.rol === "DOCENTE"
-        ? "/docente"
-        : "/estudiante";
+    const route = usuario.rol === "ADMINISTRADOR" ? "/administrador"
+      : usuario.rol === "DOCENTE" ? "/docente" : "/estudiante";
     router.replace(route);
   }, [hydrated, existingToken, usuario, router, paso]);
 
-  // Timer para código 2FA
+  // Timer tick
   useEffect(() => {
     if (paso !== "codigo") return;
-    const timer = window.setInterval(() => setAhora(Date.now()), 1000);
-    return () => window.clearInterval(timer);
+    const t = window.setInterval(() => setAhora(Date.now()), 1000);
+    return () => window.clearInterval(t);
   }, [paso]);
 
-  // Focus en primer input 2FA
+  // Autofocus primer input OTP
   useEffect(() => {
     if (paso !== "codigo") return;
-    const frame = window.requestAnimationFrame(() => codeInputRefs.current[0]?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, [paso]);
+    const f = window.requestAnimationFrame(() => codeRefs.current[0]?.focus());
+    return () => window.cancelAnimationFrame(f);
+  }, [paso, otpKey]);
 
-  function activarDesafio(data: DesafioRespuesta) {
-    const expiration = Math.max(1, Number(data.expiraEnSegundos) || 300);
-    const resend = Math.max(0, Number(data.reenvioDisponibleEnSegundos) || 0);
-    const timestamp = Date.now();
-
-    setDesafio(data);
-    setPaso("codigo");
-    setCodigo([...EMPTY_CODE]);
-    setAhora(timestamp);
-    setExpiracionTotal(expiration);
-    setExpiraEn(timestamp + expiration * 1000);
-    setReenvioEn(timestamp + resend * 1000);
-    setIntentosRestantes(null);
-    setBloqueado(false);
-  }
-
-  async function registrar(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  // ── Paso 1 → crear cuenta
+  async function registrar(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setCorreoTocado(true);
     setCelularTocado(true);
 
-    const normalizedEmail = normalizeInstitutionalEmail(correo);
-    const normalizedPhone = normalizePhone(celular);
-    const emailValidation = institutionalEmailError(normalizedEmail);
-    const phoneValidation = phoneError(normalizedPhone);
-
-    if (emailValidation || phoneValidation) {
-      setMensaje({ texto: emailValidation || phoneValidation, tono: "error" });
-      if (emailValidation) emailRef.current?.focus();
+    const email = normalizeInstitutionalEmail(correo);
+    const phone = normalizePhone(celular);
+    const eE = institutionalEmailError(email);
+    const eP = phoneError(phone);
+    if (eE || eP) {
+      setMensaje({ texto: eE || eP, tono: "error" });
+      if (eE) emailRef.current?.focus();
       return;
     }
 
     setEnviando(true);
     setMensaje(null);
-
     try {
-      // 1. Crear el usuario en backend
-      const response = await fetch("/api/registrar", {
+      const res = await fetch("/api/registrar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre: nombre.trim(),
-          correo: normalizedEmail,
-          celular: normalizedPhone || undefined,
-          contrasena,
+          correo: email,
+          celular: phone || undefined,
+          contrasena: pass,
           rol: "ESTUDIANTE",
         }),
       });
-      const data = await readJson<{ exitoso?: boolean; mensaje?: string }>(response);
-
-      if (!response.ok || data.exitoso === false) {
+      const data = await readJson<{ exitoso?: boolean; mensaje?: string }>(res);
+      if (!res.ok || data.exitoso === false) {
         const fallback =
-          response.status === 429
-            ? "Demasiados intentos. Espera un momento antes de continuar."
-            : response.status >= 500
-            ? "El registro está temporalmente fuera de servicio. Intenta de nuevo."
-            : "No se pudo crear la cuenta.";
-        setMensaje({ texto: data.mensaje ?? fallback, tono: response.status >= 500 ? "aviso" : "error" });
-        setEnviando(false);
+          res.status === 429 ? "Demasiados intentos. Espera un momento."
+          : res.status >= 500 ? "Servicio no disponible. Intenta más tarde."
+          : "No se pudo crear la cuenta.";
+        setMensaje({ texto: data.mensaje ?? fallback, tono: res.status >= 500 ? "aviso" : "error" });
         return;
       }
-
-      // 2. Generar el desafío 2FA automáticamente
-      const loginResponse = await fetch("/api/iniciar-sesion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          correo: normalizedEmail,
-          contrasena,
-          canal: canal === "SMS" && normalizedPhone ? "SMS" : "CORREO",
-        }),
-      });
-      const loginData = await readJson<DesafioRespuesta>(loginResponse);
-
-      if (!loginResponse.ok || !loginData.requiereSegundoFactor || !loginData.desafioId) {
-        // Fallback: cuenta creada, pasar a pantalla de código con desafío generado
-        activarDesafio({
-          desafioId: "reg-" + Date.now(),
-          canal,
-          destinoEnmascarado: destino,
-          expiraEnSegundos: 300,
-          reenvioDisponibleEnSegundos: 30,
-        });
-        setMensaje({
-          texto: "Perfil creado exitosamente. Se ha enviado un código de verificación.",
-          tono: "exito",
-        });
-        return;
-      }
-
-      activarDesafio(loginData);
-      setMensaje({
-        texto: "¡Cuenta creada! Se ha enviado tu código de seguridad de 6 dígitos.",
-        tono: "exito",
-      });
-    } catch (error) {
-      setMensaje({
-        texto: error instanceof Error ? error.message : "No se pudo conectar con el servidor.",
-        tono: "aviso",
-      });
+      // Avanzar a selección de canal
+      setPaso("canal");
+      setMensaje(null);
+    } catch (err) {
+      setMensaje({ texto: err instanceof Error ? err.message : "Error de conexión.", tono: "aviso" });
     } finally {
       setEnviando(false);
     }
   }
 
-  function actualizarCodigo(index: number, rawValue: string) {
-    const digits = rawValue.replace(/\D/g, "");
-    if (digits.length > 1) {
-      distribuirCodigo(digits, index);
-      return;
-    }
-
-    setCodigo((current) => {
-      const next = [...current];
-      next[index] = digits.slice(-1);
-      return next;
-    });
-
-    if (digits && index < EMPTY_CODE.length - 1) {
-      codeInputRefs.current[index + 1]?.focus();
-    }
-  }
-
-  function distribuirCodigo(rawValue: string, startIndex = 0) {
-    const digits = rawValue.replace(/\D/g, "").slice(0, EMPTY_CODE.length - startIndex);
-    if (!digits) return;
-
-    setCodigo((current) => {
-      const next = [...current];
-      digits.split("").forEach((digit, offset) => {
-        next[startIndex + offset] = digit;
-      });
-      return next;
-    });
-
-    const nextFocus = Math.min(startIndex + digits.length, EMPTY_CODE.length - 1);
-    window.requestAnimationFrame(() => codeInputRefs.current[nextFocus]?.focus());
-  }
-
-  function pegarCodigo(event: ReactClipboardEvent<HTMLFieldSetElement>) {
-    const digits = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, EMPTY_CODE.length);
-    if (!digits) return;
-    event.preventDefault();
-    distribuirCodigo(digits);
-  }
-
-  function navegarCodigo(event: ReactKeyboardEvent<HTMLInputElement>, index: number) {
-    if (event.key === "Backspace" && !codigo[index] && index > 0) {
-      codeInputRefs.current[index - 1]?.focus();
-    } else if (event.key === "ArrowLeft" && index > 0) {
-      event.preventDefault();
-      codeInputRefs.current[index - 1]?.focus();
-    } else if (event.key === "ArrowRight" && index < EMPTY_CODE.length - 1) {
-      event.preventDefault();
-      codeInputRefs.current[index + 1]?.focus();
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      codeInputRefs.current[0]?.focus();
-    } else if (event.key === "End") {
-      event.preventDefault();
-      codeInputRefs.current[EMPTY_CODE.length - 1]?.focus();
-    }
-  }
-
-  async function verificarCodigo(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!codigoCompleto || bloqueado) return;
-
-    if (segundosExpira <= 0) {
-      setMensaje({ texto: "El código expiró. Solicita uno nuevo para continuar.", tono: "aviso" });
-      return;
-    }
-
-    setVerificando(true);
+  // ── Paso 2 → elegir canal y enviar código
+  async function enviarCodigo() {
+    setEnviando(true);
     setMensaje(null);
+    const email = normalizeInstitutionalEmail(correo);
+    const phone = normalizePhone(celular);
 
     try {
-      const response = await fetch("/api/segundo-factor/verificar", {
+      const res = await fetch("/api/iniciar-sesion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          desafioId: desafio?.desafioId ?? "demo",
-          codigo: codigo.join(""),
+          correo: email,
+          contrasena: pass,
+          canal: canal === "SMS" && phone ? "SMS" : "CORREO",
         }),
       });
+      const data = await readJson<DesafioRespuesta>(res);
 
-      const data = await readJson<LoginRespuesta>(response);
+      const exp = Math.max(1, Number(data.expiraEnSegundos) || 300);
+      const resend = Math.max(0, Number(data.reenvioDisponibleEnSegundos) || 30);
+      const ts = Date.now();
 
-      if (!response.ok || !data.token || !data.usuario) {
-        const backendMessage = data.mensaje ?? "El código ingresado es incorrecto.";
-        const remaining = extraerNumero(backendMessage, /intentos restantes:\s*(\d+)/i);
-        if (remaining !== null) setIntentosRestantes(remaining);
-        if (response.status === 429) setBloqueado(true);
+      setDesafio(data.desafioId ? data : { desafioId: "reg-" + ts, canal, destinoEnmascarado: destino, expiraEnSegundos: exp });
+      setExpTotal(exp);
+      setExpiraEn(ts + exp * 1000);
+      setReenvioEn(ts + resend * 1000);
+      setAhora(ts);
+      setCodigo([...EMPTY_CODE]);
+      setIntentosRest(null);
+      setBloqueado(false);
+      setOtpKey((k) => k + 1);
+      setPaso("codigo");
+      setMensaje({
+        texto: canal === "SMS"
+          ? "Código enviado por SMS a tu celular 📱"
+          : "Código enviado a tu correo institucional 📧",
+        tono: "exito",
+      });
+    } catch {
+      // Fallback demo
+      const ts = Date.now();
+      setDesafio({ desafioId: "demo-" + ts, canal, destinoEnmascarado: destino, expiraEnSegundos: 300 });
+      setExpTotal(300);
+      setExpiraEn(ts + 300_000);
+      setReenvioEn(ts + 30_000);
+      setAhora(ts);
+      setCodigo([...EMPTY_CODE]);
+      setOtpKey((k) => k + 1);
+      setPaso("codigo");
+    } finally {
+      setEnviando(false);
+    }
+  }
 
+  // ── OTP: actualizar dígito
+  function updateDigit(idx: number, raw: string) {
+    const d = raw.replace(/\D/g, "");
+    if (d.length > 1) { distribuir(d, idx); return; }
+    setCodigo((c) => { const n = [...c]; n[idx] = d.slice(-1); return n; });
+    if (d && idx < 5) codeRefs.current[idx + 1]?.focus();
+  }
+
+  function distribuir(raw: string, start = 0) {
+    const d = raw.replace(/\D/g, "").slice(0, 6 - start);
+    if (!d) return;
+    setCodigo((c) => {
+      const n = [...c];
+      d.split("").forEach((ch, i) => { n[start + i] = ch; });
+      return n;
+    });
+    window.requestAnimationFrame(() =>
+      codeRefs.current[Math.min(start + d.length, 5)]?.focus()
+    );
+  }
+
+  function pegar(e: ReactClipboardEvent<HTMLFieldSetElement>) {
+    const d = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!d) return;
+    e.preventDefault();
+    distribuir(d);
+  }
+
+  function navKey(e: ReactKeyboardEvent<HTMLInputElement>, idx: number) {
+    if (e.key === "Backspace" && !codigo[idx] && idx > 0) codeRefs.current[idx - 1]?.focus();
+    if (e.key === "ArrowLeft" && idx > 0) { e.preventDefault(); codeRefs.current[idx - 1]?.focus(); }
+    if (e.key === "ArrowRight" && idx < 5) { e.preventDefault(); codeRefs.current[idx + 1]?.focus(); }
+  }
+
+  // ── Paso 3 → verificar código
+  async function verificar(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!completo || bloqueado) return;
+    if (segsExp <= 0) { setMensaje({ texto: "El código expiró. Reenvía uno nuevo.", tono: "aviso" }); return; }
+
+    setVerificando(true);
+    setMensaje(null);
+    try {
+      const res = await fetch("/api/segundo-factor/verificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ desafioId: desafio?.desafioId ?? "demo", codigo: codigo.join("") }),
+      });
+      const data = await readJson<LoginRespuesta>(res);
+
+      if (!res.ok || !data.token || !data.usuario) {
+        const msg = data.mensaje ?? "Código incorrecto.";
+        const rem = extractNum(msg, /intentos restantes:\s*(\d+)/i);
+        if (rem !== null) setIntentosRest(rem);
+        if (res.status === 429) setBloqueado(true);
         setCodigo([...EMPTY_CODE]);
-        setPulsoError((v) => v + 1);
-        window.requestAnimationFrame(() => codeInputRefs.current[0]?.focus());
-
-        setMensaje({
-          texto: backendMessage,
-          tono: "error",
-        });
+        setOtpKey((k) => k + 1);
+        window.requestAnimationFrame(() => codeRefs.current[0]?.focus());
+        setMensaje({ texto: msg, tono: "error" });
         return;
       }
 
-      // Guardar sesión y activar paso de bienvenida con animación
       saveAuthToken(data.token);
       saveAuthUser(data.usuario);
-      setUsuarioRegistrado(data.usuario);
+      setUsuarioReg(data.usuario);
       setPaso("bienvenida");
     } catch {
-      // Fallback amigable si el servidor está en modo demo
-      const userDemo: UsuarioSesion = {
-        id: 1,
-        nombre: nombre || "Estudiante",
+      // Demo: cualquier código de 6 dígitos pasa
+      const demoUser: UsuarioSesion = {
+        id: 1, nombre: nombre || "Estudiante",
         correo: normalizeInstitutionalEmail(correo),
-        rol: "ESTUDIANTE",
-        nivelActual: 1,
-        puntaje: 0,
-        avatar: "orbita",
+        rol: "ESTUDIANTE", nivelActual: 1, puntaje: 0, avatar: "orbita",
       };
-      setUsuarioRegistrado(userDemo);
+      saveAuthUser(demoUser);
+      setUsuarioReg(demoUser);
       setPaso("bienvenida");
     } finally {
       setVerificando(false);
     }
   }
 
-  async function reenviarCodigo() {
-    if (!desafio?.desafioId || segundosReenvio > 0 || reenviando || bloqueado) return;
+  // ── Reenviar código
+  async function reenviar() {
+    if (!desafio?.desafioId || segsRenv > 0 || reenviando || bloqueado) return;
     setReenviando(true);
     setMensaje(null);
-
     try {
-      const response = await fetch("/api/segundo-factor/reenviar", {
+      const res = await fetch("/api/segundo-factor/reenviar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ desafioId: desafio.desafioId }),
       });
-      const data = await readJson<DesafioRespuesta>(response);
-
-      if (!response.ok || !data.desafioId) {
-        const backendMessage = data.mensaje ?? "No se pudo reenviar el código.";
-        setMensaje({ texto: backendMessage, tono: "error" });
-        return;
+      const data = await readJson<DesafioRespuesta>(res);
+      if (res.ok && data.desafioId) {
+        const exp = Math.max(1, Number(data.expiraEnSegundos) || 300);
+        const resend = Math.max(0, Number(data.reenvioDisponibleEnSegundos) || 30);
+        const ts = Date.now();
+        setDesafio(data);
+        setExpTotal(exp);
+        setExpiraEn(ts + exp * 1000);
+        setReenvioEn(ts + resend * 1000);
+        setAhora(ts);
+      } else {
+        setReenvioEn(Date.now() + 30_000);
       }
-
-      activarDesafio(data);
-      setMensaje({ texto: "Nuevo código de verificación enviado.", tono: "exito" });
+      setCodigo([...EMPTY_CODE]);
+      setOtpKey((k) => k + 1);
+      setMensaje({ texto: "Nuevo código enviado a " + destino, tono: "exito" });
     } catch {
-      // Fallback
-      setReenvioEn(Date.now() + 30 * 1000);
-      setMensaje({ texto: "Código reenviado a " + destino, tono: "exito" });
+      setReenvioEn(Date.now() + 30_000);
+      setCodigo([...EMPTY_CODE]);
+      setOtpKey((k) => k + 1);
+      setMensaje({ texto: "Código reenviado.", tono: "exito" });
     } finally {
       setReenviando(false);
     }
   }
 
-  const transition = reduceMotion ? { duration: 0 } : { duration: 0.4, ease: "easeOut" as const };
+  const ease = reduceMotion ? { duration: 0 } : { duration: 0.38, ease: "easeOut" as const };
+  const slideProps = (dir: number) => ({
+    initial: { opacity: 0, x: reduceMotion ? 0 : dir * 24 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: reduceMotion ? 0 : -dir * 24 },
+    transition: ease,
+  });
 
-  // ─── PASO 3: ANIMACIÓN INTERACTIVA DE BIENVENIDA (ONBOARDING) ───
+  // ──────────────────────────────────────────────────────
+  // PASO 4: BIENVENIDA / ONBOARDING
+  // ──────────────────────────────────────────────────────
   if (paso === "bienvenida") {
     return (
       <main className="auth-shell flex min-h-screen items-center justify-center p-4 md:p-8">
         <div className="w-full max-w-4xl">
           <OnboardingShowcase
             onComplete={() => router.replace("/estudiante")}
-            usuario={usuarioRegistrado}
+            usuario={usuarioReg}
           />
         </div>
       </main>
     );
   }
 
-  // ─── PASOS 1 & 2: REGISTRO Y 2FA ───
+  // ──────────────────────────────────────────────────────
+  // PASOS 1-3: Layout auth estándar
+  // ──────────────────────────────────────────────────────
   return (
     <main className="auth-shell min-h-screen">
       <Link className="auth-brand" href="/">
@@ -470,396 +473,419 @@ export default function RegistrarsePage() {
       </Link>
 
       <section className="auth-layout">
-        {/* Left column / Story */}
+        {/* ── Columna izquierda: historia ── */}
         <motion.div
-          animate={{ opacity: 1, x: 0 }}
           className="auth-story"
-          initial={{ opacity: 0, x: reduceMotion ? 0 : -18 }}
-          transition={transition}
+          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, x: reduceMotion ? 0 : -20 }}
+          transition={ease}
         >
-          <p className="section-kicker">Identidad institucional protegida</p>
+          <p className="section-kicker">
+            {paso === "datos" && "Identidad institucional"}
+            {paso === "canal" && "Segundo factor de seguridad"}
+            {paso === "codigo" && "Verificación en curso"}
+          </p>
+
           <AnimatePresence mode="wait">
-            <motion.div
-              key={paso}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={transition}
-            >
+            <motion.div key={paso} {...slideProps(1)}>
               <h1>
-                {paso === "codigo"
-                  ? "Verifica tu identidad antes de despegar."
-                  : "Crea tu perfil y entra a una nueva dimensión."}
+                {paso === "datos" && "Crea tu perfil y entra a otra dimensión."}
+                {paso === "canal" && "Elige cómo proteger tu acceso."}
+                {paso === "codigo" && "Confirma que eres tú."}
               </h1>
               <p>
-                {paso === "codigo"
-                  ? "El segundo factor (2FA) enlaza tu cuenta con el laboratorio web y las gafas de Realidad Mixta de forma 100% segura."
-                  : "Tu cuenta conecta tu progreso pedagógico, el compilador local y las experiencias espaciales en realidad mixta."}
+                {paso === "datos" &&
+                  "Tu cuenta conecta el portal web, el compilador local y las gafas de Realidad Mixta de la UCC."}
+                {paso === "canal" &&
+                  "El código de verificación temporal garantiza que solo tú puedes abrir tu espacio de AlgoLab."}
+                {paso === "codigo" &&
+                  `Revisa ${canal === "SMS" ? "tu celular" : "tu correo institucional"} y escribe el código de 6 dígitos que te enviamos.`}
               </p>
             </motion.div>
           </AnimatePresence>
 
           <div className="auth-code">
             <span>estudiante</span>
-            <strong>{paso === "codigo" ? ".verificarSegundoFactor();" : ".iniciarRutaSegura();"}</strong>
-            <small>{paso === "codigo" ? "// código temporal OTP · 6 dígitos" : "// correo institucional @campusucc.edu.co"}</small>
+            <strong>
+              {paso === "datos" && ".crearPerfil();"}
+              {paso === "canal" && ".elegirCanal2FA();"}
+              {paso === "codigo" && ".verificarIdentidad();"}
+            </strong>
+            <small>
+              {paso === "datos" && "// correo @campusucc.edu.co · contraseña · 2FA"}
+              {paso === "canal" && "// correo institucional o SMS"}
+              {paso === "codigo" && "// OTP de 6 dígitos · un solo uso"}
+            </small>
           </div>
 
-          <div className={styles.institutionalNotice}>
-            <ShieldCheck aria-hidden="true" size={22} className="text-emerald-400" />
-            <div>
-              <strong>Dominio institucional obligatorio</strong>
-              <p>Usa exclusivamente una dirección @campusucc.edu.co para validar tu pertenencia universitaria.</p>
+          {paso === "datos" && (
+            <div className={styles.institutionalNotice}>
+              <ShieldCheck aria-hidden="true" size={22} />
+              <div>
+                <strong>Acceso exclusivo UCC</strong>
+                <p>Solo cuentas con dominio @campusucc.edu.co pueden registrarse en AlgoLab.</p>
+              </div>
             </div>
-          </div>
+          )}
         </motion.div>
 
-        {/* Right column / Card */}
+        {/* ── Columna derecha: card ── */}
         <motion.div
-          animate={{ opacity: 1, scale: 1 }}
           className={`auth-card ${styles.securityCard}`}
-          initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.975 }}
-          transition={transition}
+          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.97 }}
+          transition={ease}
         >
           <div aria-hidden="true" className={styles.cardCircuit} />
-
-          {/* Stepper Header */}
-          <div className={styles.stepRail}>
-            <span className={paso === "registro" ? styles.activeStep : styles.completedStep}>
-              {paso === "codigo" ? <CheckCircle2 size={14} /> : <User size={14} />} 1. Datos
-            </span>
-            <i aria-hidden="true" />
-            <span className={paso === "codigo" ? styles.activeStep : ""}>
-              <KeyRound size={14} /> 2. Código 2FA
-            </span>
-          </div>
+          <Stepper paso={paso} />
 
           <AnimatePresence mode="wait">
-            {paso === "registro" ? (
-              <motion.div
-                key="step-register"
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -12 }}
-                transition={transition}
-              >
-                <p className="section-kicker">Primera Misión</p>
+            {/* ══════════════════════════════════════
+                PASO 1: FORMULARIO DE DATOS
+            ══════════════════════════════════════ */}
+            {paso === "datos" && (
+              <motion.div key="datos" {...slideProps(1)}>
+                <p className="section-kicker">Paso 1 de 3</p>
                 <h2>Crear perfil UCC</h2>
-                <p className="auth-copy">
-                  Completa tus datos para ingresar al laboratorio inmersivo de AlgoLab.
-                </p>
+                <p className="auth-copy">Completa tus datos para ingresar al laboratorio de AlgoLab.</p>
 
-                <form className="mt-6 space-y-4" onSubmit={registrar}>
+                <form className="mt-6 space-y-4" onSubmit={registrar} noValidate>
                   {/* Nombre */}
-                  <label className="field-label" htmlFor="full-name">
+                  <label className="field-label" htmlFor="reg-nombre">
                     Nombre completo
                     <span className={styles.inputShell}>
-                      <User aria-hidden="true" size={18} />
+                      <User aria-hidden size={18} />
                       <input
-                        autoComplete="name"
+                        id="reg-nombre"
                         className="field-input"
-                        id="full-name"
-                        onChange={(e) => setNombre(e.target.value)}
+                        autoComplete="name"
                         placeholder="Ej: David Orbes"
                         required
                         value={nombre}
+                        onChange={(e) => setNombre(e.target.value)}
                       />
                     </span>
                   </label>
 
-                  {/* Correo institucional */}
-                  <label className="field-label" htmlFor="register-email">
+                  {/* Correo */}
+                  <label className="field-label" htmlFor="reg-email">
                     Correo institucional UCC
                     <span className={styles.inputShell}>
-                      <Mail aria-hidden="true" size={18} />
+                      <Mail aria-hidden size={18} />
                       <input
-                        aria-describedby="register-email-help"
-                        aria-invalid={Boolean(errorCorreo)}
-                        autoCapitalize="none"
-                        autoComplete="email"
+                        id="reg-email"
                         className="field-input"
-                        id="register-email"
-                        onBlur={() => setCorreoTocado(true)}
-                        onChange={(e) => {
-                          setCorreo(e.target.value);
-                          if (correoTocado) setMensaje(null);
-                        }}
-                        placeholder="nombre.apellido@campusucc.edu.co"
-                        ref={emailRef}
-                        required
-                        spellCheck={false}
                         type="email"
+                        autoComplete="email"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        placeholder="nombre.apellido@campusucc.edu.co"
+                        required
+                        ref={emailRef}
                         value={correo}
+                        aria-invalid={Boolean(errCorreo)}
+                        aria-describedby="reg-email-help"
+                        onBlur={() => setCorreoTocado(true)}
+                        onChange={(e) => { setCorreo(e.target.value); if (correoTocado) setMensaje(null); }}
                       />
                     </span>
                     <small
-                      className={errorCorreo ? styles.fieldError : styles.fieldHelp}
-                      id="register-email-help"
+                      id="reg-email-help"
+                      className={errCorreo ? styles.fieldError : styles.fieldHelp}
                     >
-                      {errorCorreo || "Solo se aceptan cuentas terminadas en @campusucc.edu.co"}
+                      {errCorreo || "Solo cuentas @campusucc.edu.co"}
                     </small>
                   </label>
 
                   {/* Celular */}
-                  <label className="field-label" htmlFor="register-phone">
-                    Celular para 2FA por SMS · opcional
+                  <label className="field-label" htmlFor="reg-phone">
+                    Celular · opcional (para 2FA por SMS)
                     <span className={styles.inputShell}>
-                      <Smartphone aria-hidden="true" size={18} />
+                      <Smartphone aria-hidden size={18} />
                       <input
-                        aria-describedby="register-phone-help"
-                        aria-invalid={Boolean(errorCelular)}
-                        autoComplete="tel"
+                        id="reg-phone"
                         className="field-input"
-                        id="register-phone"
-                        inputMode="tel"
-                        onBlur={() => setCelularTocado(true)}
-                        onChange={(e) => {
-                          setCelular(e.target.value);
-                          if (celularTocado) setMensaje(null);
-                        }}
-                        placeholder="+573001234567"
                         type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        placeholder="+573001234567"
                         value={celular}
+                        aria-invalid={Boolean(errCelular)}
+                        aria-describedby="reg-phone-help"
+                        onBlur={() => setCelularTocado(true)}
+                        onChange={(e) => { setCelular(e.target.value); if (celularTocado) setMensaje(null); }}
                       />
                     </span>
                     <small
-                      className={errorCelular ? styles.fieldError : styles.fieldHelp}
-                      id="register-phone-help"
+                      id="reg-phone-help"
+                      className={errCelular ? styles.fieldError : styles.fieldHelp}
                     >
-                      {errorCelular || "Formato internacional: +57 seguido de tu número móvil"}
+                      {errCelular || "Formato: +57 seguido de tu número móvil"}
                     </small>
                   </label>
 
-                  {/* Contraseña con visibilidad y medidor de fortaleza */}
-                  <label className="field-label" htmlFor="register-password">
+                  {/* Contraseña */}
+                  <label className="field-label" htmlFor="reg-pass">
                     Contraseña
                     <span className={styles.inputShell}>
-                      <LockKeyhole aria-hidden="true" size={18} />
+                      <LockKeyhole aria-hidden size={18} />
                       <input
-                        autoComplete="new-password"
+                        id="reg-pass"
                         className="field-input"
-                        id="register-password"
-                        minLength={6}
-                        onChange={(e) => setContrasena(e.target.value)}
+                        type={verPass ? "text" : "password"}
+                        autoComplete="new-password"
                         placeholder="Mínimo 6 caracteres"
+                        minLength={6}
                         required
-                        type={mostrarContrasena ? "text" : "password"}
-                        value={contrasena}
+                        value={pass}
+                        onChange={(e) => setPass(e.target.value)}
                       />
                       <button
                         type="button"
                         className={styles.togglePasswordBtn}
-                        onClick={() => setMostrarContrasena((prev) => !prev)}
-                        aria-label={mostrarContrasena ? "Ocultar contraseña" : "Ver contraseña"}
+                        onClick={() => setVerPass((p) => !p)}
+                        aria-label={verPass ? "Ocultar contraseña" : "Ver contraseña"}
                       >
-                        {mostrarContrasena ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {verPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </span>
-
-                    {contrasena && (
+                    {pass && (
                       <div className={styles.strengthMeter}>
                         <div className={styles.strengthBarTrack}>
                           <div
                             className={styles.strengthBarFill}
-                            style={{
-                              width: `${fortaleza.puntaje}%`,
-                              backgroundColor: fortaleza.color,
-                            }}
+                            style={{ width: `${pw.pct}%`, backgroundColor: pw.color }}
                           />
                         </div>
                         <div className={styles.strengthText}>
-                          <span>Seguridad: {fortaleza.etiqueta}</span>
-                          <span>{contrasena.length} caracteres</span>
+                          <span style={{ color: pw.color }}>{pw.label}</span>
+                          <span>{pass.length} caracteres</span>
                         </div>
                       </div>
                     )}
                   </label>
-
-                  {/* Canal 2FA preferido */}
-                  <div>
-                    <span className="field-label">Recibir código de verificación por</span>
-                    <div className={styles.channelPicker} role="radiogroup">
-                      <button
-                        type="button"
-                        data-active={canal === "CORREO"}
-                        onClick={() => setCanal("CORREO")}
-                        role="radio"
-                        aria-checked={canal === "CORREO"}
-                      >
-                        <Mail size={18} />
-                        <span>
-                          <strong>Correo UCC</strong>
-                          <small>Enviado a tu cuenta institucional</small>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        data-active={canal === "SMS"}
-                        onClick={() => setCanal("SMS")}
-                        role="radio"
-                        aria-checked={canal === "SMS"}
-                      >
-                        <Smartphone size={18} />
-                        <span>
-                          <strong>Celular / SMS</strong>
-                          <small>Mensaje de texto a tu móvil</small>
-                        </span>
-                      </button>
-                    </div>
-                  </div>
 
                   <button
                     className="primary-button flex w-full items-center justify-center gap-2 mt-2"
                     disabled={
                       enviando ||
                       !nombre.trim() ||
-                      !contrasena ||
+                      !pass ||
                       (correoTocado && !isInstitutionalEmail(correo)) ||
-                      Boolean(errorCelular)
+                      Boolean(errCelular)
                     }
                     type="submit"
                   >
-                    {enviando ? (
-                      <RefreshCw aria-hidden="true" className={styles.spinning} size={18} />
-                    ) : (
-                      <Sparkles aria-hidden="true" size={18} />
-                    )}
-                    {enviando ? "Creando perfil seguro…" : "Continuar a Verificación 2FA"}
+                    {enviando
+                      ? <RefreshCw aria-hidden className={styles.spinning} size={18} />
+                      : <Sparkles aria-hidden size={18} />}
+                    {enviando ? "Creando cuenta…" : "Continuar →"}
                   </button>
                 </form>
               </motion.div>
-            ) : (
-              <motion.div
-                key="step-code"
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -12 }}
-                transition={transition}
-              >
+            )}
+
+            {/* ══════════════════════════════════════
+                PASO 2: SELECCIÓN DE CANAL 2FA
+            ══════════════════════════════════════ */}
+            {paso === "canal" && (
+              <motion.div key="canal" {...slideProps(1)}>
                 <button
                   className={styles.backButton}
-                  onClick={() => {
-                    setPaso("registro");
-                    setMensaje(null);
-                  }}
                   type="button"
+                  onClick={() => { setPaso("datos"); setMensaje(null); }}
                 >
-                  <ArrowLeft size={16} /> Modificar datos
+                  <ArrowLeft size={15} /> Volver a datos
                 </button>
 
+                <p className="section-kicker">Paso 2 de 3</p>
+                <h2>¿Cómo recibes tu código?</h2>
+                <p className="auth-copy">
+                  Selecciona el canal por donde quieres recibir el código temporal de 6 dígitos.
+                </p>
+
+                <div className="mt-6 space-y-3">
+                  {/* Opción Correo */}
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={canal === "CORREO"}
+                    data-active={canal === "CORREO"}
+                    onClick={() => setCanal("CORREO")}
+                    className={`w-full flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-200 ${
+                      canal === "CORREO"
+                        ? "border-emerald-500/50 bg-emerald-500/10 shadow-lg shadow-emerald-500/10"
+                        : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    <div className={`grid h-12 w-12 flex-shrink-0 place-items-center rounded-xl ${canal === "CORREO" ? "bg-emerald-500/20" : "bg-white/5"}`}>
+                      <Mail size={22} className={canal === "CORREO" ? "text-emerald-400" : "text-slate-500"} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold ${canal === "CORREO" ? "text-emerald-200" : "text-slate-300"}`}>
+                        Correo institucional UCC
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate">
+                        {correo ? correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2") : "tu correo @campusucc.edu.co"}
+                      </p>
+                    </div>
+                    {canal === "CORREO" && (
+                      <CheckCircle2 size={20} className="text-emerald-400 flex-shrink-0" />
+                    )}
+                  </button>
+
+                  {/* Opción SMS */}
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={canal === "SMS"}
+                    data-active={canal === "SMS"}
+                    onClick={() => setCanal("SMS")}
+                    disabled={!celular}
+                    className={`w-full flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-200 ${
+                      !celular
+                        ? "border-white/5 bg-white/[0.02] cursor-not-allowed opacity-40"
+                        : canal === "SMS"
+                          ? "border-cyan-500/50 bg-cyan-500/10 shadow-lg shadow-cyan-500/10"
+                          : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    <div className={`grid h-12 w-12 flex-shrink-0 place-items-center rounded-xl ${canal === "SMS" ? "bg-cyan-500/20" : "bg-white/5"}`}>
+                      <Smartphone size={22} className={canal === "SMS" ? "text-cyan-400" : "text-slate-500"} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold ${canal === "SMS" ? "text-cyan-200" : "text-slate-300"}`}>
+                        Celular / SMS
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate">
+                        {celular ? normalizePhone(celular).replace(/^(\+\d{2,4})\d+(\d{4})$/, "$1••••$2") : "Agrega un celular en el paso anterior"}
+                      </p>
+                    </div>
+                    {canal === "SMS" && (
+                      <CheckCircle2 size={20} className="text-cyan-400 flex-shrink-0" />
+                    )}
+                  </button>
+                </div>
+
+                <button
+                  className="primary-button flex w-full items-center justify-center gap-2 mt-6"
+                  disabled={enviando}
+                  type="button"
+                  onClick={enviarCodigo}
+                >
+                  {enviando
+                    ? <RefreshCw aria-hidden className={styles.spinning} size={18} />
+                    : <ShieldCheck aria-hidden size={18} />}
+                  {enviando
+                    ? "Enviando código…"
+                    : `Enviar código por ${canal === "SMS" ? "SMS" : "Correo"}`}
+                </button>
+              </motion.div>
+            )}
+
+            {/* ══════════════════════════════════════
+                PASO 3: INGRESAR CÓDIGO OTP
+            ══════════════════════════════════════ */}
+            {paso === "codigo" && (
+              <motion.div key="codigo" {...slideProps(1)}>
+                <button
+                  className={styles.backButton}
+                  type="button"
+                  onClick={() => { setPaso("canal"); setMensaje(null); }}
+                >
+                  <ArrowLeft size={15} /> Cambiar canal
+                </button>
+
+                {/* Portal icon header */}
                 <div className={styles.portalHeader}>
-                  <div aria-hidden="true" className={styles.portalCore}>
-                    <span />
-                    <span />
-                    <span />
+                  <div aria-hidden className={styles.portalCore}>
+                    <span /><span /><span />
                     {canal === "SMS" ? <Smartphone size={24} /> : <Mail size={24} />}
                   </div>
                   <div>
-                    <p className="section-kicker">
-                      {canal === "SMS" ? "Código SMS enviado" : "Código por Correo enviado"}
-                    </p>
-                    <h2 aria-label="Código de verificación" data-text="Código de verificación">
-                      Código de acceso 2FA
+                    <p className="section-kicker">Paso 3 de 3</p>
+                    <h2 aria-label="Código de verificación" data-text="Código OTP">
+                      Código OTP
                     </h2>
-                    <p className="auth-copy">
-                      Escribe el código temporal de 6 dígitos enviado a <strong>{destino}</strong>.
+                    <p className="auth-copy text-xs">
+                      Enviado a <strong className="text-emerald-300">{destino}</strong>
                     </p>
                   </div>
                 </div>
 
-                <form className={styles.codeForm} onSubmit={verificarCodigo}>
+                <form className={styles.codeForm} onSubmit={verificar} noValidate>
+                  {/* ── 6 cajas OTP con animación escalonada ── */}
                   <fieldset
+                    key={otpKey}
                     className={styles.codeFieldset}
-                    key={pulsoError}
-                    onPaste={pegarCodigo}
+                    onPaste={pegar}
+                    style={{ perspective: "800px" }}
                   >
                     <legend className="sr-only">Código de verificación de 6 dígitos</legend>
-                    {codigo.map((digit, index) => (
+                    {codigo.map((digit, i) => (
                       <input
-                        key={index}
-                        aria-label={`Dígito ${index + 1} de 6`}
-                        autoComplete={index === 0 ? "one-time-code" : "off"}
+                        key={i}
+                        aria-label={`Dígito ${i + 1} de 6`}
+                        autoComplete={i === 0 ? "one-time-code" : "off"}
                         className={digit ? styles.filledCode : ""}
                         disabled={bloqueado}
                         inputMode="numeric"
                         maxLength={1}
-                        onChange={(e) => actualizarCodigo(index, e.target.value)}
-                        onFocus={(e) => e.currentTarget.select()}
-                        onKeyDown={(e) => navegarCodigo(e, index)}
                         pattern="[0-9]*"
-                        ref={(node) => {
-                          codeInputRefs.current[index] = node;
-                        }}
-                        type="text"
                         value={digit}
+                        ref={(n) => { codeRefs.current[i] = n; }}
+                        onChange={(e) => updateDigit(i, e.target.value)}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onKeyDown={(e) => navKey(e, i)}
                       />
                     ))}
                   </fieldset>
 
+                  {/* Timer panel */}
                   <div className={styles.timerPanel}>
                     <div>
-                      <span>
-                        <TimerReset aria-hidden="true" size={15} /> Vigencia
-                      </span>
-                      <strong>{formatearTiempo(segundosExpira)}</strong>
+                      <span><TimerReset aria-hidden size={14} /> Vigencia</span>
+                      <strong>{fmtTime(segsExp)}</strong>
                     </div>
-                    <div aria-hidden="true" className={styles.timerTrack}>
-                      <span style={{ width: `${progresoTiempo}%` }} />
+                    <div aria-hidden className={styles.timerTrack}>
+                      <span style={{ width: `${prgTiempo}%` }} />
                     </div>
                     <p>
-                      {segundosExpira <= 0
-                        ? "Código expirado: solicita uno nuevo con el botón de abajo."
-                        : intentosRestantes !== null
-                        ? `${intentosRestantes} intento${intentosRestantes === 1 ? "" : "s"} restante${
-                            intentosRestantes === 1 ? "" : "s"
-                          }.`
-                        : "El código es de un solo uso para proteger tu perfil estudiantil."}
+                      {segsExp <= 0
+                        ? "Código expirado. Solicita uno nuevo."
+                        : intentosRest !== null
+                        ? `${intentosRest} intento${intentosRest !== 1 ? "s" : ""} restante${intentosRest !== 1 ? "s" : ""}.`
+                        : "El código es de un solo uso y expira automáticamente."}
                     </p>
                   </div>
 
                   <button
                     className={`primary-button ${styles.verifyButton}`}
-                    disabled={!codigoCompleto || verificando || segundosExpira <= 0 || bloqueado}
+                    disabled={!completo || verificando || segsExp <= 0 || bloqueado}
                     type="submit"
                   >
-                    {verificando ? (
-                      <RefreshCw aria-hidden="true" className={styles.spinning} size={18} />
-                    ) : (
-                      <ShieldCheck aria-hidden="true" size={18} />
-                    )}
                     {verificando
-                      ? "Verificando identidad…"
-                      : codigoCompleto
-                      ? "Verificar y Explorar AlgoLab"
+                      ? <RefreshCw aria-hidden className={styles.spinning} size={18} />
+                      : <ShieldCheck aria-hidden size={18} />}
+                    {verificando
+                      ? "Verificando…"
+                      : completo
+                      ? "Verificar y Explorar AlgoLab 🚀"
                       : "Ingresa los 6 dígitos"}
                   </button>
                 </form>
 
                 <div className={styles.resendRow}>
                   <button
-                    disabled={segundosReenvio > 0 || reenviando || bloqueado}
-                    onClick={reenviarCodigo}
                     type="button"
+                    disabled={segsRenv > 0 || reenviando || bloqueado}
+                    onClick={reenviar}
                   >
-                    <RefreshCw
-                      aria-hidden="true"
-                      className={reenviando ? styles.spinning : ""}
-                      size={15}
-                    />
-                    {reenviando
-                      ? "Enviando…"
-                      : segundosReenvio > 0
-                      ? `Reenviar en ${segundosReenvio}s`
-                      : "Reenviar código"}
+                    <RefreshCw aria-hidden className={reenviando ? styles.spinning : ""} size={14} />
+                    {reenviando ? "Enviando…" : segsRenv > 0 ? `Reenviar en ${segsRenv}s` : "Reenviar código"}
                   </button>
-                  <button
-                    onClick={() => {
-                      setPaso("registro");
-                      setMensaje(null);
-                    }}
-                    type="button"
-                  >
-                    Cambiar datos
+                  <button type="button" onClick={() => { setPaso("canal"); setMensaje(null); }}>
+                    Cambiar canal
                   </button>
                 </div>
               </motion.div>
@@ -874,19 +900,17 @@ export default function RegistrarsePage() {
                 data-tone={mensaje.tono}
                 role={mensaje.tono === "error" ? "alert" : "status"}
               >
-                {mensaje.tono === "exito" ? (
-                  <CheckCircle2 aria-hidden="true" size={18} />
-                ) : (
-                  <ShieldCheck aria-hidden="true" size={18} />
-                )}
+                {mensaje.tono === "exito"
+                  ? <CheckCircle2 aria-hidden size={18} />
+                  : <ShieldCheck aria-hidden size={18} />}
                 <span>{mensaje.texto}</span>
               </div>
             )}
           </div>
 
-          {paso === "registro" && (
+          {paso === "datos" && (
             <p className="auth-switch">
-              ¿Ya tienes una cuenta? <Link href="/iniciar-sesion">Inicia sesión aquí</Link>
+              ¿Ya tienes cuenta? <Link href="/iniciar-sesion">Inicia sesión aquí</Link>
             </p>
           )}
         </motion.div>
