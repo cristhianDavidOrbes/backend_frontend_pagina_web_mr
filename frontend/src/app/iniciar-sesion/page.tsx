@@ -264,42 +264,31 @@ export default function IniciarSesionPage() {
     return () => cancelAnimationFrame(f);
   }, [paso, otpKey]);
 
-  async function validarCredenciales(e: FormEvent<HTMLFormElement>) {
+  function validarCredenciales(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setCorreoTocado(true);
     const email = normalizeInstitutionalEmail(correo);
     const eE = institutionalEmailError(email);
     if (eE) { setMsg({ texto: eE, tono: "error" }); emailRef.current?.focus(); return; }
-    setEnviando(true); setMsg(null);
-    try {
-      const r = await fetch("/api/iniciar-sesion", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo: email, contrasena: pass, canal: "CORREO" }),
-      });
-      const data = await rj<DesafioRespuesta>(r);
-      if (!r.ok || !data.requiereSegundoFactor) {
-        setMsg({ texto: data.mensaje ?? (r.status === 401 ? "Correo o contraseña incorrectos." : "Error al validar credenciales."), tono: r.status >= 500 ? "aviso" : "error" });
-        return;
-      }
-      setCorreo(email); setDesafio(data); navTo("canal", 1);
-    } catch (err) {
-      setMsg({ texto: err instanceof Error ? err.message : "Error de conexión.", tono: "aviso" });
-    } finally { setEnviando(false); }
+    if (!pass) { setMsg({ texto: "Ingresa tu contraseña.", tono: "error" }); return; }
+    setCorreo(email);
+    navTo("canal", 1);
   }
 
   async function enviarCodigo() {
     setEnviando(true); setMsg(null);
     try {
       const email = normalizeInstitutionalEmail(correo);
-      let data: DesafioRespuesta;
-      if (canal !== (desafio?.canal ?? "CORREO")) {
-        const r = await fetch("/api/iniciar-sesion", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ correo: email, contrasena: pass, canal }),
-        });
-        data = await rj<DesafioRespuesta>(r);
-        if (!r.ok || !data.desafioId) { setMsg({ texto: data.mensaje ?? "No se pudo enviar el código.", tono: "error" }); return; }
-      } else { data = desafio!; }
+      const r = await fetch("/api/iniciar-sesion", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ correo: email, contrasena: pass, canal }),
+      });
+      const data = await rj<DesafioRespuesta>(r);
+      if (!r.ok || !data.desafioId) {
+        const fallback = r.status === 401 ? "Correo o contraseña incorrectos." : (data.mensaje ?? "No se pudo enviar el código.");
+        setMsg({ texto: fallback, tono: "error" });
+        return;
+      }
       const exp = Math.max(1, Number(data.expiraEnSegundos) || 300);
       const resend = Math.max(0, Number(data.reenvioDisponibleEnSegundos) || 30);
       const ts = Date.now();
@@ -313,6 +302,7 @@ export default function IniciarSesionPage() {
       setCodigo([...EMPTY6]); setOtpKey(k => k + 1); navTo("codigo", 1);
     } finally { setEnviando(false); }
   }
+
 
   function updateDigit(idx: number, raw: string) {
     const d = raw.replace(/\D/g, "");

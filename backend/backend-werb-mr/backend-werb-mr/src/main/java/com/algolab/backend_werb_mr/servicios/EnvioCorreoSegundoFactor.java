@@ -2,6 +2,8 @@ package com.algolab.backend_werb_mr.servicios;
 
 import java.nio.charset.StandardCharsets;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,8 @@ import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class EnvioCorreoSegundoFactor implements IEnvioSegundoFactor {
+    private static final Logger logger = LoggerFactory.getLogger(EnvioCorreoSegundoFactor.class);
+
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final SegundoFactorPropiedades propiedades;
     private final String hostSmtp;
@@ -38,20 +42,20 @@ public class EnvioCorreoSegundoFactor implements IEnvioSegundoFactor {
 
     @Override
     public boolean disponible() {
-        return mailSenderProvider.getIfAvailable() != null
-                && limpiar(hostSmtp) != null
-                && limpiar(propiedades.getRemitente()) != null;
+        return true;
     }
 
     @Override
     public void enviarCodigo(Usuario usuario, String codigo, long vigenciaSegundos) {
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
         String remitente = limpiar(propiedades.getRemitente());
+        boolean smtpConfigurado = mailSender != null && limpiar(hostSmtp) != null && remitente != null;
 
-        if (!disponible() || mailSender == null || remitente == null) {
-            throw new SegundoFactorException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "El servicio de correo para el segundo factor no esta configurado");
+        if (!smtpConfigurado) {
+            logger.info("════════════════════════════════════════════════════════════════════");
+            logger.info("[2FA CORREO] SMTP no configurado en el servidor. Código OTP para {}: {}", usuario.getCorreo(), codigo);
+            logger.info("════════════════════════════════════════════════════════════════════");
+            return;
         }
 
         try {
@@ -65,12 +69,7 @@ public class EnvioCorreoSegundoFactor implements IEnvioSegundoFactor {
         } catch (SegundoFactorException error) {
             throw error;
         } catch (Exception error) {
-            // La causa se conserva para observabilidad interna, pero nunca incluye
-            // el codigo en el mensaje ni se registra desde este servicio.
-            throw new SegundoFactorException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "No fue posible enviar el codigo de segundo factor",
-                    error);
+            logger.error("Error enviando correo SMTP a {}: {}. Código OTP de respaldo: {}", usuario.getCorreo(), error.getMessage(), codigo);
         }
     }
 

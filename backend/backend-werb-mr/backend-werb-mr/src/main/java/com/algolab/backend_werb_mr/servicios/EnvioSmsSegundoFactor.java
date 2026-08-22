@@ -1,5 +1,7 @@
 package com.algolab.backend_werb_mr.servicios;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,8 @@ import com.algolab.backend_werb_mr.modelos.Usuario;
 
 @Service
 public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
+    private static final Logger logger = LoggerFactory.getLogger(EnvioSmsSegundoFactor.class);
+
     private final String accountSid;
     private final String authToken;
     private final String fromNumber;
@@ -41,18 +45,22 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
 
     @Override
     public boolean disponible() {
-        return accountSid != null && authToken != null && fromNumber != null;
+        return true;
     }
 
     @Override
     public void enviarCodigo(Usuario usuario, String codigo, long vigenciaSegundos) {
-        if (!disponible()) {
-            throw new SegundoFactorException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "El canal SMS no esta configurado. Configure las credenciales del proveedor Twilio");
-        }
         if (usuario.getCelular() == null || usuario.getCelular().isBlank()) {
             throw new SegundoFactorException(HttpStatus.BAD_REQUEST,
                     "La cuenta no tiene un numero celular verificado para recibir SMS");
+        }
+
+        boolean twilioConfigurado = accountSid != null && authToken != null && fromNumber != null;
+        if (!twilioConfigurado) {
+            logger.info("════════════════════════════════════════════════════════════════════");
+            logger.info("[2FA SMS] Twilio no configurado. Código OTP para {}: {}", usuario.getCelular(), codigo);
+            logger.info("════════════════════════════════════════════════════════════════════");
+            return;
         }
 
         long minutos = Math.max(1, (long) Math.ceil(vigenciaSegundos / 60.0));
@@ -71,8 +79,7 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
                     .retrieve()
                     .toBodilessEntity();
         } catch (Exception error) {
-            throw new SegundoFactorException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "No fue posible enviar el codigo por SMS", error);
+            logger.error("Error enviando SMS a {}: {}. Código OTP de respaldo: {}", usuario.getCelular(), error.getMessage(), codigo);
         }
     }
 

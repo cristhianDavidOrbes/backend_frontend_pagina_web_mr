@@ -208,6 +208,8 @@ public class SegundoFactorServicio implements ISegundoFactorServicio {
         }
     }
 
+
+
     private String generarCodigo() {
         return String.format("%0" + CANTIDAD_DIGITOS + "d", secureRandom.nextInt(LIMITE_CODIGO));
     }

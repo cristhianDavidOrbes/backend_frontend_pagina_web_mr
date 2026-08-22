@@ -288,6 +288,12 @@ export default function RegistrarsePage() {
         body: JSON.stringify({ nombre: nombre.trim(), correo: email, celular: phone || undefined, contrasena: pass, rol: "ESTUDIANTE" }),
       });
       const data = await rj<{ exitoso?: boolean; mensaje?: string }>(res);
+      if (res.status === 409 || (data.mensaje && data.mensaje.toLowerCase().includes("ya existe"))) {
+        // La cuenta ya existe en la base de datos: avanzamos directamente a 2FA para que pueda ingresar
+        setMsg({ texto: "Cuenta detectada. Elige tu canal para verificar tu acceso 2FA.", tono: "aviso" });
+        navTo("canal", 1);
+        return;
+      }
       if (!res.ok || data.exitoso === false) {
         setMsg({ texto: data.mensaje ?? "No se pudo crear la cuenta.", tono: res.status >= 500 ? "aviso" : "error" });
         return;
@@ -297,6 +303,7 @@ export default function RegistrarsePage() {
       setMsg({ texto: err instanceof Error ? err.message : "Error de conexión.", tono: "aviso" });
     } finally { setEnviando(false); }
   }
+
 
   async function enviarCodigo() {
     setEnviando(true); setMsg(null);
