@@ -4,6 +4,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
   CheckCircle2,
+  Eye,
+  EyeOff,
   KeyRound,
   LockKeyhole,
   Mail,
@@ -24,6 +26,7 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+
 
 import styles from "@/components/auth-security.module.css";
 import {
@@ -123,6 +126,8 @@ export default function IniciarSesionPage() {
   const [intentosRestantes, setIntentosRestantes] = useState<number | null>(null);
   const [bloqueado, setBloqueado] = useState(false);
   const [pulsoError, setPulsoError] = useState(0);
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
+
 
   const errorCorreo = correoTocado ? institutionalEmailError(correo) : "";
   const codigoCompleto = codigo.every(Boolean);
@@ -528,11 +533,20 @@ export default function IniciarSesionPage() {
                         onChange={(event) => setContrasena(event.target.value)}
                         placeholder="••••••••"
                         required
-                        type="password"
+                        type={mostrarContrasena ? "text" : "password"}
                         value={contrasena}
                       />
+                      <button
+                        type="button"
+                        className={styles.togglePasswordBtn}
+                        onClick={() => setMostrarContrasena((prev) => !prev)}
+                        aria-label={mostrarContrasena ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      >
+                        {mostrarContrasena ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </span>
                   </label>
+
 
                   <div>
                     <span className="field-label" id="second-factor-channel-label">Recibir código por</span>

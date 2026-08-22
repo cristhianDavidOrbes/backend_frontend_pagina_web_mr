@@ -60,7 +60,56 @@
   transform: translateY(-50%);
 }
 
-.inputShell input { padding-left: 2.85rem !important; }
+.inputShell input { padding-left: 2.85rem !important; padding-right: 2.85rem !important; }
+
+.togglePasswordBtn {
+  position: absolute;
+  right: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #55756a;
+  padding: 0.35rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: color 0.2s ease, background 0.2s ease;
+  z-index: 2;
+}
+
+.togglePasswordBtn:hover {
+  color: #57eeb2;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.strengthMeter {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.strengthBarTrack {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.strengthBarFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.strengthText {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: #6f8980;
+}
 
 .fieldHelp,
 .fieldError {

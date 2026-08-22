@@ -1530,95 +1530,150 @@ button, a {
 .avatar-display img { object-fit: cover; }
 .avatar-display > span { position: relative; }
 
-/* Auth page rules */
+/* ═══════════════════════════════════════════════
+   AUTH PAGES — Iniciar Sesión & Registrarse
+   ═══════════════════════════════════════════════ */
+
 .auth-brand {
   position: absolute;
-  z-index: 2;
+  z-index: 10;
   left: 1.5rem;
   top: 1.5rem;
   display: flex;
   align-items: center;
   gap: .75rem;
+  text-decoration: none;
 }
+
+.auth-brand:hover { opacity: .85; }
 
 .auth-layout {
   position: relative;
   z-index: 1;
   display: grid;
   width: 100%;
-  max-width: 1120px;
+  max-width: 1180px;
   min-height: 100vh;
   margin: auto;
   align-items: center;
-  gap: 3rem;
+  gap: 2.5rem;
   padding: 7rem 1.25rem 3rem;
 }
 
+.auth-story {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .auth-story h1 {
-  max-width: 620px;
+  max-width: 600px;
   margin-top: 1rem;
-  font-size: clamp(2.6rem, 6vw, 4.8rem);
-  font-weight: 650;
+  font-size: clamp(2.2rem, 5vw, 4.2rem);
+  font-weight: 700;
   line-height: .98;
-  letter-spacing: -.055em;
+  letter-spacing: -.05em;
+  color: #fff;
 }
 
 .auth-story > p:not(.section-kicker) {
-  max-width: 520px;
-  margin-top: 1.5rem;
-  color: #879b95;
-  line-height: 1.7;
+  max-width: 480px;
+  margin-top: 1.25rem;
+  color: #7b9590;
+  font-size: .9rem;
+  line-height: 1.75;
 }
 
 .auth-code {
-  max-width: 440px;
-  margin-top: 2.2rem;
-  border: 1px solid rgba(85,239,181,.15);
-  border-radius: 16px;
-  background: rgba(2,12,10,.7);
-  padding: 1.2rem;
+  max-width: 420px;
+  margin-top: 2rem;
+  border: 1px solid rgba(85, 239, 181, .15);
+  border-radius: 14px;
+  background: rgba(2, 12, 10, .8);
+  padding: 1rem 1.2rem;
   font-family: var(--font-geist-mono);
+  font-size: .78rem;
 }
 
 .auth-code span { color: #897aff; }
-.auth-code strong { color: #58efb5; }
-.auth-code small { display: block; margin-top: .65rem; color: #4f6760; }
+.auth-code strong { color: #58efb5; display: block; margin-top: .3rem; }
+.auth-code small { display: block; margin-top: .5rem; color: #44605a; font-size: .68rem; }
 
+/* Modern glassmorphism auth card */
 .auth-card {
   width: 100%;
-  max-width: 480px;
+  max-width: 490px;
   justify-self: center;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid rgba(255, 255, 255, .1);
   border-radius: 28px;
-  background: rgba(10,27,23,.92);
-  padding: 2rem;
-  box-shadow: 0 35px 100px rgba(0,0,0,.45);
-  backdrop-filter: blur(24px);
+  background: linear-gradient(160deg, rgba(12, 30, 24, .95), rgba(8, 20, 17, .98));
+  padding: 2rem 2rem 1.75rem;
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, .6),
+    0 0 0 1px rgba(255, 255, 255, .04) inset,
+    0 1px 0 rgba(255, 255, 255, .08) inset;
+  backdrop-filter: blur(28px);
+  position: relative;
+  overflow: hidden;
 }
 
 .auth-card h2 {
-  margin-top: .6rem;
-  font-size: 1.85rem;
-  font-weight: 650;
+  margin-top: .5rem;
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  color: #fff;
 }
 
 .auth-copy {
-  margin-top: .65rem;
-  color: #7e938c;
-  font-size: .86rem;
-  line-height: 1.5;
+  margin-top: .6rem;
+  color: #6e8a82;
+  font-size: .84rem;
+  line-height: 1.55;
 }
 
 .auth-switch {
-  margin-top: 1.5rem;
-  color: #758b83;
+  margin-top: 1.4rem;
+  color: #63807a;
   text-align: center;
-  font-size: .82rem;
+  font-size: .8rem;
+  line-height: 1.5;
 }
 
 .auth-switch a {
-  color: #62ecb8;
-  font-weight: 650;
+  color: #57eeb2;
+  font-weight: 700;
+  transition: color .2s ease;
+}
+
+.auth-switch a:hover { color: #7cf5c4; }
+
+/* Institutional notice box in story column */
+.institutionalNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: .85rem;
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid rgba(50, 230, 161, .15);
+  border-radius: 16px;
+  background: rgba(50, 230, 161, .05);
+  max-width: 440px;
+}
+
+.institutionalNotice strong {
+  display: block;
+  font-size: .78rem;
+  font-weight: 700;
+  color: #c6ffe6;
+  margin-bottom: .35rem;
+}
+
+.institutionalNotice p {
+  font-size: .72rem;
+  color: #5a7a70;
+  line-height: 1.5;
+  margin: 0;
 }
 
 @keyframes signalPulse { 50% { opacity: .5; transform: scale(.82); } }
@@ -1633,10 +1688,19 @@ button, a {
 }
 
 @media (min-width: 900px) {
-  .auth-layout { grid-template-columns: 1fr 440px; padding-inline: 2rem; }
+  .auth-layout {
+    grid-template-columns: 1fr minmax(0, 460px);
+    padding-inline: 2.5rem;
+    gap: 4rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  .auth-layout { max-width: 1200px; }
 }
 
 @media (max-width: 1120px) {
+
   .landing-hero { grid-template-columns: 1fr; padding-top: 5rem; }
   .hero-copy { max-width: 900px; }
   .hero-lab { min-height: 580px; margin-top: 2rem; }
