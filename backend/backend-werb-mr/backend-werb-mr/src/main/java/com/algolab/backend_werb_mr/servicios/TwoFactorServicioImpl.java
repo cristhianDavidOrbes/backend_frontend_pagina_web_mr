@@ -132,7 +132,6 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
         int recoveryCodesCount = recoveryCodeService.contarCodigosDisponibles(usuario.getId());
 
         Configuracion2faUsuarioDTO dto = new Configuracion2faUsuarioDTO();
-        dto.setHabilitado(config.tiene2faHabilitado());
         dto.setEmailHabilitado(false);
         dto.setEmailDisponible(false);
         dto.setEmailDestino(usuario.getCorreo());

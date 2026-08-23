@@ -30,9 +30,7 @@ public class GlobalExcepcionControlador {
     public ResponseEntity<Map<String, Object>> manejarSegundoFactorVerificacionException(SegundoFactorVerificacionException ex) {
         return ResponseEntity.status(ex.getEstado()).body(Map.of(
                 "exitoso", false,
-                "mensaje", ex.getMessage(),
-                "intentosRestantes", ex.getIntentosRestantes(),
-                "bloqueado", ex.isBloqueado()
+                "mensaje", ex.getMessage() != null ? ex.getMessage() : "Error de verificación"
         ));
     }
 }
