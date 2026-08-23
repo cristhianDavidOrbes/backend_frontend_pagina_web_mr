@@ -38,6 +38,10 @@ export async function apiRequest<T>(path: string, token: string, init?: RequestI
     if (response.status === 401) {
       if (typeof window !== "undefined") {
         clearAuthSession();
+        const path = window.location.pathname;
+        if (!path.startsWith("/iniciar-sesion") && !path.startsWith("/registrarse")) {
+          window.location.href = "/iniciar-sesion?expirado=1";
+        }
       }
       throw new ApiRequestError(
         "Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.",

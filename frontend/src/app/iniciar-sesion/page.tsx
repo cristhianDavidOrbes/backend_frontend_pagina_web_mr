@@ -102,18 +102,9 @@ export default function IniciarSesionPage() {
       if (params.get("expirado") === "1") {
         clearAuthSession();
         setErrorLogin("Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.");
-        return;
       }
     }
-    if (!hydrated || !existingToken || !usuario) return;
-    const destino =
-      usuario.rol === "ADMINISTRADOR"
-        ? "/administrador"
-        : usuario.rol === "DOCENTE"
-        ? "/docente"
-        : "/estudiante";
-    router.replace(destino);
-  }, [hydrated, existingToken, usuario, router]);
+  }, []);
 
   // Manejo del contador de reenvío
   useEffect(() => {
