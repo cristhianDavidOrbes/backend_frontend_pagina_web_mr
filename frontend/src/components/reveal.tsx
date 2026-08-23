@@ -12,14 +12,14 @@ type RevealProps = {
 
 export function Reveal({ children, className, delay = 0, direction = "up" }: RevealProps) {
   const reduceMotion = useReducedMotion();
-  const offset = direction === "left" ? { x: -34, y: 0 } : direction === "right" ? { x: 34, y: 0 } : direction === "none" ? { x: 0, y: 0 } : { x: 0, y: 34 };
+  const offset = direction === "left" ? { x: -28, y: 0 } : direction === "right" ? { x: 28, y: 0 } : direction === "none" ? { x: 0, y: 0 } : { x: 0, y: 24 };
 
   return (
     <motion.div
       className={className}
-      initial={reduceMotion ? false : { opacity: 0, ...offset, filter: "blur(8px)" }}
-      transition={{ duration: 0.68, delay, ease: [0.22, 1, 0.36, 1] }}
-      viewport={{ amount: 0.16, once: true }}
+      initial={reduceMotion ? false : { opacity: 0, ...offset, filter: "blur(6px)" }}
+      transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
+      viewport={{ amount: 0.01, margin: "120px 0px 0px 0px", once: true }}
       whileInView={reduceMotion ? undefined : { opacity: 1, x: 0, y: 0, filter: "blur(0px)" }}
     >
       {children}

@@ -59,7 +59,7 @@ export default function Home() {
     : "Ingresar";
 
   return (
-    <main className="landing-shell min-h-screen overflow-hidden text-slate-100">
+    <main className="landing-shell min-h-screen overflow-x-clip text-slate-100">
       <div className="ambient-orb ambient-orb-one" />
       <div className="ambient-orb ambient-orb-two" />
 
