@@ -2779,15 +2779,16 @@ button, a {
   .oop-main { padding: 1rem; }
   .oop-nivel-grid { grid-template-columns: 1fr; }
   .oop-module-levels { grid-template-columns: 1fr; }
-  .oop-level-nav { gap: .5rem; }
-  .oop-level-nav-arrows { display: none; }
-  .oop-lang-tabs-mini { order: 3; }
-  .oop-editor-lang-badge { display: none; }
+  .oop-level-nav { gap: .35rem; padding: .5rem .65rem; }
+  .oop-lang-tab-mini { padding: .25rem .5rem; font-size: .72rem; }
+  .oop-editor-lang-badge { font-size: .65rem; padding: .15rem .45rem; }
+  .oop-editor-header { padding: .4rem .65rem; }
   .oop-editor-header > div:first-child span { font-size: .65rem; }
   .oop-page-header { flex-direction: column; }
   .oop-konami-code strong,
   .oop-konami-reward-compact > strong { letter-spacing: .07em; }
 }
+
 
 @media (max-width: 560px) {
   .landing-session-chip { display: none; }

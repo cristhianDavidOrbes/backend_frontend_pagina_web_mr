@@ -21,11 +21,12 @@ import {
   CloudCheck,
   CloudOff,
   RefreshCw,
+  Zap,
 } from "lucide-react";
 import { OOP_NIVELES, type LenguajeOOP } from "@/lib/oop-niveles";
 import { validarEstructuraCodigo } from "@/lib/oop-validador";
 import { ejecutarCodigo, preCargaPyodide, type ResultadoEjecucion } from "@/lib/judge0";
-import { CodeEditor } from "@/components/code-editor";
+import { CodeEditor, type ModoEditor } from "@/components/code-editor";
 import { CodeTerminal, type TerminalLine } from "@/components/code-terminal";
 import { OopDocsPanel } from "@/components/oop-docs-panel";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -41,6 +42,7 @@ import styles from "../programar-poo.module.css";
 
 const STORAGE_KEY = "oop_progreso";
 const SYNC_QUEUE_KEY = "oop_progreso_sync";
+const STORAGE_MODO_KEY = "oop_editor_modo";
 const MAX_INTENTOS = 6;
 
 type NivelProgreso = {
@@ -73,6 +75,50 @@ type ProgresoOopBackend = {
 
 function claveProgreso(usuarioId?: number) {
   return `${STORAGE_KEY}:${usuarioId ?? "anonimo"}`;
+}
+
+function claveBorradorCodigo(usuarioId: number | undefined, nivelId: number, lang: LenguajeOOP) {
+  return `oop_draft:${usuarioId ?? "anonimo"}:${nivelId}:${lang}`;
+}
+
+function cargarBorrador(usuarioId: number | undefined, nivelId: number, lang: LenguajeOOP, codigoBase: string): string {
+  if (typeof window === "undefined") return codigoBase;
+  try {
+    const guardado = localStorage.getItem(claveBorradorCodigo(usuarioId, nivelId, lang));
+    if (guardado !== null && guardado.length > 0) return guardado;
+  } catch {
+    /* ignore */
+  }
+  return codigoBase;
+}
+
+function guardarBorrador(usuarioId: number | undefined, nivelId: number, lang: LenguajeOOP, cod: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(claveBorradorCodigo(usuarioId, nivelId, lang), cod);
+  } catch {
+    /* ignore */
+  }
+}
+
+function cargarModoEditor(): ModoEditor {
+  if (typeof window === "undefined") return "normal";
+  try {
+    const m = localStorage.getItem(STORAGE_MODO_KEY);
+    if (m === "dificil" || m === "normal") return m;
+  } catch {
+    /* ignore */
+  }
+  return "normal";
+}
+
+function guardarModoEditor(modo: ModoEditor) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_MODO_KEY, modo);
+  } catch {
+    /* ignore */
+  }
 }
 
 function cargarProgresoLocal(usuarioId?: number): OopProgreso {
@@ -163,11 +209,35 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
   const [lenguaje, setLenguaje] = useState<LenguajeOOP>(() =>
     normalizarLenguaje(searchParams.get("lang")),
   );
-  const [codigo, setCodigo] = useState(() => {
-    if (!nivel) return "";
-    const lang = normalizarLenguaje(searchParams.get("lang"));
-    return lang === "python" ? nivel.codigoBasePython : nivel.codigoBaseJava;
+
+  // ─── CODIGOS INDEPENDIENTES POR LENGUAJE (Python & Java no se borran al cambiar) ───
+  const [codigos, setCodigos] = useState<Record<LenguajeOOP, string>>(() => {
+    const pyBase = nivel?.codigoBasePython ?? "";
+    const jvBase = nivel?.codigoBaseJava ?? "";
+    return {
+      python: cargarBorrador(usuario?.id, nivelId, "python", pyBase),
+      java: cargarBorrador(usuario?.id, nivelId, "java", jvBase),
+    };
   });
+
+  const codigo = codigos[lenguaje];
+
+  function handleCodigoChange(nuevoTexto: string) {
+    setCodigos((prev) => {
+      const next = { ...prev, [lenguaje]: nuevoTexto };
+      guardarBorrador(usuario?.id, nivelId, lenguaje, nuevoTexto);
+      return next;
+    });
+  }
+
+  // ─── MODO EDITOR (Normal vs Difícil) ───
+  const [modoEditor, setModoEditor] = useState<ModoEditor>(() => cargarModoEditor());
+
+  function handleModoChange(nuevoModo: ModoEditor) {
+    setModoEditor(nuevoModo);
+    guardarModoEditor(nuevoModo);
+  }
+
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [ejecutando, setEjecutando] = useState(false);
   const [tiempoMs, setTiempoMs] = useState<number | null>(null);
@@ -495,7 +565,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
           lines.push({
             type: "success",
-            text: `✅ ¡Excelente! Tu código cumple la estructura y la salida. Ganaste ${puntosGanados} puntos; el avance quedó protegido en este dispositivo mientras se sincroniza.`,
+            text: `✅ ¡Excelente! Tu código cumple la estructura y la salida. Ganaste ${puntosGanados} puntos. Avance guardado y sincronizado.`,
           });
 
           // Actualizar estado local y backend
@@ -523,7 +593,6 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
           sincronizarProgresoBackend(true, puntosGanados, nuevosIntentos, mostroPista);
         } else if (coincide && !validacion.valido) {
-          // El print coincide pero no usó las variables/funciones/clases requeridas
           lines.push({
             type: "error",
             text:
@@ -539,7 +608,6 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
             setModalAyudaAbierto(true);
           }
         } else {
-          // Salida no coincide
           if (!validacion.valido && validacion.mensaje) {
             lines.push({
               type: "error",
@@ -611,7 +679,11 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
   function limpiarEditor() {
     if (!nivel) return;
     const base = lenguaje === "python" ? nivel.codigoBasePython : nivel.codigoBaseJava;
-    setCodigo(base);
+    setCodigos((prev) => {
+      const next = { ...prev, [lenguaje]: base };
+      guardarBorrador(usuario?.id, nivelId, lenguaje, base);
+      return next;
+    });
     setTerminalLines([]);
   }
 
@@ -621,7 +693,11 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     setModalAyudaAbierto(false);
 
     const pista = lenguaje === "python" ? nivel.pistaPython : nivel.pistaJava;
-    setCodigo(pista);
+    setCodigos((prev) => {
+      const next = { ...prev, [lenguaje]: pista };
+      guardarBorrador(usuario?.id, nivelId, lenguaje, pista);
+      return next;
+    });
     setTerminalLines([
       { type: "info", text: "💡 Pista aplicada: se ha cargado un fragmento estructurado en el editor." },
       { type: "info", text: `⚠️ Al completar este subnivel con pista ganarás ${Math.floor(nivel.puntaje / 2)} pts (la mitad).` },
@@ -644,7 +720,11 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     setModalAyudaAbierto(false);
 
     const sol = lenguaje === "python" ? nivel.solucionPython : nivel.solucionJava;
-    setCodigo(sol);
+    setCodigos((prev) => {
+      const next = { ...prev, [lenguaje]: sol };
+      guardarBorrador(usuario?.id, nivelId, lenguaje, sol);
+      return next;
+    });
     setTerminalLines([
       { type: "info", text: "🏳 Solución completa cargada en el editor. Puedes probarla y avanzar." },
       { type: "info", text: "ℹ️ Este subnivel queda completado con 0 puntos otorgados." },
@@ -674,12 +754,10 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     sincronizarProgresoBackend(true, 0, intentos, mostroPista);
   }
 
+  // ─── CAMBIAR LENGUAJE (Preserva el código del lenguaje previo intacto) ───
   function cambiarLenguaje(lang: LenguajeOOP) {
     setLenguaje(lang);
     setTerminalLines([]);
-    if (nivel) {
-      setCodigo(lang === "python" ? nivel.codigoBasePython : nivel.codigoBaseJava);
-    }
     setProgreso((prev) => {
       const nuevo = { ...prev, lenguaje: lang };
       guardarProgresoLocal(nuevo, usuario?.id);
@@ -751,74 +829,140 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
   return (
     <div className={`oop-level-page ${styles.levelShell} ${celebrando ? "oop-celebrating" : ""}`}>
-      {/* Top bar */}
+      {/* ─── TOP BAR (Clean, Single Row / Structured Row) ─── */}
       <nav className="oop-level-nav">
-        <div className="flex items-center gap-3">
-          <Link href="/estudiante/codigo" className="oop-back-link">
-            <ArrowLeft size={16} />
-            Módulo OOP
-          </Link>
-          <span className="hidden text-xs text-slate-500 md:inline">|</span>
-          <div className="hidden items-center gap-1.5 text-xs text-slate-300 md:flex">
-            <Layers size={13} className="text-emerald-400" />
-            <span className="font-semibold text-emerald-300">{nivel.moduloNombre}</span>
-            <span>›</span>
-            <span>Subnivel {nivel.subnivel}</span>
+        {/* Main Row: Back + Sublevel + Language switch + Mode Toggle + Arrows */}
+        <div className="flex items-center justify-between w-full gap-2 flex-wrap sm:flex-nowrap">
+          {/* Left: Back + Sublevel Title */}
+          <div className="flex items-center gap-2 min-w-0">
+            <Link href="/estudiante/codigo" className="oop-back-link flex-shrink-0" title="Volver al catálogo OOP">
+              <ArrowLeft size={15} />
+              <span className="font-semibold text-xs text-slate-300">OOP</span>
+            </Link>
+            <span className="text-xs text-slate-600">|</span>
+            <div className="flex items-center gap-1 font-mono text-xs font-bold text-slate-200">
+              <span className="text-emerald-400 font-extrabold">{nivel.subnivel}</span>
+              <span className="text-slate-500 font-normal">/ 4.2</span>
+            </div>
+            <span className="hidden md:inline text-xs text-slate-400 font-medium truncate max-w-[160px]">
+              · {nivel.titulo}
+            </span>
+          </div>
+
+          {/* Center / Right: Sublevel Pills (Desktop) + Language Selector + Mode Toggle */}
+          <div className="flex items-center gap-1.5 ml-auto flex-wrap sm:flex-nowrap">
+            {/* Sublevel stepper indicators (Desktop only) */}
+            <div className="hidden lg:flex items-center gap-1 mr-1">
+              {OOP_NIVELES.map((n) => {
+                const esActual = n.id === nivelId;
+                const esCompletado = progreso.niveles[String(n.id)]?.completado;
+                const desbloqueado = estaDesbloqueado(n.id);
+                return (
+                  <button
+                    key={n.id}
+                    disabled={!desbloqueado}
+                    onClick={() => {
+                      if (desbloqueado) {
+                        router.push(`/estudiante/codigo/${n.id}?lang=${lenguaje}`);
+                      }
+                    }}
+                    className={`flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold transition ${
+                      esActual
+                        ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/50"
+                        : esCompletado
+                        ? "bg-white/10 text-emerald-400 hover:bg-white/15"
+                        : desbloqueado
+                          ? "bg-white/5 text-slate-400 hover:bg-white/10"
+                          : "cursor-not-allowed bg-white/[.025] text-slate-600"
+                    }`}
+                    title={`${n.titulo} (Subnivel ${n.subnivel})`}
+                  >
+                    <span>{n.subnivel}</span>
+                    {esCompletado && <span className="text-[9px]">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Language Selector */}
+            <div className="oop-lang-tabs-mini">
+              <button
+                className={`oop-lang-tab-mini ${lenguaje === "python" ? "active" : ""}`}
+                onClick={() => cambiarLenguaje("python")}
+                title="Programar en Python"
+              >
+                🐍 Python
+              </button>
+              <button
+                className={`oop-lang-tab-mini ${lenguaje === "java" ? "active" : ""}`}
+                onClick={() => cambiarLenguaje("java")}
+                title="Programar en Java"
+              >
+                ☕ Java
+              </button>
+            </div>
+
+            {/* Mode Switcher: Normal vs Difícil (Mismos puntos) */}
+            <div
+              className="flex items-center p-0.5 rounded-lg border border-white/[0.08] bg-white/[0.03]"
+              role="group"
+              aria-label="Modo del editor de código"
+            >
+              <button
+                type="button"
+                onClick={() => handleModoChange("normal")}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition ${
+                  modoEditor === "normal"
+                    ? "bg-emerald-500/20 text-emerald-300 shadow-sm border border-emerald-500/30"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Modo Normal: Autocompletado de llaves, comillas, paréntesis y atajos (Mismos puntos)"
+              >
+                <span>⚡</span>
+                <span className="hidden sm:inline">Normal</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModoChange("dificil")}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition ${
+                  modoEditor === "dificil"
+                    ? "bg-purple-500/25 text-purple-300 shadow-sm border border-purple-500/30"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Modo Difícil: Sin autocompletado, escritura manual completa (Mismos puntos)"
+              >
+                <span>🧠</span>
+                <span className="hidden sm:inline">Difícil</span>
+              </button>
+            </div>
+
+            {/* Level Navigation Arrows */}
+            <div className="oop-level-nav-arrows">
+              {prevNivel && (
+                <button
+                  className="oop-nav-arrow"
+                  onClick={() => router.push(`/estudiante/codigo/${prevNivel.id}?lang=${lenguaje}`)}
+                  title={`Subnivel anterior: ${prevNivel.subnivel}`}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+              )}
+              {nextNivel && (completado || progreso.niveles[String(nextNivel.id)]?.completado) && (
+                <button
+                  className="oop-nav-arrow"
+                  onClick={() => router.push(`/estudiante/codigo/${nextNivel.id}?lang=${lenguaje}`)}
+                  title={`Siguiente subnivel: ${nextNivel.subnivel}`}
+                >
+                  <ChevronRight size={14} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Sublevel stepper indicators */}
-        <div className="hidden items-center gap-1 lg:flex">
-          {OOP_NIVELES.map((n) => {
-            const esActual = n.id === nivelId;
-            const esCompletado = progreso.niveles[String(n.id)]?.completado;
-            const desbloqueado = estaDesbloqueado(n.id);
-            return (
-              <button
-                key={n.id}
-                disabled={!desbloqueado}
-                onClick={() => {
-                  if (desbloqueado) {
-                    router.push(`/estudiante/codigo/${n.id}?lang=${lenguaje}`);
-                  }
-                }}
-                className={`flex h-6 items-center gap-1 rounded-md px-2 text-xs font-semibold transition ${
-                  esActual
-                    ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/50"
-                    : esCompletado
-                    ? "bg-white/10 text-emerald-400 hover:bg-white/15"
-                    : desbloqueado
-                      ? "bg-white/5 text-slate-400 hover:bg-white/10"
-                      : "cursor-not-allowed bg-white/[.025] text-slate-600"
-                }`}
-                title={`${n.titulo} (Subnivel ${n.subnivel})`}
-              >
-                <span>{n.subnivel}</span>
-                {esCompletado && <span className="text-[10px]">✓</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Center: Language toggle */}
-        <div className="oop-lang-tabs-mini">
-          <button
-            className={`oop-lang-tab-mini ${lenguaje === "python" ? "active" : ""}`}
-            onClick={() => cambiarLenguaje("python")}
-          >
-            🐍 Python
-          </button>
-          <button
-            className={`oop-lang-tab-mini ${lenguaje === "java" ? "active" : ""}`}
-            onClick={() => cambiarLenguaje("java")}
-          >
-            ☕ Java
-          </button>
-        </div>
-
-        {/* Right: Help button (available after 6 attempts) + Level arrows */}
-        <div className="flex items-center gap-2">
-          <div className={styles.mobileViewTabs} role="tablist" aria-label="Vista del laboratorio">
+        {/* Mobile View Switcher (Clean, compact tab bar on small screens) */}
+        <div className="flex items-center justify-between w-full gap-2 mt-1.5 md:hidden">
+          <div className={`${styles.mobileViewTabs} flex-1`} role="tablist" aria-label="Vista del laboratorio">
             <button
               type="button"
               role="tab"
@@ -826,7 +970,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               aria-controls="oop-docs-view"
               onClick={() => setMobileVista("docs")}
             >
-              <BookOpen size={14} /> Guía
+              <BookOpen size={13} /> Guía
             </button>
             <button
               type="button"
@@ -835,7 +979,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               aria-controls="oop-code-view"
               onClick={() => setMobileVista("code")}
             >
-              <Code2 size={14} /> Código
+              <Code2 size={13} /> Editor
             </button>
             <button
               type="button"
@@ -844,46 +988,23 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               aria-controls="oop-terminal-view"
               onClick={() => setMobileVista("terminal")}
             >
-              <TerminalSquare size={14} /> Terminal
+              <TerminalSquare size={13} /> Terminal
             </button>
           </div>
+
           {ayudaHabilitada && !completado && (
             <button
               onClick={() => setModalAyudaAbierto(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-300 ring-1 ring-amber-500/40 transition hover:bg-amber-500/30"
-              title="Opciones de ayuda desbloqueadas tras 6 intentos"
+              className="flex items-center gap-1 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-bold text-amber-300 ring-1 ring-amber-500/40"
             >
-              <Lightbulb size={14} className="animate-pulse" />
-              <span>{mostroPista ? "Pista activa (½ pts)" : "🆘 Opciones de Ayuda"}</span>
+              <Lightbulb size={13} className="animate-pulse" />
+              <span>Ayuda</span>
             </button>
           )}
-
-          <div className="oop-level-nav-arrows">
-            {prevNivel && (
-              <button
-                className="oop-nav-arrow"
-                onClick={() => router.push(`/estudiante/codigo/${prevNivel.id}?lang=${lenguaje}`)}
-                title={`Subnivel anterior: ${prevNivel.subnivel}`}
-              >
-                <ChevronLeft size={16} />
-              </button>
-            )}
-            <span className="oop-nav-current font-mono text-xs font-bold text-slate-200">
-              {nivel.subnivel} / 4.2
-            </span>
-            {nextNivel && (completado || progreso.niveles[String(nextNivel.id)]?.completado) && (
-              <button
-                className="oop-nav-arrow"
-                onClick={() => router.push(`/estudiante/codigo/${nextNivel.id}?lang=${lenguaje}`)}
-                title={`Siguiente subnivel: ${nextNivel.subnivel}`}
-              >
-                <ChevronRight size={16} />
-              </button>
-            )}
-          </div>
         </div>
       </nav>
 
+      {/* Sync Status Banner */}
       <div
         className={`${styles.syncBanner} ${claseEstadoSync}`}
         role="status"
@@ -891,11 +1012,11 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
       >
         <span className={styles.syncIcon} aria-hidden="true">
           {estadoSync === "sincronizado" ? (
-            <CloudCheck size={16} />
+            <CloudCheck size={14} />
           ) : estadoSync === "sincronizando" ? (
-            <RefreshCw size={16} className={styles.syncSpinner} />
+            <RefreshCw size={14} className={styles.syncSpinner} />
           ) : (
-            <CloudOff size={16} />
+            <CloudOff size={14} />
           )}
         </span>
         <span className={styles.syncMessage}>{mensajeSync}</span>
@@ -904,7 +1025,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
         )}
         {(estadoSync === "error" || estadoSync === "pendiente") && token && (
           <button type="button" onClick={() => void procesarColaSync()}>
-            Reintentar ahora
+            Reintentar
           </button>
         )}
       </div>
@@ -915,52 +1036,64 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
         <div className="oop-left-panel" id="oop-code-view">
           {/* Editor Header & Container */}
           <div className="oop-editor-container">
-            <div className="oop-editor-header">
-              <div className="flex items-center gap-2">
-                <div className="oop-editor-lang-badge">
-                  {lenguaje === "python" ? "🐍 Python (Limpio)" : "☕ Java (Main)"}
+            <div className="oop-editor-header flex items-center justify-between px-3 py-2 border-b border-white/[0.07] bg-black/40">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="oop-editor-lang-badge text-xs">
+                  {lenguaje === "python" ? "🐍 Python" : "☕ Java"}
                 </div>
-                <span className="text-xs text-slate-400">
-                  {intentos > 0 ? `Intentos: ${intentos}/${MAX_INTENTOS}` : "Código limpio para practicar"}
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                  modoEditor === "normal"
+                    ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                    : "bg-purple-500/15 text-purple-300 border border-purple-500/30"
+                }`}>
+                  {modoEditor === "normal" ? "⚡ Normal" : "🧠 Difícil"}
                 </span>
-                <span className={styles.keyboardHint}>
-                  <Keyboard size={13} /> <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
+                <span className="text-[11px] text-slate-400 hidden sm:inline">
+                  {intentos > 0 ? `Intentos: ${intentos}/${MAX_INTENTOS}` : "Práctica limpia"}
+                </span>
+                <span className={`${styles.keyboardHint} hidden lg:inline-flex`}>
+                  <Keyboard size={12} /> <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
                 </span>
               </div>
-              <div className="oop-editor-actions">
+
+              <div className="oop-editor-actions flex items-center gap-2">
                 <button
                   className="oop-reset-btn"
                   onClick={limpiarEditor}
                   disabled={ejecutando}
-                  title="Restablecer plantilla inicial"
+                  title={`Restablecer código base de ${lenguaje === "python" ? "Python" : "Java"}`}
                 >
                   <RotateCcw size={14} />
+                  <span className="hidden sm:inline text-xs ml-1">Restablecer</span>
                 </button>
                 <button
                   className={`oop-run-btn ${editorModificado && !completado ? styles.runReady : ""}`}
                   onClick={ejecutar}
                   disabled={ejecutando}
-                  title="Ejecutar código localmente"
+                  title="Ejecutar código localmente (Ctrl+Enter)"
                 >
                   {ejecutando ? (
                     <>
                       <span className="terminal-spinner" />
-                      Ejecutando…
+                      <span>Ejecutando…</span>
                     </>
                   ) : (
                     <>
-                      <Play size={14} fill="currentColor" />
-                      Ejecutar
+                      <Play size={13} fill="currentColor" />
+                      <span>Ejecutar</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
+
             <CodeEditor
               codigo={codigo}
-              onChange={setCodigo}
+              onChange={handleCodigoChange}
               lenguaje={lenguaje}
               disabled={ejecutando}
+              modo={modoEditor}
+              onModoChange={handleModoChange}
             />
           </div>
 
