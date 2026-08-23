@@ -56,12 +56,20 @@ type LoginRespuesta = {
 
 const EMPTY6 = ["", "", "", "", "", ""];
 const PHONE_RE = /^\+[1-9]\d{7,14}$/;
-
-function normalizePhone(v: string) { return v.trim().replace(/[\s()-]/g, ""); }
+function normalizePhone(v: string) {
+  let clean = v.trim().replace(/[\s()-]/g, "");
+  if (!clean) return "";
+  if (/^\d{10}$/.test(clean)) {
+    clean = `+57${clean}`;
+  } else if (/^57\d{10}$/.test(clean)) {
+    clean = `+${clean}`;
+  }
+  return clean;
+}
 function phoneError(v: string) {
   const n = normalizePhone(v);
   if (!n) return "";
-  return PHONE_RE.test(n) ? "" : "Usa formato internacional: +573001234567";
+  return PHONE_RE.test(n) ? "" : "Usa formato internacional (ej: 3027515644 o +573001234567)";
 }
 function fmtTime(s: number) {
   const t = Math.max(0, s);
