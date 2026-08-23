@@ -238,6 +238,12 @@ export default function IniciarSesionPage() {
     return correo ? correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2") : "tu correo";
   }, [correo, desafio?.destinoEnmascarado]);
 
+  const codigoSugerido = useMemo(() => {
+    if (!msg?.texto) return null;
+    const match = msg.texto.match(/\b\d{6}\b/);
+    return match ? match[0] : null;
+  }, [msg?.texto]);
+
   function navTo(next: Paso, d: number) { setDir(d); setPaso(next); setMsg(null); }
 
   useEffect(() => {
@@ -513,6 +519,29 @@ export default function IniciarSesionPage() {
                     </p>
                   </div>
                 </div>
+
+                {codigoSugerido && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mb-4 flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">✨</span>
+                      <div>
+                        <p className="font-semibold text-slate-200">Código de verificación disponible:</p>
+                        <p className="font-mono text-sm font-extrabold tracking-widest text-emerald-400">{codigoSugerido}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => distribuir(codigoSugerido, 0)}
+                      className="flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 font-bold text-emerald-300 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 transition active:scale-95 cursor-pointer"
+                    >
+                      <span>⚡</span> Autocompletar
+                    </button>
+                  </motion.div>
+                )}
 
                 <form className={css.codeForm} onSubmit={verificarCodigo} noValidate>
                   <fieldset key={otpKey} className={css.codeFieldset} onPaste={pegar}>
