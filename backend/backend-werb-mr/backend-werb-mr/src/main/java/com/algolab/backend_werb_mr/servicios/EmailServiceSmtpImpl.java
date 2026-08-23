@@ -34,15 +34,15 @@ public class EmailServiceSmtpImpl implements IEmailService {
             ObjectProvider<JavaMailSender> mailSenderProvider,
             @Value("${app.email2fa.enabled:${EMAIL_2FA_ENABLED:true}}") boolean enabled,
             @Value("${app.email2fa.limit:${EMAIL_2FA_LIMIT:1000}}") int limit,
-            @Value("${spring.mail.host:}") String hostSmtp,
-            @Value("${app.segundo-factor.remitente:${SMTP_FROM:${SMTP_USERNAME:}}}") String remitente,
-            @Value("${app.segundo-factor.nombre-remitente:AlgoLab UCC}") String nombreRemitente) {
+            @Value("${spring.mail.host:smtp.gmail.com}") String hostSmtp,
+            @Value("${app.segundo-factor.remitente:${SMTP_FROM:${SMTP_USERNAME:cristiandavid11232@gmail.com}}}") String remitente,
+            @Value("${app.segundo-factor.nombre-remitente:AlgoLab}") String nombreRemitente) {
         this.mailSenderProvider = mailSenderProvider;
         this.enabled = enabled;
         this.limit = Math.max(1, limit);
-        this.hostSmtp = hostSmtp != null ? hostSmtp.trim() : "";
-        this.remitente = remitente != null ? remitente.trim() : "";
-        this.nombreRemitente = nombreRemitente != null ? nombreRemitente.trim() : "AlgoLab UCC";
+        this.hostSmtp = hostSmtp != null ? hostSmtp.trim() : "smtp.gmail.com";
+        this.remitente = remitente != null && !remitente.isBlank() ? remitente.trim() : "cristiandavid11232@gmail.com";
+        this.nombreRemitente = nombreRemitente != null ? nombreRemitente.trim() : "AlgoLab";
         this.resetAt.set(Instant.now().plusSeconds(86400).toEpochMilli());
     }
 
@@ -50,7 +50,7 @@ public class EmailServiceSmtpImpl implements IEmailService {
         long ahora = Instant.now().toEpochMilli();
         if (ahora >= resetAt.get()) {
             usedCount.set(0);
-            resetAt.set(ahora + 86400000L); // 24 horas
+            resetAt.set(ahora + 86400000L);
             logger.info("[2FA EmailService] Contador de emails restablecido automáticamente para el nuevo ciclo.");
         }
     }
@@ -80,12 +80,13 @@ public class EmailServiceSmtpImpl implements IEmailService {
 
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
         if (mailSender == null || hostSmtp.isBlank() || remitente.isBlank()) {
-            logger.info("[2FA EmailService - Modo Desarrollo] Servidor SMTP no configurado. OTP para {}: {}", destinatario, codigoOtp);
+            logger.warn("[2FA EmailService] Servidor SMTP no disponible. OTP para {}: {}", destinatario, codigoOtp);
             usedCount.incrementAndGet();
             return;
         }
 
         try {
+            logger.info("[2FA EmailService] Enviando correo OTP a {} desde {}", destinatario, remitente);
             MimeMessage mensaje = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mensaje, false, StandardCharsets.UTF_8.name());
             helper.setFrom(new InternetAddress(remitente, nombreRemitente, StandardCharsets.UTF_8.name()));
@@ -94,27 +95,26 @@ public class EmailServiceSmtpImpl implements IEmailService {
             helper.setText(construirCuerpo(codigoOtp, vigenciaMinutos), false);
             mailSender.send(mensaje);
             usedCount.incrementAndGet();
-            logger.info("[2FA EmailService] Código OTP enviado exitosamente a {}. Uso actual: {}/{}", destinatario, usedCount.get(), limit);
+            logger.info("[2FA EmailService] ¡Código OTP enviado exitosamente a {}! Uso actual: {}/{}", destinatario, usedCount.get(), limit);
         } catch (Exception error) {
-            logger.error("[2FA EmailService] Error temporal enviando correo a {}: {}. OTP de respaldo: {}", destinatario, error.getMessage(), codigoOtp);
+            logger.error("[2FA EmailService] Error enviando correo a {}: {}. OTP de respaldo: {}", destinatario, error.getMessage(), codigoOtp, error);
         }
     }
 
     private String construirCuerpo(String codigoOtp, int vigenciaMinutos) {
-        return "Tu código de seguridad es:\n\n"
+        return "Tu código de seguridad de AlgoLab es:\n\n"
                 + codigoOtp + "\n\n"
                 + "Este código vence en " + vigenciaMinutos + " minutos.\n\n"
                 + "Si no intentaste iniciar sesión, puedes ignorar este mensaje.";
     }
 
     @Override
-    public int getUsoActual() {
-        verificarReinicioPeriodico();
-        return usedCount.get();
+    public int getLimite() {
+        return limit;
     }
 
     @Override
-    public int getLimite() {
-        return limit;
+    public int getUsoActual() {
+        return usedCount.get();
     }
 }
