@@ -477,14 +477,14 @@ export default function IniciarSesionPage() {
 
               <form onSubmit={handleLoginInicial} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Correo Institucional</label>
+                  <label className="text-xs font-semibold text-slate-300">Correo Electrónico</label>
                   <div className="relative flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 focus-within:border-emerald-400">
                     <Mail className="mr-2 h-4 w-4 text-slate-400" />
                     <input
                       type="email"
                       value={correo}
                       onChange={(e) => setCorreo(e.target.value)}
-                      placeholder="usuario@campusucc.edu.co"
+                      placeholder="usuario@gmail.com"
                       className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
                       required
                       autoFocus

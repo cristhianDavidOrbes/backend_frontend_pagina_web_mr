@@ -511,12 +511,12 @@ export default function RegistrarsePage() {
                       value={nombre} onChange={setNombre} autoComplete="name" required />
                   </div>
                   <div>
-                    <label className="field-label" htmlFor="re">Correo institucional UCC</label>
-                    <FInput id="re" icon={<Mail size={18} />} type="email" placeholder="nombre.apellido@campusucc.edu.co"
+                    <label className="field-label" htmlFor="re">Correo Electrónico</label>
+                    <FInput id="re" icon={<Mail size={18} />} type="email" placeholder="usuario@gmail.com"
                       value={correo} onChange={v => { setCorreo(v); if (correoTocado) setMsg(null); }}
                       onBlur={() => setCorreoTocado(true)} autoComplete="email" required hasError={Boolean(errCorreo)} />
                     <small className={errCorreo ? css.fieldError : css.fieldHelp}>
-                      {errCorreo || "Solo cuentas terminadas en @campusucc.edu.co"}
+                      {errCorreo || "Ingresa tu correo personal o institucional"}
                     </small>
                   </div>
                   <div>

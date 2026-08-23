@@ -63,9 +63,19 @@ class UsuarioControladorTest {
     }
 
     @Test
-    void registroPublicoRechazaCorreoNoInstitucional() {
+    void registroPublicoAceptaCorreoGmail() {
         ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(
                 solicitudRegistro("Estudiante", "estudiante@gmail.com", Rol.ESTUDIANTE, "123456"));
+
+        assertEquals(HttpStatus.CREATED, respuesta.getStatusCode());
+        assertNull(respuesta.getBody().getToken());
+        assertEquals("estudiante@gmail.com", respuesta.getBody().getUsuario().getCorreo());
+    }
+
+    @Test
+    void registroPublicoRechazaCorreoMalFormateado() {
+        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(
+                solicitudRegistro("Estudiante", "correo_invalido_sin_formato", Rol.ESTUDIANTE, "123456"));
 
         assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
         assertFalse(respuesta.getBody().isExitoso());

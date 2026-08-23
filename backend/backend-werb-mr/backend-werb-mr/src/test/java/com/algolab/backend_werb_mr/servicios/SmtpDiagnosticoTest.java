@@ -1,6 +1,7 @@
 package com.algolab.backend_werb_mr.servicios;
 
 import java.util.Properties;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -12,10 +13,10 @@ public class SmtpDiagnosticoTest {
     @Disabled("Diagnostico manual")
     void probarEnvioRealMicrosoftUcc() {
         JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
-        mailSender.setHost("smtp.office365.com");
+        mailSender.setHost("smtp.gmail.com");
         mailSender.setPort(587);
-        mailSender.setUsername("cristhian.orbes@campusucc.edu.co");
-        mailSender.setPassword("hsxpgcvmzqcdnqtl");
+        mailSender.setUsername("cristhian.orbes@gmail.com");
+        mailSender.setPassword("xpkqcvohgkwyvhuk");
 
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
@@ -27,24 +28,17 @@ public class SmtpDiagnosticoTest {
         props.put("mail.smtp.connectiontimeout", "10000");
         props.put("mail.smtp.timeout", "10000");
         props.put("mail.smtp.writetimeout", "10000");
-        props.put("mail.debug", "true");
 
         try {
-            System.out.println("--> Iniciando prueba de conexion SMTP con Microsoft Office 365 UCC...");
             mailSender.testConnection();
-            System.out.println("--> [EXITO] Conexion SMTP autenticada correctamente con Microsoft UCC!");
-
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom("cristhian.orbes@campusucc.edu.co", "AlgoLab UCC");
-            helper.setTo("cristhian.orbes@campusucc.edu.co");
+            helper.setFrom("cristhian.orbes@gmail.com", "AlgoLab UCC");
+            helper.setTo("cristhian.orbes@gmail.com");
             helper.setSubject("Código de verificación");
-            helper.setText("Tu código de seguridad es:\n\n583921\n\nEste código vence en 5 minutos.\n\nSi no intentaste iniciar sesión, puedes ignorar este mensaje.", false);
-
+            helper.setText("Tu código de seguridad es:\n\n583921\n\nEste código vence en 5 minutos.", false);
             mailSender.send(message);
-            System.out.println("--> [EXITO] Correo enviado y entregado exitosamente al buzon de campusucc.edu.co!");
         } catch (Exception e) {
-            System.err.println("--> [ERROR SMTP] " + e.getClass().getName() + ": " + e.getMessage());
             e.printStackTrace();
         }
     }
