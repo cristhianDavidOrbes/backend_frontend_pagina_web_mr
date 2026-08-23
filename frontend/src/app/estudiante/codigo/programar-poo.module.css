@@ -629,21 +629,48 @@
 }
 
 @media (max-width: 640px) {
-  .missionHero { padding: 1.15rem; border-radius: 18px; }
-  .missionCopy h2 { font-size: 1.75rem; }
+  .missionHero { padding: 1rem; border-radius: 16px; }
+  .missionCopy h2 { font-size: 1.5rem; }
   .missionMetrics { display: grid; grid-template-columns: 1fr; }
   .missionMetrics span { width: 100%; }
-  .progressCore { grid-template-columns: 100px 1fr; }
-  .progressRing { width: 94px; }
-  .progressRing::before { width: 82px; }
-  .progressRingInner strong { font-size: 1.35rem; }
+  .progressCore { grid-template-columns: 80px 1fr; gap: 0.75rem; }
+  .progressRing { width: 80px; }
+  .progressRing::before { width: 70px; }
+  .progressRingInner strong { font-size: 1.15rem; }
   .scoreDock { width: 100%; }
   .moduleHeader { align-items: flex-start; }
   .moduleCounter { width: 100%; padding-left: 46px; }
-  .levelCard { min-height: 196px; }
-  .missionHud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .levelCard { min-height: 180px; padding: 1rem; }
+  
+  /* Compact and concise mobile HUD - avoids pushing docs down */
+  .missionHud {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.35rem;
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.5rem;
+    scrollbar-width: none;
+  }
+  .missionStep {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.45rem;
+    white-space: nowrap;
+  }
+  .missionStep > span:first-child {
+    width: 15px;
+    height: 15px;
+    font-size: 0.52rem;
+  }
+
   .keyboardHint { display: none; }
-  .syncBanner { padding-inline: 0.6rem; }
+  
+  /* Compact floating sync badge on mobile */
+  .syncBanner {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.68rem;
+    border-radius: 8px;
+    margin-bottom: 0.35rem;
+  }
   .syncCount { display: none; }
-  .syncBanner button { padding-inline: 0.4rem; }
+  .syncBanner button { padding: 0.15rem 0.4rem; font-size: 0.65rem; }
 }

@@ -829,9 +829,9 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
   return (
     <div className={`oop-level-page ${styles.levelShell} ${celebrando ? "oop-celebrating" : ""}`}>
-      {/* ─── TOP BAR (Clean, Single Row / Structured Row) ─── */}
+      {/* ─── TOP BAR (Clean, Single Row on Desktop / Concise 2-tier on Mobile) ─── */}
       <nav className="oop-level-nav">
-        {/* Main Row: Back + Sublevel + Language switch + Mode Toggle + Arrows */}
+        {/* Main Row */}
         <div className="flex items-center justify-between w-full gap-2 flex-wrap sm:flex-nowrap">
           {/* Left: Back + Sublevel Title */}
           <div className="flex items-center gap-2 min-w-0">
@@ -844,13 +844,13 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               <span className="text-emerald-400 font-extrabold">{nivel.subnivel}</span>
               <span className="text-slate-500 font-normal">/ 4.2</span>
             </div>
-            <span className="hidden md:inline text-xs text-slate-400 font-medium truncate max-w-[160px]">
+            <span className="hidden sm:inline text-xs text-slate-400 font-medium truncate max-w-[160px]">
               · {nivel.titulo}
             </span>
           </div>
 
-          {/* Center / Right: Sublevel Pills (Desktop) + Language Selector + Mode Toggle */}
-          <div className="flex items-center gap-1.5 ml-auto flex-wrap sm:flex-nowrap">
+          {/* Center / Right: Sublevel Pills (Desktop) + Language Selector + Mode Toggle + Mobile Run */}
+          <div className="flex items-center gap-1.5 ml-auto">
             {/* Sublevel stepper indicators (Desktop only) */}
             <div className="hidden lg:flex items-center gap-1 mr-1">
               {OOP_NIVELES.map((n) => {
@@ -902,7 +902,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               </button>
             </div>
 
-            {/* Mode Switcher: Normal vs Difícil (Mismos puntos) */}
+            {/* Mode Switcher: Normal vs Difícil */}
             <div
               className="flex items-center p-0.5 rounded-lg border border-white/[0.08] bg-white/[0.03]"
               role="group"
@@ -911,33 +911,33 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               <button
                 type="button"
                 onClick={() => handleModoChange("normal")}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition ${
+                className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-bold transition ${
                   modoEditor === "normal"
                     ? "bg-emerald-500/20 text-emerald-300 shadow-sm border border-emerald-500/30"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                title="Modo Normal: Autocompletado de llaves, comillas, paréntesis y atajos (Mismos puntos)"
+                title="Modo Normal: Autocompletado y atajos"
               >
                 <span>⚡</span>
-                <span className="hidden sm:inline">Normal</span>
+                <span className="hidden md:inline">Normal</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleModoChange("dificil")}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition ${
+                className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-bold transition ${
                   modoEditor === "dificil"
                     ? "bg-purple-500/25 text-purple-300 shadow-sm border border-purple-500/30"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                title="Modo Difícil: Sin autocompletado, escritura manual completa (Mismos puntos)"
+                title="Modo Difícil: Escritura manual completa"
               >
                 <span>🧠</span>
-                <span className="hidden sm:inline">Difícil</span>
+                <span className="hidden md:inline">Difícil</span>
               </button>
             </div>
 
-            {/* Level Navigation Arrows */}
-            <div className="oop-level-nav-arrows">
+            {/* Level Navigation Arrows (Desktop) */}
+            <div className="oop-level-nav-arrows hidden sm:flex">
               {prevNivel && (
                 <button
                   className="oop-nav-arrow"
@@ -957,10 +957,24 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                 </button>
               )}
             </div>
+
+            {/* Quick Run button on mobile top bar */}
+            <button
+              onClick={ejecutar}
+              disabled={ejecutando}
+              className="flex sm:hidden items-center justify-center h-7 px-2.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+              title="Ejecutar código"
+            >
+              {ejecutando ? (
+                <RefreshCw size={12} className="animate-spin" />
+              ) : (
+                <Play size={12} fill="currentColor" />
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Mobile View Switcher (Clean, compact tab bar on small screens) */}
+        {/* Mobile View Switcher (Clean, concise tab bar on small screens) */}
         <div className="flex items-center justify-between w-full gap-2 mt-1.5 md:hidden">
           <div className={`${styles.mobileViewTabs} flex-1`} role="tablist" aria-label="Vista del laboratorio">
             <button
@@ -995,9 +1009,9 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           {ayudaHabilitada && !completado && (
             <button
               onClick={() => setModalAyudaAbierto(true)}
-              className="flex items-center gap-1 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-bold text-amber-300 ring-1 ring-amber-500/40"
+              className="flex items-center gap-1 rounded-lg bg-amber-500/20 px-2 py-1 text-[11px] font-bold text-amber-300 ring-1 ring-amber-500/40"
             >
-              <Lightbulb size={13} className="animate-pulse" />
+              <Lightbulb size={12} className="animate-pulse" />
               <span>Ayuda</span>
             </button>
           )}
