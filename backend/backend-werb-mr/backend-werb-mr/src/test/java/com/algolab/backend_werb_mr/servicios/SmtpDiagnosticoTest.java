@@ -10,13 +10,13 @@ import jakarta.mail.internet.MimeMessage;
 public class SmtpDiagnosticoTest {
 
     @Test
-    @Disabled("Diagnostico manual")
-    void probarEnvioRealGmailUser() {
+    @Disabled("Diagnostico manual exitoso")
+    void probarEnvioRealNuevaClaveGmail() {
         JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
         mailSender.setHost("smtp.gmail.com");
         mailSender.setPort(587);
         mailSender.setUsername("cristiandavid11232@gmail.com");
-        mailSender.setPassword("xpkqcvohgkwyvhuk");
+        mailSender.setPassword("yhrffjfrhvueufci");
 
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
@@ -28,16 +28,15 @@ public class SmtpDiagnosticoTest {
         props.put("mail.smtp.connectiontimeout", "10000");
         props.put("mail.smtp.timeout", "10000");
         props.put("mail.smtp.writetimeout", "10000");
-        props.put("mail.debug", "true");
 
         try {
             mailSender.testConnection();
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom("cristiandavid11232@gmail.com", "AlgoLab");
+            helper.setFrom("cristiandavid11232@gmail.com", "AlgoLab UCC");
             helper.setTo("cristiandavid11232@gmail.com");
             helper.setSubject("Código de verificación");
-            helper.setText("Tu código de seguridad de AlgoLab es:\n\n583921\n\nEste código vence en 5 minutos.", false);
+            helper.setText("Tu código de seguridad es:\n\n583921\n\nEste código vence en 5 minutos.", false);
             mailSender.send(message);
         } catch (Exception e) {
             e.printStackTrace();
