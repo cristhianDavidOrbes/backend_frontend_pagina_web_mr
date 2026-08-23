@@ -31,6 +31,7 @@ import {
   normalizeInstitutionalEmail,
 } from "@/lib/institutional-email";
 import {
+  clearAuthSession,
   saveAuthToken,
   saveAuthUser,
   useAuthSession,
@@ -94,8 +95,16 @@ export default function IniciarSesionPage() {
 
   const esCuentaInstitucional = correo.toLowerCase().endsWith("@campusucc.edu.co") || correo.toLowerCase().endsWith("@ucc.edu.co");
 
-  // Redirección si ya está autenticado
+  // Si se redirige por sesión expirada, limpiar y mostrar aviso sin loop
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("expirado") === "1") {
+        clearAuthSession();
+        setErrorLogin("Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.");
+        return;
+      }
+    }
     if (!hydrated || !existingToken || !usuario) return;
     const destino =
       usuario.rol === "ADMINISTRADOR"

@@ -2,8 +2,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { apiRequest } from "@/lib/client-api";
-import { saveAuthUser, useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
+import { ApiRequestError, apiRequest } from "@/lib/client-api";
+import { clearAuthSession, saveAuthUser, useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
 export default function EstudianteLayout({ children }: { children: React.ReactNode }) {
   const { hydrated, token, usuario: sesion } = useAuthSession();
@@ -41,6 +41,12 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
       })
       .catch((error: unknown) => {
         if (cancelado) return;
+        if (error instanceof ApiRequestError && error.status === 401) {
+          setUsuario(null);
+          clearAuthSession();
+          router.replace("/iniciar-sesion?expirado=1");
+          return;
+        }
         setErrorSincronizacion(
           error instanceof Error
             ? error.message

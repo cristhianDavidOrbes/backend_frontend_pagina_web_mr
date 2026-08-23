@@ -24,7 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { apiRequest } from "@/lib/client-api";
+import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import type { Nivel, ProgresoUsuario, Ranking, ReporteNivel } from "@/lib/types";
 import { useAuthSession } from "@/lib/use-auth-session";
 
@@ -112,7 +112,12 @@ export default function EstudiantePage() {
         setNiveles([...nivelesData].sort((a, b) => a.nivel - b.nivel));
         setRanking(rankingData);
       })
-      .catch((reason: Error) => setError(reason.message))
+      .catch((reason: unknown) => {
+        if (reason instanceof ApiRequestError && reason.status === 401) {
+          return;
+        }
+        setError(reason instanceof Error ? reason.message : "No pudimos cargar los datos.");
+      })
       .finally(() => setLoading(false));
   }, [hydrated, token]);
 
