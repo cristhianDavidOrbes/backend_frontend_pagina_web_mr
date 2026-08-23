@@ -95,15 +95,11 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
         dto.setSessionToken(sessionToken);
         dto.setMetodoPreferido(config.getMetodoPreferido());
 
-        // 1. Email OTP (deshabilitado para cuentas UCC ya que no usan envio SMTP)
-        boolean esInstitucional = usuario.getCorreo() != null &&
-                (usuario.getCorreo().toLowerCase().endsWith("@campusucc.edu.co") || usuario.getCorreo().toLowerCase().endsWith("@ucc.edu.co"));
-        boolean emailAvailable = !esInstitucional && emailService.estaDisponible();
-        String destinoEnmascarado = enmascararCorreo(usuario.getCorreo());
+        // 1. Email OTP (Deshabilitado completamente)
         dto.setEmail(new Metodos2faDisponiblesDTO.EmailMetodoInfo(
-                !esInstitucional && config.isEmailHabilitado(),
-                emailAvailable,
-                destinoEnmascarado
+                false,
+                false,
+                enmascararCorreo(usuario.getCorreo())
         ));
 
         // 2. Passkey / Biometrics
@@ -135,12 +131,10 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
         List<WebauthnCredencial> passkeys = webAuthnService.listarCredenciales(usuario.getId());
         int recoveryCodesCount = recoveryCodeService.contarCodigosDisponibles(usuario.getId());
 
-        boolean esInstitucional = usuario.getCorreo() != null &&
-                (usuario.getCorreo().toLowerCase().endsWith("@campusucc.edu.co") || usuario.getCorreo().toLowerCase().endsWith("@ucc.edu.co"));
-
         Configuracion2faUsuarioDTO dto = new Configuracion2faUsuarioDTO();
-        dto.setEmailHabilitado(!esInstitucional && config.isEmailHabilitado());
-        dto.setEmailDisponible(!esInstitucional && emailService.estaDisponible());
+        dto.setHabilitado(config.tiene2faHabilitado());
+        dto.setEmailHabilitado(false);
+        dto.setEmailDisponible(false);
         dto.setEmailDestino(usuario.getCorreo());
 
         dto.setTotpHabilitado(config.isTotpHabilitado());
@@ -179,15 +173,8 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
         String sessionToken = jwtServicio.generarTokenTemporal2FA(usuario);
         Metodos2faDisponiblesDTO metodos = consultarMetodosDisponibles(usuario, sessionToken);
 
-        // Si el método preferido o predeterminado es EMAIL y está disponible, despachamos el código automáticamente
-        if (config.isEmailHabilitado() && emailService.estaDisponible()) {
-            try {
-                generarYEnviarEmailOtp(usuario, false);
-            } catch (Exception e) {
-                logger.warn("[2FA Login] No se pudo auto-enviar OTP inicial por email: {}", e.getMessage());
-            }
-        }
-
+        // Email está deshabilitado completamente
+        
         return Login2faRespuestaDTO.requiere2fa(metodos);
     }
 

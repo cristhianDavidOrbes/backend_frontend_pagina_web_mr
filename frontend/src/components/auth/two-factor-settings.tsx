@@ -264,47 +264,8 @@ export function TwoFactorSettings({ token }: Props) {
       )}
 
       {/* Grid de Métodos 2FA */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* 1. Correo Electrónico */}
-        <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0d1628]/80 p-5 backdrop-blur-md">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
-                <Mail className="h-5 w-5" />
-              </div>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                  config?.emailHabilitado && config?.emailDisponible
-                    ? "bg-emerald-500/15 text-emerald-300"
-                    : !config?.emailDisponible
-                    ? "bg-amber-500/15 text-amber-300"
-                    : "bg-slate-700/40 text-slate-400"
-                }`}
-              >
-                {config?.emailHabilitado && config?.emailDisponible
-                  ? "Activo"
-                  : !config?.emailDisponible
-                  ? "Cuota Agotada"
-                  : "Desactivado"}
-              </span>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-bold text-white">Correo Electrónico</h3>
-              <p className="mt-1 text-xs text-slate-400">
-                Envía un código OTP de 6 dígitos a tu bandeja institucional.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-white/5">
-            <span className="block truncate text-[11px] text-slate-400">
-              Destino: <strong className="text-slate-300">{config?.emailDestino}</strong>
-            </span>
-          </div>
-        </div>
-
-        {/* 2. Huella / Passkey */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* 1. Huella / Passkey */}
         <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0d1628]/80 p-5 backdrop-blur-md">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -376,7 +337,7 @@ export function TwoFactorSettings({ token }: Props) {
           </div>
         </div>
 
-        {/* 3. Google Authenticator */}
+        {/* 2. Google Authenticator */}
         <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0d1628]/80 p-5 backdrop-blur-md">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -434,9 +395,8 @@ export function TwoFactorSettings({ token }: Props) {
             El método seleccionado se mostrará en primer lugar al iniciar sesión.
           </p>
 
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2">
             {[
-              { id: "EMAIL", label: "Correo" },
               { id: "PASSKEY", label: "Huella" },
               { id: "TOTP", label: "Authenticator" },
             ].map((m) => (

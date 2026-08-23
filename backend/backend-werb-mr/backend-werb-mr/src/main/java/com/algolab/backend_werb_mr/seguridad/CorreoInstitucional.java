@@ -1,14 +1,10 @@
 package com.algolab.backend_werb_mr.seguridad;
 
 import java.util.Locale;
-import java.util.regex.Pattern;
 
-/** Validación universal de correos electrónicos para registro e inicio de sesión. */
+/** Validación de correos electrónicos restringida exclusivamente a @gmail.com */
 public final class CorreoInstitucional {
-    public static final String DOMINIO = "@gmail.com, @campusucc.edu.co";
-
-    private static final Pattern PATRON = Pattern.compile(
-            "^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$");
+    public static final String DOMINIO = "@gmail.com";
 
     private CorreoInstitucional() {
     }
@@ -24,6 +20,6 @@ public final class CorreoInstitucional {
 
     public static boolean esValido(String correo) {
         String normalizado = normalizar(correo);
-        return normalizado != null && PATRON.matcher(normalizado).matches();
+        return normalizado != null && normalizado.endsWith("@gmail.com") && normalizado.length() > 10;
     }
 }

@@ -280,7 +280,7 @@ export default function RegistrarsePage() {
   const segsRenv = Math.max(0, Math.ceil((reenvioEn - ahora) / 1000));
   const prgTiempo = Math.max(0, Math.min(100, (segsExp / expTotal) * 100));
 
-  const esUCC = correo.toLowerCase().endsWith("@campusucc.edu.co") || correo.toLowerCase().endsWith("@ucc.edu.co");
+
 
   const destino = useMemo(() => {
     if (desafio?.destinoEnmascarado) return desafio.destinoEnmascarado;
@@ -351,38 +351,32 @@ export default function RegistrarsePage() {
         throw new Error(data.mensaje || "No se pudo crear la cuenta.");
       }
 
-      // Si es cuenta institucional UCC: Acceso Directo inmediato sin requerir OTP
-      if (esUCC) {
-        // Iniciar sesión directamente
-        const loginRes = await fetch("/api/iniciar-sesion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ correo: email, contrasena: pass }),
-        });
-        const loginData = await rj<LoginRespuesta>(loginRes);
-        if (loginData.token && loginData.usuario) {
-          saveAuthToken(loginData.token);
-          saveAuthUser(loginData.usuario);
-          setUsuarioReg(loginData.usuario);
-        } else {
-          const u: UsuarioSesion = {
-            id: 1,
-            nombre: nombre.trim(),
-            correo: email,
-            rol: "ESTUDIANTE",
-            nivelActual: 1,
-            puntaje: 0,
-            avatar: "orbita",
-          };
-          saveAuthUser(u);
-          setUsuarioReg(u);
-        }
-        setPaso("bienvenida");
-        return;
+      // Acceso Directo inmediato sin requerir OTP
+      const loginRes = await fetch("/api/auth/2fa/iniciar-sesion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ correo: email, contrasena: pass }),
+      });
+      const loginData = await rj<{ token?: string; usuario?: UsuarioSesion }>(loginRes);
+      if (loginData.token && loginData.usuario) {
+        saveAuthToken(loginData.token);
+        saveAuthUser(loginData.usuario);
+        setUsuarioReg(loginData.usuario);
+      } else {
+        const u: UsuarioSesion = {
+          id: 1,
+          nombre: nombre.trim(),
+          correo: email,
+          rol: "ESTUDIANTE",
+          nivelActual: 1,
+          puntaje: 0,
+          avatar: "orbita",
+        };
+        saveAuthUser(u);
+        setUsuarioReg(u);
       }
+      setPaso("bienvenida");
 
-      // Si es cuenta Personal / Gmail: Envía el código de verificación al correo
-      await enviarCodigoOtp(email);
     } catch (err: any) {
       setMsg({ texto: err.message || "Error al conectar con el servidor.", tono: "error" });
     } finally {
@@ -632,19 +626,10 @@ export default function RegistrarsePage() {
             <strong>{paso === "datos" ? ".crearPerfil();" : ".verificarIdentidad();"}</strong>
             <small>
               {paso === "datos"
-                ? "// correo personal o UCC · contraseña · 2FA"
-                : "// OTP de 6 dígitos · verificación segura"}
+                ? "// correo personal · contraseña"
+                : "// verificación segura"}
             </small>
           </div>
-          {esUCC && (
-            <div className={css.institutionalNotice}>
-              <ShieldCheck size={22} />
-              <div>
-                <strong>Cuenta Institucional UCC Detectada</strong>
-                <p>Tu acceso queda habilitado con tu contraseña y puedes vincular Google Authenticator en tu perfil.</p>
-              </div>
-            </div>
-          )}
         </motion.div>
 
         {/* Right card */}
@@ -693,17 +678,12 @@ export default function RegistrarsePage() {
                       <label className="field-label" htmlFor="re">
                         Correo Electrónico
                       </label>
-                      {esUCC && (
-                        <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300">
-                          UCC
-                        </span>
-                      )}
                     </div>
                     <FInput
                       id="re"
                       icon={<Mail size={18} />}
                       type="email"
-                      placeholder="usuario@gmail.com o @campusucc.edu.co"
+                      placeholder="usuario@gmail.com"
                       value={correo}
                       onChange={(v) => {
                         setCorreo(v);
@@ -715,7 +695,7 @@ export default function RegistrarsePage() {
                       hasError={Boolean(errCorreo)}
                     />
                     <small className={errCorreo ? css.fieldError : css.fieldHelp}>
-                      {errCorreo || "Puedes usar tu correo de Gmail personal o tu correo de la UCC."}
+                      {errCorreo || "Usa tu correo de Gmail."}
                     </small>
                   </div>
                   <div>
@@ -761,11 +741,7 @@ export default function RegistrarsePage() {
                     ) : (
                       <Sparkles size={18} />
                     )}
-                    {enviando
-                      ? "Creando cuenta…"
-                      : esUCC
-                      ? "Crear Cuenta UCC (Acceso Directo)"
-                      : "Crear Cuenta y Verificar"}
+                    {enviando ? "Creando cuenta…" : "Crear Cuenta (Acceso Inmediato)"}
                   </button>
                 </form>
 

@@ -93,7 +93,7 @@ export default function IniciarSesionPage() {
 
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
-  const esCuentaInstitucional = correo.toLowerCase().endsWith("@campusucc.edu.co") || correo.toLowerCase().endsWith("@ucc.edu.co");
+
 
   // Si se redirige por sesión expirada, limpiar y mostrar aviso sin loop
   useEffect(() => {
@@ -166,32 +166,17 @@ export default function IniciarSesionPage() {
         setInfo2fa(info);
         setEnPaso2FA(true);
 
-        // Determinar método inicial según tipo de cuenta y preferencia
-        if (esCuentaInstitucional) {
-          // Para UCC: solo TOTP, Passkey o Recuperación
-          if (info.totp.configured) {
-            setMetodoActivo("TOTP");
-          } else if (info.passkey.registered) {
-            setMetodoActivo("PASSKEY");
-          } else {
-            setMetodoActivo("TOTP");
-          }
+        // Determinar método inicial según preferencia
+        if (info.metodoPreferido === "PASSKEY" && info.passkey.registered) {
+          setMetodoActivo("PASSKEY");
+        } else if (info.metodoPreferido === "TOTP" && info.totp.configured) {
+          setMetodoActivo("TOTP");
+        } else if (info.totp.configured) {
+          setMetodoActivo("TOTP");
+        } else if (info.passkey.registered) {
+          setMetodoActivo("PASSKEY");
         } else {
-          // Para Gmail / Personal: Email, TOTP o Passkey
-          if (info.metodoPreferido === "PASSKEY" && info.passkey.registered) {
-            setMetodoActivo("PASSKEY");
-          } else if (info.metodoPreferido === "TOTP" && info.totp.configured) {
-            setMetodoActivo("TOTP");
-          } else if (info.email.enabled && info.email.available) {
-            setMetodoActivo("EMAIL");
-            setSegundosReenvio(45);
-          } else if (info.totp.configured) {
-            setMetodoActivo("TOTP");
-          } else if (info.passkey.registered) {
-            setMetodoActivo("PASSKEY");
-          } else {
-            setMetodoActivo("RECOVERY");
-          }
+          setMetodoActivo("RECOVERY");
         }
       }
     } catch (err: any) {
@@ -463,7 +448,7 @@ export default function IniciarSesionPage() {
                 <span className="section-kicker">Portal Seguro</span>
                 <h1 className="mt-2 text-2xl font-extrabold text-white">Iniciar Sesión</h1>
                 <p className="mt-1.5 text-xs text-slate-400">
-                  Accede a AlgoLab con tu correo personal (Gmail) o tu cuenta institucional UCC.
+                  Accede a AlgoLab con tu correo personal (Gmail).
                 </p>
               </div>
 
@@ -478,11 +463,6 @@ export default function IniciarSesionPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-300">Correo Electrónico</label>
-                    {esCuentaInstitucional && (
-                      <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300">
-                        Cuenta UCC
-                      </span>
-                    )}
                   </div>
                   <div className="relative flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 focus-within:border-emerald-400">
                     <Mail className="mr-2 h-4 w-4 text-slate-400" />
@@ -490,16 +470,14 @@ export default function IniciarSesionPage() {
                       type="email"
                       value={correo}
                       onChange={(e) => setCorreo(e.target.value)}
-                      placeholder="usuario@gmail.com o @campusucc.edu.co"
+                      placeholder="usuario@gmail.com"
                       className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
                       required
                       autoFocus
                     />
                   </div>
                   <p className="text-[10px] text-slate-400">
-                    {esCuentaInstitucional
-                      ? "Acceso directo con contraseña o Google Authenticator."
-                      : "Puedes validar con código por correo, Authenticator o contraseña."}
+                    Acceso con contraseña o Google Authenticator.
                   </p>
                 </div>
 
@@ -584,21 +562,6 @@ export default function IniciarSesionPage() {
 
               {/* Selector de Métodos Diferenciado según cuenta */}
               <div className="flex rounded-xl bg-white/5 p-1 border border-white/5">
-                {/* 1. Opción Correo: Solo visible para cuentas que tienen email 2FA habilitado (ej: Gmail) */}
-                {info2fa?.email.enabled && !esCuentaInstitucional && (
-                  <button
-                    onClick={() => setMetodoActivo("EMAIL")}
-                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
-                      metodoActivo === "EMAIL"
-                        ? "bg-emerald-500 text-slate-950 shadow"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <Mail className="h-3.5 w-3.5" />
-                    Correo
-                  </button>
-                )}
-
                 {/* 2. Opción Google Authenticator: Disponible para todas las cuentas */}
                 <button
                   onClick={() => setMetodoActivo("TOTP")}
