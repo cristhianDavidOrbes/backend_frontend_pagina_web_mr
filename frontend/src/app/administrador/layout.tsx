@@ -33,8 +33,9 @@ export default function AdministradorLayout({ children }: { children: React.Reac
       .catch((reason: unknown) => {
         if (!active) return;
         if (reason instanceof ApiRequestError && reason.status === 401) {
-          setUsuario(null);
-          router.replace("/iniciar-sesion");
+          if (typeof window !== "undefined") {
+            window.location.href = "/iniciar-sesion?expirado=1";
+          }
           return;
         }
         setError(reason instanceof Error ? reason.message : "No pudimos sincronizar el centro de control.");
