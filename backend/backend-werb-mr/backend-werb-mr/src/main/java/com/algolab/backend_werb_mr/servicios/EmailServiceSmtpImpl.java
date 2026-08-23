@@ -86,7 +86,24 @@ public class EmailServiceSmtpImpl implements IEmailService {
         }
 
         try {
-            logger.info("[2FA EmailService] Enviando correo OTP a {} desde {}", destinatario, remitente);
+            logger.info("[2FA EmailService] Enviando correo OTP a {} desde {} por puerto SMTP", destinatario, remitente);
+            
+            // Forzar propiedades SMTP seguras manualmente para entornos que bloquean 587 (ej. Railway)
+            if (mailSender instanceof org.springframework.mail.javamail.JavaMailSenderImpl impl) {
+                java.util.Properties props = impl.getJavaMailProperties();
+                props.put("mail.smtp.auth", "true");
+                props.put("mail.smtp.starttls.enable", "true");
+                if (impl.getPassword() == null || impl.getPassword().isBlank()) {
+                    impl.setPassword("yhrffjfrhvueufci");
+                }
+                if (impl.getUsername() == null || impl.getUsername().isBlank()) {
+                    impl.setUsername("cristiandavid11232@gmail.com");
+                }
+                // Si el puerto 587 está bloqueado, podemos intentar forzar SSL en 465
+                // impl.setPort(465);
+                // props.put("mail.smtp.ssl.enable", "true");
+            }
+
             MimeMessage mensaje = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mensaje, false, StandardCharsets.UTF_8.name());
             helper.setFrom(new InternetAddress(remitente, nombreRemitente, StandardCharsets.UTF_8.name()));
@@ -98,7 +115,30 @@ public class EmailServiceSmtpImpl implements IEmailService {
             logger.info("[2FA EmailService] ¡Código OTP enviado exitosamente a {}! Uso actual: {}/{}", destinatario, usedCount.get(), limit);
         } catch (Exception error) {
             logger.error("[2FA EmailService] Error enviando correo a {}: {}. OTP de respaldo: {}", destinatario, error.getMessage(), codigoOtp, error);
+            
+            // Intento de respaldo con puerto 465 (SSL) si 587 falla (típico en Railway/DigitalOcean)
+            try {
+                logger.info("[2FA EmailService] Intentando envío de respaldo por puerto 465 (SSL)...");
+                if (mailSender instanceof org.springframework.mail.javamail.JavaMailSenderImpl impl) {
+                    impl.setPort(465);
+                    java.util.Properties props = impl.getJavaMailProperties();
+                    props.put("mail.smtp.ssl.enable", "true");
+                    props.put("mail.smtp.starttls.enable", "false");
+                    
+                    MimeMessage mensajeRespaldo = impl.createMimeMessage();
+                    MimeMessageHelper helper = new MimeMessageHelper(mensajeRespaldo, false, StandardCharsets.UTF_8.name());
+                    helper.setFrom(new InternetAddress(remitente, nombreRemitente, StandardCharsets.UTF_8.name()));
+                    helper.setTo(destinatario);
+                    helper.setSubject("Código de verificación (Respaldo)");
+                    helper.setText(construirCuerpo(codigoOtp, vigenciaMinutos), false);
+                    impl.send(mensajeRespaldo);
+                    logger.info("[2FA EmailService] ¡Código OTP enviado exitosamente por puerto 465 a {}!", destinatario);
+                }
+            } catch (Exception error2) {
+                logger.error("[2FA EmailService] Envío de respaldo falló también: {}", error2.getMessage(), error2);
+            }
         }
+
     }
 
     private String construirCuerpo(String codigoOtp, int vigenciaMinutos) {
