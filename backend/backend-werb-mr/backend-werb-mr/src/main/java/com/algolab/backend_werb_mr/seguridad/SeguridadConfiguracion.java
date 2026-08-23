@@ -30,12 +30,19 @@ public class SeguridadConfiguracion {
                     response.getWriter().write("{\"mensaje\":\"Sesión expirada o no autorizada. Por favor, inicia sesión nuevamente.\"}");
                 }))
                 .authorizeHttpRequests(auth -> auth
+                        // Rutas públicas de autenticación y registro
                         .requestMatchers("/api/usuarios/registrar").permitAll()
                         .requestMatchers("/api/usuarios/iniciar-sesion").permitAll()
-                        .requestMatchers("/api/usuarios/segundo-factor/verificar").permitAll()
-                        .requestMatchers("/api/usuarios/segundo-factor/reenviar").permitAll()
+                        .requestMatchers("/api/usuarios/segundo-factor/**").permitAll()
+                        .requestMatchers("/api/auth/2fa/iniciar-sesion").permitAll()
+                        .requestMatchers("/api/auth/2fa/metodos").permitAll()
+                        .requestMatchers("/api/auth/2fa/email/**").permitAll()
+                        .requestMatchers("/api/auth/2fa/totp/verificar").permitAll()
+                        .requestMatchers("/api/auth/2fa/passkey/auth/**").permitAll()
+                        .requestMatchers("/api/auth/2fa/recuperacion/verificar").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ranking", "/api/ranking/**").permitAll()
+                        // Rutas protegidas
                         .requestMatchers(HttpMethod.GET, "/api/niveles", "/api/niveles/**").authenticated()
                         .requestMatchers("/api/niveles/**").hasAnyRole("DOCENTE", "ADMINISTRADOR")
                         .requestMatchers("/api/descripciones-niveles/**").hasAnyRole("DOCENTE", "ADMINISTRADOR")

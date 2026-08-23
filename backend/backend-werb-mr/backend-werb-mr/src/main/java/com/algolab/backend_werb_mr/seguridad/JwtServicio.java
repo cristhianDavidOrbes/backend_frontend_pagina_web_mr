@@ -48,6 +48,7 @@ public class JwtServicio {
         payload.put("id", usuario.getId());
         payload.put("nombre", usuario.getNombre());
         payload.put("rol", usuario.getRol().name());
+        payload.put("type", "ACCESS");
         payload.put("iat", ahora);
         payload.put("exp", expiracion);
 
@@ -56,6 +57,39 @@ public class JwtServicio {
         String contenido = headerBase64 + "." + payloadBase64;
 
         return contenido + "." + firmar(contenido);
+    }
+
+    public String generarTokenTemporal2FA(Usuario usuario) {
+        long ahora = Instant.now().toEpochMilli();
+        long expiracion = ahora + (5 * 60 * 1000); // 5 minutos
+
+        Map<String, Object> header = Map.of(
+                "alg", "HS256",
+                "typ", "JWT");
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("sub", usuario.getCorreo());
+        payload.put("id", usuario.getId());
+        payload.put("nombre", usuario.getNombre());
+        payload.put("rol", usuario.getRol().name());
+        payload.put("type", "2FA_PENDING");
+        payload.put("iat", ahora);
+        payload.put("exp", expiracion);
+
+        String headerBase64 = codificarJson(header);
+        String payloadBase64 = codificarJson(payload);
+        String contenido = headerBase64 + "." + payloadBase64;
+
+        return contenido + "." + firmar(contenido);
+    }
+
+    public boolean esTokenTemporal2FA(String token) {
+        try {
+            String type = obtenerValor(token, "type", String.class);
+            return "2FA_PENDING".equals(type);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public boolean tokenValido(String token) {
@@ -69,8 +103,6 @@ public class JwtServicio {
             String contenido = partes[0] + "." + partes[1];
             String firmaEsperada = firmar(contenido);
 
-            // La comparacion en tiempo constante evita filtrar progresivamente
-            // informacion de la firma mediante mediciones repetidas.
             if (!MessageDigest.isEqual(
                     firmaEsperada.getBytes(StandardCharsets.US_ASCII),
                     partes[2].getBytes(StandardCharsets.US_ASCII))) {
@@ -90,6 +122,10 @@ public class JwtServicio {
 
     public String obtenerRol(String token) {
         return obtenerValor(token, "rol", String.class);
+    }
+
+    public String obtenerTipo(String token) {
+        return obtenerValor(token, "type", String.class);
     }
 
     private String codificarJson(Map<String, Object> datos) {

@@ -49,6 +49,10 @@ export async function proxyBackend({ request, path, method }: ProxyOptions) {
     if (authorization) {
       headers.Authorization = authorization;
     }
+    const session2fa = request.headers.get("x-2fa-session-token");
+    if (session2fa) {
+      headers["X-2FA-Session-Token"] = session2fa;
+    }
 
     const respuesta = await fetch(`${baseUrl}${path}`, {
       method,

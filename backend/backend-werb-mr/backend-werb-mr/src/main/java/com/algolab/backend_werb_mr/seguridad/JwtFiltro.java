@@ -44,7 +44,7 @@ public class JwtFiltro extends OncePerRequestFilter {
 
         String token = header.substring(BEARER.length());
 
-        if (jwtServicio.tokenValido(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (jwtServicio.tokenValido(token) && !jwtServicio.esTokenTemporal2FA(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
             String correo = jwtServicio.obtenerCorreo(token);
             Usuario usuarioActual = correo == null
                     ? null
