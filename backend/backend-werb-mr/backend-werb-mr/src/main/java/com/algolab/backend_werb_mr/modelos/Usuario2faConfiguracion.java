@@ -57,10 +57,12 @@ public class Usuario2faConfiguracion {
 
     public Usuario2faConfiguracion(Usuario usuario) {
         this.usuario = usuario;
-        this.emailHabilitado = true;
+        boolean esInstitucional = usuario != null && usuario.getCorreo() != null &&
+                (usuario.getCorreo().toLowerCase().endsWith("@campusucc.edu.co") || usuario.getCorreo().toLowerCase().endsWith("@ucc.edu.co"));
+        this.emailHabilitado = !esInstitucional;
         this.totpHabilitado = false;
         this.passkeyHabilitado = false;
-        this.metodoPreferido = Metodo2fa.EMAIL;
+        this.metodoPreferido = esInstitucional ? Metodo2fa.TOTP : Metodo2fa.EMAIL;
     }
 
     @PrePersist
@@ -78,8 +80,16 @@ public class Usuario2faConfiguracion {
         actualizadoEn = Instant.now();
     }
 
+    public boolean esCuentaInstitucional() {
+        return usuario != null && usuario.getCorreo() != null &&
+                (usuario.getCorreo().toLowerCase().endsWith("@campusucc.edu.co") || usuario.getCorreo().toLowerCase().endsWith("@ucc.edu.co"));
+    }
+
     public boolean tiene2faHabilitado() {
-        return emailHabilitado || totpHabilitado || passkeyHabilitado;
+        if (esCuentaInstitucional()) {
+            return (totpHabilitado && totpConfigurado) || passkeyHabilitado;
+        }
+        return emailHabilitado || (totpHabilitado && totpConfigurado) || passkeyHabilitado;
     }
 
     public Long getId() {
@@ -99,6 +109,7 @@ public class Usuario2faConfiguracion {
     }
 
     public boolean isEmailHabilitado() {
+        if (esCuentaInstitucional()) return false;
         return emailHabilitado;
     }
 

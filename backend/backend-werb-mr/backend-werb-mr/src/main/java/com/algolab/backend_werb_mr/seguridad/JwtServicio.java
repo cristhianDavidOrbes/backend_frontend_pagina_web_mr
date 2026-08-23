@@ -35,6 +35,16 @@ public class JwtServicio {
     @Value("${app.jwt.expiracion-ms}")
     private long expiracionMs;
 
+    public JwtServicio() {
+        this.secreto = "secreto-por-defecto-temporal-muy-largo-para-firma-jwt";
+        this.expiracionMs = 86400000L;
+    }
+
+    public JwtServicio(String secreto, long expiracionMs) {
+        this.secreto = secreto;
+        this.expiracionMs = expiracionMs;
+    }
+
     public String generarToken(Usuario usuario) {
         long ahora = Instant.now().toEpochMilli();
         long expiracion = ahora + expiracionMs;

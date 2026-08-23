@@ -95,11 +95,13 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
         dto.setSessionToken(sessionToken);
         dto.setMetodoPreferido(config.getMetodoPreferido());
 
-        // 1. Email OTP
-        boolean emailAvailable = emailService.estaDisponible();
+        // 1. Email OTP (deshabilitado para cuentas UCC ya que no usan envio SMTP)
+        boolean esInstitucional = usuario.getCorreo() != null &&
+                (usuario.getCorreo().toLowerCase().endsWith("@campusucc.edu.co") || usuario.getCorreo().toLowerCase().endsWith("@ucc.edu.co"));
+        boolean emailAvailable = !esInstitucional && emailService.estaDisponible();
         String destinoEnmascarado = enmascararCorreo(usuario.getCorreo());
         dto.setEmail(new Metodos2faDisponiblesDTO.EmailMetodoInfo(
-                config.isEmailHabilitado(),
+                !esInstitucional && config.isEmailHabilitado(),
                 emailAvailable,
                 destinoEnmascarado
         ));
@@ -133,9 +135,12 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
         List<WebauthnCredencial> passkeys = webAuthnService.listarCredenciales(usuario.getId());
         int recoveryCodesCount = recoveryCodeService.contarCodigosDisponibles(usuario.getId());
 
+        boolean esInstitucional = usuario.getCorreo() != null &&
+                (usuario.getCorreo().toLowerCase().endsWith("@campusucc.edu.co") || usuario.getCorreo().toLowerCase().endsWith("@ucc.edu.co"));
+
         Configuracion2faUsuarioDTO dto = new Configuracion2faUsuarioDTO();
-        dto.setEmailHabilitado(config.isEmailHabilitado());
-        dto.setEmailDisponible(emailService.estaDisponible());
+        dto.setEmailHabilitado(!esInstitucional && config.isEmailHabilitado());
+        dto.setEmailDisponible(!esInstitucional && emailService.estaDisponible());
         dto.setEmailDestino(usuario.getCorreo());
 
         dto.setTotpHabilitado(config.isTotpHabilitado());
