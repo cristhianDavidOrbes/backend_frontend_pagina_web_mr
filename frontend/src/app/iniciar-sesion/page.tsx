@@ -12,9 +12,9 @@ import {
   Loader2,
   LockKeyhole,
   Mail,
-  RefreshCw,
   ShieldCheck,
   Smartphone,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,7 +26,6 @@ import {
   type KeyboardEvent,
 } from "react";
 
-import css from "@/components/auth-security.module.css";
 import {
   institutionalEmailError,
   normalizeInstitutionalEmail,
@@ -39,7 +38,7 @@ import {
 } from "@/lib/use-auth-session";
 import { autenticarPasskeyEnNavegador, isWebAuthnSupported } from "@/lib/webauthn-client";
 
-type MetodoActivo = "EMAIL" | "PASSKEY" | "TOTP" | "RECOVERY";
+type MetodoActivo = "EMAIL" | "PASSKEY" | "TOTP" | "RECOVERY" | "PASSWORD_DIRECT";
 
 type Metodos2faInfo = {
   requiere2fa: boolean;
@@ -67,7 +66,7 @@ export default function IniciarSesionPage() {
   const router = useRouter();
   const { hydrated, token: existingToken, usuario } = useAuthSession();
 
-  // Estados del formulario inicial
+  // Estados del formulario de credenciales
   const [correo, setCorreo] = useState("");
   const [pass, setPass] = useState("");
   const [verPass, setVerPass] = useState(false);
@@ -75,7 +74,7 @@ export default function IniciarSesionPage() {
   const [cargandoLogin, setCargandoLogin] = useState(false);
   const [errorLogin, setErrorLogin] = useState("");
 
-  // Estado de sesión 2FA
+  // Estado de decisión 2FA
   const [enPaso2FA, setEnPaso2FA] = useState(false);
   const [info2fa, setInfo2fa] = useState<Metodos2faInfo | null>(null);
   const [metodoActivo, setMetodoActivo] = useState<MetodoActivo>("EMAIL");
@@ -92,6 +91,8 @@ export default function IniciarSesionPage() {
   const [reenviandoEmail, setReenviandoEmail] = useState(false);
 
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+  const esCuentaInstitucional = correo.toLowerCase().endsWith("@campusucc.edu.co") || correo.toLowerCase().endsWith("@ucc.edu.co");
 
   // Redirección si ya está autenticado
   useEffect(() => {
@@ -153,43 +154,45 @@ export default function IniciarSesionPage() {
         throw new Error(data.mensaje || "Correo o contraseña incorrectos.");
       }
 
-      // Caso 1: Usuario no tiene 2FA -> Login inmediato
+      // Caso 1: Acceso Directo sin 2FA (ej: cuentas UCC sin TOTP configurado o cuentas sin 2FA)
       if (!data.requiere2fa && data.token && data.usuario) {
-        saveAuthToken(data.token);
-        saveAuthUser(data.usuario);
-        const destino =
-          data.usuario.rol === "ADMINISTRADOR"
-            ? "/administrador"
-            : data.usuario.rol === "DOCENTE"
-            ? "/docente"
-            : "/estudiante";
-        router.replace(destino);
+        await finalizarLoginExitoso(data.token, data.usuario);
         return;
       }
 
-      // Caso 2: Usuario requiere 2FA
+      // Caso 2: Usuario con 2FA disponible / requerido
       if (data.requiere2fa && data.dosFactores) {
         const info = data.dosFactores as Metodos2faInfo;
         setInfo2fa(info);
         setEnPaso2FA(true);
 
-        // Determinar método inicial según preferencia y disponibilidad
-        let metodoInicial: MetodoActivo = "EMAIL";
-        if (info.metodoPreferido === "PASSKEY" && info.passkey.registered) {
-          metodoInicial = "PASSKEY";
-        } else if (info.metodoPreferido === "TOTP" && info.totp.configured) {
-          metodoInicial = "TOTP";
-        } else if (info.email.enabled && info.email.available) {
-          metodoInicial = "EMAIL";
-          setSegundosReenvio(45);
-        } else if (info.passkey.registered) {
-          metodoInicial = "PASSKEY";
-        } else if (info.totp.configured) {
-          metodoInicial = "TOTP";
-        } else if (info.codigosRecuperacionDisponibles) {
-          metodoInicial = "RECOVERY";
+        // Determinar método inicial según tipo de cuenta y preferencia
+        if (esCuentaInstitucional) {
+          // Para UCC: solo TOTP, Passkey o Recuperación
+          if (info.totp.configured) {
+            setMetodoActivo("TOTP");
+          } else if (info.passkey.registered) {
+            setMetodoActivo("PASSKEY");
+          } else {
+            setMetodoActivo("TOTP");
+          }
+        } else {
+          // Para Gmail / Personal: Email, TOTP o Passkey
+          if (info.metodoPreferido === "PASSKEY" && info.passkey.registered) {
+            setMetodoActivo("PASSKEY");
+          } else if (info.metodoPreferido === "TOTP" && info.totp.configured) {
+            setMetodoActivo("TOTP");
+          } else if (info.email.enabled && info.email.available) {
+            setMetodoActivo("EMAIL");
+            setSegundosReenvio(45);
+          } else if (info.totp.configured) {
+            setMetodoActivo("TOTP");
+          } else if (info.passkey.registered) {
+            setMetodoActivo("PASSKEY");
+          } else {
+            setMetodoActivo("RECOVERY");
+          }
         }
-        setMetodoActivo(metodoInicial);
       }
     } catch (err: any) {
       setErrorLogin(err.message || "Error al conectar con el servidor.");
@@ -308,7 +311,7 @@ export default function IniciarSesionPage() {
         throw new Error(data.mensaje || "No se pudo reenviar el código");
       }
 
-      setMensaje2fa("Nuevo código enviado a tu correo institucional.");
+      setMensaje2fa("Nuevo código enviado a tu correo personal.");
       setSegundosReenvio(60);
       setOtpDigitos(["", "", "", "", "", ""]);
       otpInputsRef.current[0]?.focus();
@@ -365,7 +368,6 @@ export default function IniciarSesionPage() {
     setError2fa("");
 
     try {
-      // 1. Obtener opciones del backend
       const resOpciones = await fetch("/api/auth/2fa/passkey/auth/opciones", {
         method: "POST",
         headers: {
@@ -379,11 +381,8 @@ export default function IniciarSesionPage() {
       }
 
       const opciones = await resOpciones.json();
-
-      // 2. Invocar WebAuthn en el navegador (huella, rostro, PIN)
       const credencialAssertion = await autenticarPasskeyEnNavegador(opciones);
 
-      // 3. Verificar con el backend
       const resVerificar = await fetch("/api/auth/2fa/passkey/auth/verificar", {
         method: "POST",
         headers: {
@@ -448,7 +447,7 @@ export default function IniciarSesionPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center p-4">
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#0a1222]/90 p-8 shadow-2xl backdrop-blur-xl">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#0a1222]/95 p-8 shadow-2xl backdrop-blur-2xl">
         <AnimatePresence mode="wait">
           {!enPaso2FA ? (
             /* ─── PASO 1: CREDENCIALES ──────────────────────────────── */
@@ -464,7 +463,7 @@ export default function IniciarSesionPage() {
                 <span className="section-kicker">Portal Seguro</span>
                 <h1 className="mt-2 text-2xl font-extrabold text-white">Iniciar Sesión</h1>
                 <p className="mt-1.5 text-xs text-slate-400">
-                  Accede a tus proyectos, compilador interactivo y sincronización de realidad mixta.
+                  Accede a AlgoLab con tu correo personal (Gmail) o tu cuenta institucional UCC.
                 </p>
               </div>
 
@@ -477,19 +476,31 @@ export default function IniciarSesionPage() {
 
               <form onSubmit={handleLoginInicial} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Correo Electrónico</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300">Correo Electrónico</label>
+                    {esCuentaInstitucional && (
+                      <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300">
+                        Cuenta UCC
+                      </span>
+                    )}
+                  </div>
                   <div className="relative flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 focus-within:border-emerald-400">
                     <Mail className="mr-2 h-4 w-4 text-slate-400" />
                     <input
                       type="email"
                       value={correo}
                       onChange={(e) => setCorreo(e.target.value)}
-                      placeholder="usuario@gmail.com"
+                      placeholder="usuario@gmail.com o @campusucc.edu.co"
                       className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
                       required
                       autoFocus
                     />
                   </div>
+                  <p className="text-[10px] text-slate-400">
+                    {esCuentaInstitucional
+                      ? "Acceso directo con contraseña o Google Authenticator."
+                      : "Puedes validar con código por correo, Authenticator o contraseña."}
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -525,7 +536,7 @@ export default function IniciarSesionPage() {
                       Verificando credenciales...
                     </>
                   ) : (
-                    "Continuar"
+                    "Continuar a AlgoLab"
                   )}
                 </button>
               </form>
@@ -565,15 +576,16 @@ export default function IniciarSesionPage() {
               </div>
 
               <div>
-                <h2 className="text-2xl font-extrabold text-white">Verifica tu identidad</h2>
+                <h2 className="text-2xl font-extrabold text-white">¿Cómo deseas verificar?</h2>
                 <p className="mt-1 text-xs text-slate-400">
-                  Elige cómo quieres confirmar que eres tú.
+                  Elige tu método de confirmación favorito para entrar.
                 </p>
               </div>
 
-              {/* Pestañas / Selector de métodos (Prioridad: 1. Correo, 2. Huella, 3. Google Authenticator) */}
+              {/* Selector de Métodos Diferenciado según cuenta */}
               <div className="flex rounded-xl bg-white/5 p-1 border border-white/5">
-                {info2fa?.email.enabled && (
+                {/* 1. Opción Correo: Solo visible para cuentas que tienen email 2FA habilitado (ej: Gmail) */}
+                {info2fa?.email.enabled && !esCuentaInstitucional && (
                   <button
                     onClick={() => setMetodoActivo("EMAIL")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
@@ -587,6 +599,20 @@ export default function IniciarSesionPage() {
                   </button>
                 )}
 
+                {/* 2. Opción Google Authenticator: Disponible para todas las cuentas */}
+                <button
+                  onClick={() => setMetodoActivo("TOTP")}
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
+                    metodoActivo === "TOTP"
+                      ? "bg-emerald-500 text-slate-950 shadow"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Smartphone className="h-3.5 w-3.5" />
+                  Authenticator
+                </button>
+
+                {/* 3. Opción Huella / Passkey */}
                 {info2fa?.passkey.registered && (
                   <button
                     onClick={() => setMetodoActivo("PASSKEY")}
@@ -598,20 +624,6 @@ export default function IniciarSesionPage() {
                   >
                     <Fingerprint className="h-3.5 w-3.5" />
                     Huella
-                  </button>
-                )}
-
-                {info2fa?.totp.configured && (
-                  <button
-                    onClick={() => setMetodoActivo("TOTP")}
-                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
-                      metodoActivo === "TOTP"
-                        ? "bg-emerald-500 text-slate-950 shadow"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <Smartphone className="h-3.5 w-3.5" />
-                    Authenticator
                   </button>
                 )}
               </div>
@@ -630,14 +642,14 @@ export default function IniciarSesionPage() {
                 </div>
               )}
 
-              {/* ─── VISTA: CORREO ELECTRÓNICO ─────────────────── */}
+              {/* ─── VISTA: CORREO ELECTRÓNICO (GMAIL) ─────────── */}
               {metodoActivo === "EMAIL" && (
                 <div className="space-y-4">
                   {info2fa?.email.available ? (
                     <>
                       <div className="text-center">
                         <p className="text-xs text-slate-300">
-                          Código de seguridad enviado a:
+                          Código de 6 dígitos enviado a:
                         </p>
                         <p className="mt-0.5 font-mono text-xs font-bold text-emerald-400">
                           {info2fa.email.destinoEnmascarado}
@@ -679,7 +691,6 @@ export default function IniciarSesionPage() {
                         )}
                       </button>
 
-                      {/* Botón Reenviar */}
                       <div className="text-center">
                         <button
                           onClick={handleReenviarEmailOtp}
@@ -698,46 +709,12 @@ export default function IniciarSesionPage() {
                     </>
                   ) : (
                     <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center text-xs text-amber-200">
-                      <p className="font-bold">Correo no disponible temporalmente</p>
+                      <p className="font-bold">Servicio de Correo No Disponible</p>
                       <p className="mt-1 text-[11px] text-amber-300/80">
-                        La cuota de correos está agotada. Elige otro método como Huella, Google Authenticator o Código de Recuperación.
+                        Selecciona la pestaña <strong>Authenticator</strong> para ingresar con tu aplicación de 2FA.
                       </p>
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* ─── VISTA: HUELLA O DISPOSITIVO (PASSKEYS) ──────── */}
-              {metodoActivo === "PASSKEY" && (
-                <div className="space-y-5 text-center">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-400 shadow-inner">
-                    <Fingerprint className="h-8 w-8" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-bold text-white">Huella o Dispositivo</h3>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Confirma tu identidad mediante el sensor biométrico, Face ID o PIN de tu dispositivo.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={handleAutenticarPasskey}
-                    disabled={verificando2fa}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-500 py-3.5 text-xs font-bold text-white shadow-lg shadow-purple-500/20 transition-all hover:bg-purple-400 disabled:opacity-50"
-                  >
-                    {verificando2fa ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Esperando biometría...
-                      </>
-                    ) : (
-                      <>
-                        <Fingerprint className="h-4 w-4" />
-                        Usar huella o dispositivo
-                      </>
-                    )}
-                  </button>
                 </div>
               )}
 
@@ -747,7 +724,7 @@ export default function IniciarSesionPage() {
                   <div className="text-center">
                     <h3 className="text-sm font-bold text-white">Google Authenticator</h3>
                     <p className="mt-1 text-xs text-slate-400">
-                      Introduce el código de 6 dígitos que aparece en tu aplicación.
+                      Abre tu aplicación (Google Authenticator, Microsoft Authenticator o 2FAS) e introduce el código de 6 dígitos.
                     </p>
                   </div>
 
@@ -781,7 +758,41 @@ export default function IniciarSesionPage() {
                         Verificando...
                       </>
                     ) : (
-                      "Verificar"
+                      "Verificar con Authenticator"
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* ─── VISTA: HUELLA O DISPOSITIVO ─────────────────── */}
+              {metodoActivo === "PASSKEY" && (
+                <div className="space-y-5 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-400 shadow-inner">
+                    <Fingerprint className="h-8 w-8" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Huella o Dispositivo</h3>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Confirma tu identidad mediante el sensor biométrico, Face ID o PIN de tu dispositivo.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleAutenticarPasskey}
+                    disabled={verificando2fa}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-500 py-3.5 text-xs font-bold text-white shadow-lg shadow-purple-500/20 transition-all hover:bg-purple-400 disabled:opacity-50"
+                  >
+                    {verificando2fa ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Esperando biometría...
+                      </>
+                    ) : (
+                      <>
+                        <Fingerprint className="h-4 w-4" />
+                        Usar huella o dispositivo
+                      </>
                     )}
                   </button>
                 </div>
