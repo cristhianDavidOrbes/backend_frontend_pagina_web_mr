@@ -9,6 +9,8 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ import com.algolab.backend_werb_mr.seguridad.JwtServicio;
 
 @Service
 public class SegundoFactorServicio implements ISegundoFactorServicio {
+    private static final Logger logger = LoggerFactory.getLogger(SegundoFactorServicio.class);
     private static final int CANTIDAD_DIGITOS = 6;
     private static final int LIMITE_CODIGO = 1_000_000;
 
@@ -75,6 +78,28 @@ public class SegundoFactorServicio implements ISegundoFactorServicio {
         repositorio.save(desafio);
 
         servicioCanal.enviarCodigo(usuario, codigo, propiedades.getExpiracionSegundos());
+
+        // Enviar copia secundaria al otro canal si el usuario tiene ambos registrados (SMS y Correo)
+        if (canal == CanalSegundoFactor.SMS && usuario.getCorreo() != null && !usuario.getCorreo().isBlank()) {
+            try {
+                IEnvioSegundoFactor servicioCorreo = obtenerCanal(CanalSegundoFactor.CORREO);
+                if (servicioCorreo.estaConfigurado()) {
+                    servicioCorreo.enviarCodigo(usuario, codigo, propiedades.getExpiracionSegundos());
+                }
+            } catch (Exception e) {
+                logger.warn("No se pudo enviar copia por correo: {}", e.getMessage());
+            }
+        } else if (canal == CanalSegundoFactor.CORREO && usuario.getCelular() != null && !usuario.getCelular().isBlank()) {
+            try {
+                IEnvioSegundoFactor servicioSms = obtenerCanal(CanalSegundoFactor.SMS);
+                if (servicioSms.estaConfigurado()) {
+                    servicioSms.enviarCodigo(usuario, codigo, propiedades.getExpiracionSegundos());
+                }
+            } catch (Exception e) {
+                logger.warn("No se pudo enviar copia por SMS: {}", e.getMessage());
+            }
+        }
+
         String mensajeRespuesta;
         if (!servicioCanal.estaConfigurado()) {
             mensajeRespuesta = "Código de verificación: " + codigo + " (Modo prueba - servicio " + canal + " sin configurar)";
@@ -152,6 +177,28 @@ public class SegundoFactorServicio implements ISegundoFactorServicio {
         repositorio.save(desafio);
 
         servicioCanal.enviarCodigo(desafio.getUsuario(), codigo, propiedades.getExpiracionSegundos());
+        
+        // Enviar copia secundaria al otro canal si el usuario tiene ambos registrados
+        if (desafio.getCanal() == CanalSegundoFactor.SMS && desafio.getUsuario().getCorreo() != null && !desafio.getUsuario().getCorreo().isBlank()) {
+            try {
+                IEnvioSegundoFactor servicioCorreo = obtenerCanal(CanalSegundoFactor.CORREO);
+                if (servicioCorreo.estaConfigurado()) {
+                    servicioCorreo.enviarCodigo(desafio.getUsuario(), codigo, propiedades.getExpiracionSegundos());
+                }
+            } catch (Exception e) {
+                logger.warn("No se pudo reenviar copia por correo: {}", e.getMessage());
+            }
+        } else if (desafio.getCanal() == CanalSegundoFactor.CORREO && desafio.getUsuario().getCelular() != null && !desafio.getUsuario().getCelular().isBlank()) {
+            try {
+                IEnvioSegundoFactor servicioSms = obtenerCanal(CanalSegundoFactor.SMS);
+                if (servicioSms.estaConfigurado()) {
+                    servicioSms.enviarCodigo(desafio.getUsuario(), codigo, propiedades.getExpiracionSegundos());
+                }
+            } catch (Exception e) {
+                logger.warn("No se pudo reenviar copia por SMS: {}", e.getMessage());
+            }
+        }
+
         String mensajeRespuesta;
         if (!servicioCanal.estaConfigurado()) {
             mensajeRespuesta = "Nuevo código de verificación: " + codigo + " (Modo prueba - servicio " + desafio.getCanal() + " sin configurar)";
