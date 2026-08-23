@@ -21,20 +21,23 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
     private final String accountSid;
     private final String authToken;
     private final String fromNumber;
+    private final String textbeltApiKey;
     private final RestClient restClient;
 
     @Autowired
     public EnvioSmsSegundoFactor(
             @Value("${app.segundo-factor.twilio-account-sid:}") String accountSid,
             @Value("${app.segundo-factor.twilio-auth-token:}") String authToken,
-            @Value("${app.segundo-factor.twilio-from-number:}") String fromNumber) {
-        this(accountSid, authToken, fromNumber, RestClient.create());
+            @Value("${app.segundo-factor.twilio-from-number:}") String fromNumber,
+            @Value("${app.segundo-factor.textbelt-api-key:}") String textbeltApiKey) {
+        this(accountSid, authToken, fromNumber, textbeltApiKey, RestClient.create());
     }
 
-    EnvioSmsSegundoFactor(String accountSid, String authToken, String fromNumber, RestClient restClient) {
+    EnvioSmsSegundoFactor(String accountSid, String authToken, String fromNumber, String textbeltApiKey, RestClient restClient) {
         this.accountSid = limpiar(accountSid);
         this.authToken = limpiar(authToken);
         this.fromNumber = limpiar(fromNumber);
+        this.textbeltApiKey = limpiar(textbeltApiKey);
         this.restClient = restClient;
     }
 
@@ -50,7 +53,9 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
 
     @Override
     public boolean estaConfigurado() {
-        return accountSid != null && authToken != null && fromNumber != null;
+        boolean twilio = accountSid != null && authToken != null && fromNumber != null;
+        boolean textbelt = textbeltApiKey != null;
+        return twilio || textbelt;
     }
 
     @Override
@@ -62,28 +67,55 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
 
         if (!estaConfigurado()) {
             logger.info("════════════════════════════════════════════════════════════════════");
-            logger.info("[2FA SMS] Twilio no configurado. Código OTP para {}: {}", usuario.getCelular(), codigo);
+            logger.info("[2FA SMS] Proveedor SMS no configurado. Código OTP para {}: {}", usuario.getCelular(), codigo);
             logger.info("════════════════════════════════════════════════════════════════════");
             return;
         }
 
         long minutos = Math.max(1, (long) Math.ceil(vigenciaSegundos / 60.0));
-        MultiValueMap<String, String> formulario = new LinkedMultiValueMap<>();
-        formulario.add("To", usuario.getCelular());
-        formulario.add("From", fromNumber);
-        formulario.add("Body", "AlgoLab: tu codigo de acceso es " + codigo
-                + ". Expira en " + minutos + " min. No lo compartas.");
+        String textoMensaje = "AlgoLab: tu codigo de acceso es " + codigo
+                + ". Expira en " + minutos + " min. No lo compartas.";
 
-        try {
-            restClient.post()
-                    .uri("https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json", accountSid)
-                    .headers(headers -> headers.setBasicAuth(accountSid, authToken))
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(formulario)
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (Exception error) {
-            logger.error("Error enviando SMS a {}: {}. Código OTP de respaldo: {}", usuario.getCelular(), error.getMessage(), codigo);
+        // 1. Si Twilio está configurado: enviar por Twilio
+        if (accountSid != null && authToken != null && fromNumber != null) {
+            MultiValueMap<String, String> formulario = new LinkedMultiValueMap<>();
+            formulario.add("To", usuario.getCelular());
+            formulario.add("From", fromNumber);
+            formulario.add("Body", textoMensaje);
+
+            try {
+                restClient.post()
+                        .uri("https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json", accountSid)
+                        .headers(headers -> headers.setBasicAuth(accountSid, authToken))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .body(formulario)
+                        .retrieve()
+                        .toBodilessEntity();
+                logger.info("[2FA SMS] SMS enviado exitosamente via Twilio a {}", usuario.getCelular());
+                return;
+            } catch (Exception error) {
+                logger.error("Error enviando SMS via Twilio a {}: {}. Código OTP de respaldo: {}", usuario.getCelular(), error.getMessage(), codigo);
+            }
+        }
+
+        // 2. Si TextBelt está configurado: enviar por TextBelt
+        if (textbeltApiKey != null) {
+            MultiValueMap<String, String> formulario = new LinkedMultiValueMap<>();
+            formulario.add("phone", usuario.getCelular());
+            formulario.add("message", textoMensaje);
+            formulario.add("key", textbeltApiKey);
+
+            try {
+                restClient.post()
+                        .uri("https://textbelt.com/text")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .body(formulario)
+                        .retrieve()
+                        .toBodilessEntity();
+                logger.info("[2FA SMS] SMS enviado exitosamente via TextBelt a {}", usuario.getCelular());
+            } catch (Exception error) {
+                logger.error("Error enviando SMS via TextBelt a {}: {}. Código OTP de respaldo: {}", usuario.getCelular(), error.getMessage(), codigo);
+            }
         }
     }
 
