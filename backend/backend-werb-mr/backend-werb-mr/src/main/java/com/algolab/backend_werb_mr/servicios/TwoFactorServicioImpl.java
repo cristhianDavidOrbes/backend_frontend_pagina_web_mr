@@ -182,7 +182,7 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
         // Si el método preferido o predeterminado es EMAIL y está disponible, despachamos el código automáticamente
         if (config.isEmailHabilitado() && emailService.estaDisponible()) {
             try {
-                enviarEmailOtp(usuario);
+                generarYEnviarEmailOtp(usuario, false);
             } catch (Exception e) {
                 logger.warn("[2FA Login] No se pudo auto-enviar OTP inicial por email: {}", e.getMessage());
             }
@@ -209,26 +209,32 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
     @Override
     @Transactional
     public void enviarEmailOtp(Usuario usuario) {
+        generarYEnviarEmailOtp(usuario, true);
+    }
+
+    private void generarYEnviarEmailOtp(Usuario usuario, boolean verificarCooldown) {
         if (!emailService.estaDisponible()) {
             throw new SegundoFactorException(HttpStatus.SERVICE_UNAVAILABLE, "El servicio de correo no está disponible temporalmente.");
         }
 
         Instant ahora = Instant.now();
 
-        // Rate limit: cooldown de 60 segundos
-        List<Desafio2fa> activos = desafioRepo.findAll().stream()
-                .filter(d -> d.getUsuario().getId().equals(usuario.getId())
-                        && d.getTipo() == TipoDesafio2fa.EMAIL_OTP
-                        && !d.isInvalidado()
-                        && !d.isUsado()
-                        && !d.estaVencido(ahora))
-                .toList();
+        if (verificarCooldown) {
+            // Rate limit: cooldown de 60 segundos solo para reenvíos manuales
+            List<Desafio2fa> activos = desafioRepo.findAll().stream()
+                    .filter(d -> d.getUsuario().getId().equals(usuario.getId())
+                            && d.getTipo() == TipoDesafio2fa.EMAIL_OTP
+                            && !d.isInvalidado()
+                            && !d.isUsado()
+                            && !d.estaVencido(ahora))
+                    .toList();
 
-        if (!activos.isEmpty()) {
-            Desafio2fa ultimo = activos.get(0);
-            if (ultimo.getReenvioDisponibleEn() != null && ahora.isBefore(ultimo.getReenvioDisponibleEn())) {
-                long espera = java.time.Duration.between(ahora, ultimo.getReenvioDisponibleEn()).toSeconds();
-                throw new SegundoFactorException(HttpStatus.TOO_MANY_REQUESTS, "Por favor espera " + espera + " segundos antes de solicitar un nuevo código.");
+            if (!activos.isEmpty()) {
+                Desafio2fa ultimo = activos.get(0);
+                if (ultimo.getReenvioDisponibleEn() != null && ahora.isBefore(ultimo.getReenvioDisponibleEn())) {
+                    long espera = java.time.Duration.between(ahora, ultimo.getReenvioDisponibleEn()).toSeconds();
+                    throw new SegundoFactorException(HttpStatus.TOO_MANY_REQUESTS, "Por favor espera " + espera + " segundos antes de solicitar un nuevo código.");
+                }
             }
         }
 
@@ -251,6 +257,7 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
         nuevoDesafio.setInvalidado(false);
         desafioRepo.save(nuevoDesafio);
 
+        logger.info("[2FA] Despachando nuevo OTP {} al correo {}", otp, usuario.getCorreo());
         emailService.enviarOtp(usuario.getCorreo(), otp, VIGENCIA_OTP_MINUTOS);
     }
 
