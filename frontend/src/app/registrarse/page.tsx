@@ -520,15 +520,6 @@ export default function RegistrarsePage() {
                     </small>
                   </div>
                   <div>
-                    <label className="field-label" htmlFor="rp">Celular · opcional (para 2FA SMS)</label>
-                    <FInput id="rp" icon={<Smartphone size={18} />} type="tel" inputMode="tel" placeholder="+573001234567"
-                      value={celular} onChange={v => { setCelular(v); if (celularTocado) setMsg(null); }}
-                      onBlur={() => setCelularTocado(true)} autoComplete="tel" hasError={Boolean(errCelular)} />
-                    <small className={errCelular ? css.fieldError : css.fieldHelp}>
-                      {errCelular || "Formato internacional: +57 seguido de tu número"}
-                    </small>
-                  </div>
-                  <div>
                     <label className="field-label" htmlFor="rpw">Contraseña</label>
                     <FInput id="rpw" icon={<LockKeyhole size={18} />} type={verPass ? "text" : "password"}
                       placeholder="Mínimo 6 caracteres" value={pass} onChange={setPass}
@@ -542,10 +533,10 @@ export default function RegistrarsePage() {
                     )}
                   </div>
                   <button className="primary-button flex w-full items-center justify-center gap-2 mt-2"
-                    disabled={enviando || !nombre.trim() || !pass || (correoTocado && !isInstitutionalEmail(correo)) || Boolean(errCelular)}
+                    disabled={enviando || !nombre.trim() || !pass || (correoTocado && !isInstitutionalEmail(correo))}
                     type="submit">
                     {enviando ? <RefreshCw className={css.spinning} size={18} /> : <Sparkles size={18} />}
-                    {enviando ? "Creando cuenta…" : "Continuar →"}
+                    {enviando ? "Creando cuenta…" : "Continuar a Verificación →"}
                   </button>
                 </form>
               </motion.div>
