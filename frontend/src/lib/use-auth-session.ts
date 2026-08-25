@@ -55,6 +55,12 @@ export function saveAuthUser(usuario: UsuarioSesion) {
   notifyAuthSessionChange();
 }
 
+export function saveAuthSession(token: string, usuario: UsuarioSesion) {
+  window.localStorage.setItem("token", token);
+  window.localStorage.setItem("usuario", JSON.stringify(usuario));
+  notifyAuthSessionChange();
+}
+
 export function clearAuthSession() {
   window.localStorage.removeItem("token");
   window.localStorage.removeItem("usuario");

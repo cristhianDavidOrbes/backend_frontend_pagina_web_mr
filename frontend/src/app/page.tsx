@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   ArrowRight,
   BrainCircuit,
@@ -12,13 +13,36 @@ import {
   ShieldCheck,
   Sparkles,
   CircleUserRound,
+  Bot,
 } from "lucide-react";
 import { FloatLayer, Reveal } from "@/components/reveal";
-import { RobotStage } from "@/components/robot-stage";
 import { SignalMarquee } from "@/components/signal-marquee";
-import { LevelsCarousel } from "@/components/levels-carousel";
-import { WorkshopSimulator } from "@/components/workshop-simulator";
 import { useAuthSession } from "@/lib/use-auth-session";
+
+function LandingModuleFallback({ label }: { label: string }) {
+  return (
+    <div className="landing-module-loader" role="status" aria-live="polite">
+      <Bot size={28} aria-hidden="true" />
+      <span>{label}</span>
+      <i aria-hidden="true" />
+    </div>
+  );
+}
+
+const RobotStage = dynamic(
+  () => import("@/components/robot-stage").then((module) => module.RobotStage),
+  { ssr: false, loading: () => <LandingModuleFallback label="Cargando robot 3D" /> },
+);
+
+const LevelsCarousel = dynamic(
+  () => import("@/components/levels-carousel").then((module) => module.LevelsCarousel),
+  { ssr: false, loading: () => <LandingModuleFallback label="Cargando misiones" /> },
+);
+
+const WorkshopSimulator = dynamic(
+  () => import("@/components/workshop-simulator").then((module) => module.WorkshopSimulator),
+  { ssr: false, loading: () => <LandingModuleFallback label="Cargando simulador" /> },
+);
 
 const pasos = [
   {

@@ -1,22 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useMemo, type CSSProperties } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
-  Code2,
   CheckCircle2,
   Circle,
   Lock,
-  Trophy,
   ChevronRight,
-  Sparkles,
-  BookOpen,
-  Gamepad2,
   TerminalSquare,
   ArrowRight,
-  Target,
-  Zap,
-  Clock3,
 } from "lucide-react";
 import { OOP_NIVELES, type MiniNivel } from "@/lib/oop-niveles";
 import { useAuthSession } from "@/lib/use-auth-session";
@@ -204,19 +196,8 @@ export default function CodigoPage() {
   const puntajeOopTotal = Object.values(progreso.niveles).reduce((sum, n) => sum + n.puntos, 0);
   // usuario.puntaje ya incluye OOP; sumarlo otra vez en el fallback duplicaba
   // el total cuando el endpoint específico estaba temporalmente indisponible.
-  const puntajeGlobal = progreso.puntajeGlobal ?? usuario?.puntaje ?? puntajeOopTotal;
   const completados = Object.values(progreso.niveles).filter((n) => n.completado).length;
   const porcentaje = Math.round((completados / OOP_NIVELES.length) * 100);
-  const intentosTotales = Object.values(progreso.niveles).reduce(
-    (total, nivel) => total + nivel.intentos,
-    0,
-  );
-  const puntosDisponibles = OOP_NIVELES.reduce((total, nivel) => total + nivel.puntaje, 0);
-  const puntosRestantes = OOP_NIVELES.reduce(
-    (total, nivel) =>
-      total + (progreso.niveles[String(nivel.id)]?.completado ? 0 : nivel.puntaje),
-    0,
-  );
   const siguienteNivel = OOP_NIVELES.find((nivel, index) => {
     if (progreso.niveles[String(nivel.id)]?.completado) return false;
     return index === 0 || progreso.niveles[String(OOP_NIVELES[index - 1].id)]?.completado;
@@ -227,49 +208,16 @@ export default function CodigoPage() {
 
   return (
     <main className={`oop-main ${styles.routePage}`}>
-      {/* Header */}
-      <header className="oop-page-header">
-        <div className="oop-page-title-row">
-          <div className="oop-page-icon">
-            <Code2 size={24} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="section-kicker">Contenido adicional · laboratorio de código</p>
-              <span className="rounded-md bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-                Suma Puntos Globales
-              </span>
-            </div>
-            <h1 className="oop-page-title">Programa POO fuera de las gafas</h1>
-            <p className="oop-page-subtitle">
-              Un complemento opcional de AlgoLab para llevar a código lo que ya tocaste y comprendiste en realidad mixta.
-            </p>
-          </div>
+      <header className={styles.compactRouteHeader}>
+        <div>
+          <span className={styles.optionalBadge}>COMPLEMENTO OPCIONAL</span>
+          <h1>Programar POO</h1>
+          <p>Practica en código los conceptos que aprendiste con objetos en las gafas.</p>
         </div>
-
-        {/* Stats */}
-        <div className="oop-stats-row">
-          <div className="oop-stat-card">
-            <Trophy size={18} className="text-yellow-400" />
-            <div>
-              <span className="oop-stat-value">{puntajeOopTotal}</span>
-              <span className="oop-stat-label"> pts OOP</span>
-            </div>
-          </div>
-          <div className="oop-stat-card">
-            <Sparkles size={18} className="text-cyan-400" />
-            <div>
-              <span className="oop-stat-value">{puntajeGlobal}</span>
-              <span className="oop-stat-label"> pts Totales</span>
-            </div>
-          </div>
-          <div className="oop-stat-card">
-            <CheckCircle2 size={18} className="text-emerald-400" />
-            <div>
-              <span className="oop-stat-value">{completados}</span>
-              <span className="oop-stat-label"> de {OOP_NIVELES.length} subniveles</span>
-            </div>
-          </div>
+        <div className={styles.routeSummary} aria-label="Resumen de tu progreso">
+          <strong>{completados}/{OOP_NIVELES.length}</strong>
+          <span>retos completados</span>
+          <b>{puntajeOopTotal} pts</b>
         </div>
       </header>
 
@@ -303,82 +251,30 @@ export default function CodigoPage() {
             </span>
           </div>
 
-          <div className={styles.missionMetrics}>
-            <span><Target size={15} /> {OOP_NIVELES.length - completados} retos pendientes</span>
-            <span><Zap size={15} /> {puntosRestantes} XP disponibles</span>
-            <span><Clock3 size={15} /> {intentosTotales} ejecuciones guardadas</span>
+          <div className={styles.inlineLanguage} aria-label="Lenguaje de aprendizaje">
+            <span>Lenguaje</span>
+            <button
+              type="button"
+              aria-pressed={lenguaje === "python"}
+              onClick={() => cambiarLenguaje("python")}
+            >
+              🐍 Python
+            </button>
+            <button
+              type="button"
+              aria-pressed={lenguaje === "java"}
+              onClick={() => cambiarLenguaje("java")}
+            >
+              ☕ Java
+            </button>
           </div>
-        </div>
 
-        <div className={styles.progressCore} aria-label={`${porcentaje}% de la ruta completado`}>
-          <div
-            className={styles.progressRing}
-            style={{ "--route-progress": `${porcentaje * 3.6}deg` } as CSSProperties}
-          >
-            <div className={styles.progressRingInner}>
-              <strong>{porcentaje}%</strong>
-              <span>RUTA POO</span>
-            </div>
-          </div>
-          <div className={styles.scoreDock}>
-            <span>XP CONSEGUIDA</span>
-            <strong>{puntajeOopTotal}<small> / {puntosDisponibles}</small></strong>
+          <div className={styles.compactProgress} aria-label={`${porcentaje}% de la ruta completado`}>
+            <div><span style={{ width: `${porcentaje}%` }} /></div>
+            <small>{porcentaje}% completado</small>
           </div>
         </div>
       </section>
-
-      <section className="oop-additional-banner" aria-label="Cómo funciona Programar POO">
-        <div className="oop-additional-copy">
-          <span className="oop-additional-badge">MODO COMPLEMENTARIO</span>
-          <h2>De los objetos físicos al código, sin reemplazar la experiencia VR.</h2>
-          <p>
-            Practica a tu ritmo en Python o Java. Cada reto combina documentación breve, editor, terminal y
-            validación del concepto; los puntos se sincronizan con tu perfil global de AlgoLab.
-          </p>
-        </div>
-        <div className="oop-additional-flow" aria-label="Flujo del módulo">
-          <span><Gamepad2 size={17} /> Comprende en MR</span>
-          <ChevronRight size={16} />
-          <span><BookOpen size={17} /> Consulta la guía</span>
-          <ChevronRight size={16} />
-          <span><TerminalSquare size={17} /> Programa y ejecuta</span>
-        </div>
-      </section>
-
-      {/* Language selector */}
-      <div className="oop-lang-selector">
-        <p className="oop-lang-label">Lenguaje de aprendizaje:</p>
-        <div className="oop-lang-tabs">
-          <button
-            className={`oop-lang-tab ${lenguaje === "python" ? "active" : ""}`}
-            onClick={() => cambiarLenguaje("python")}
-          >
-            🐍 Python (Pyodide local)
-          </button>
-          <button
-            className={`oop-lang-tab ${lenguaje === "java" ? "active" : ""}`}
-            onClick={() => cambiarLenguaje("java")}
-          >
-            ☕ Java (Compilador local)
-          </button>
-        </div>
-        <p className="oop-lang-note">
-          Puedes alternar de lenguaje cuando desees. Los códigos iniciales son limpios para que practiques desde cero.
-        </p>
-      </div>
-
-      {/* Progress bar */}
-      <div className="oop-progress-bar-container">
-        <div className="oop-progress-bar-track">
-          <div
-            className="oop-progress-bar-fill"
-            style={{ width: `${porcentaje}%` }}
-          />
-        </div>
-        <span className="oop-progress-label">
-          {porcentaje}% completado
-        </span>
-      </div>
 
       {rutaCompleta ? (
         <section className="oop-konami-reward" aria-label="Recompensa secreta de Programar POO">

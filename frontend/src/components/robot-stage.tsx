@@ -1,10 +1,9 @@
 "use client";
 
-import { Component, Suspense, useMemo, useState, useEffect, type ReactNode } from "react";
+import { Component, Suspense, useMemo, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Bounds, ContactShadows, OrbitControls, Sparkles, useGLTF } from "@react-three/drei";
-import { Bot, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
-import Image from "next/image";
+import { Bot } from "lucide-react";
 
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -80,33 +79,22 @@ function StageLoader() {
 }
 
 export function RobotStage() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   return (
     <div className="robot-stage" role="img" aria-label="Robot del taller de encapsulamiento de AlgoLab en tres dimensiones">
-      {!mounted ? (
-        <StageLoader />
-      ) : (
-        <WebGLErrorBoundary>
-          <Suspense fallback={<StageLoader />}>
-            <Canvas
-              camera={{ fov: 36, position: [0, 1, 7] }}
-              dpr={[1, 2]}
-              gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
-              style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
-            >
-              <StageContent />
-            </Canvas>
-          </Suspense>
-        </WebGLErrorBoundary>
-      )}
+      <WebGLErrorBoundary>
+        <Suspense fallback={<StageLoader />}>
+          <Canvas
+            camera={{ fov: 36, position: [0, 1, 7] }}
+            dpr={[1, 1.5]}
+            gl={{ alpha: true, antialias: true, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false }}
+            style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
+          >
+            <StageContent />
+          </Canvas>
+        </Suspense>
+      </WebGLErrorBoundary>
     </div>
   );
 }
 
 useGLTF.preload("/models/algolab-robot.glb");
-

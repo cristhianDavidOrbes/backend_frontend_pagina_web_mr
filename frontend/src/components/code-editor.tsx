@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type KeyboardEvent, type ChangeEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type ChangeEvent } from "react";
 
 export type ModoEditor = "normal" | "dificil";
 
@@ -26,31 +26,44 @@ const PAIRS: Record<string, string> = {
 
 const CLOSING_CHARS = new Set([")", "]", "}", '"', "'"]);
 
-// Quick symbols for Python and Java (Modo Normal)
-const PYTHON_SYMBOLS = [
-  { label: "( )", insert: "()", cursorOffset: 1 },
-  { label: "{ }", insert: "{}", cursorOffset: 1 },
-  { label: "[ ]", insert: "[]", cursorOffset: 1 },
-  { label: '" "', insert: '""', cursorOffset: 1 },
-  { label: ":", insert: ":", cursorOffset: 1 },
-  { label: "print()", insert: "print()", cursorOffset: 6 },
-  { label: "def ", insert: "def ", cursorOffset: 4 },
-  { label: "class ", insert: "class ", cursorOffset: 6 },
-  { label: "self", insert: "self", cursorOffset: 4 },
-  { label: "return ", insert: "return ", cursorOffset: 7 },
+type CodeSuggestion = {
+  label: string;
+  detail: string;
+  insert: string;
+  cursorOffset: number;
+  aliases?: string[];
+};
+
+type SuggestionState = {
+  start: number;
+  end: number;
+  selected: number;
+  items: CodeSuggestion[];
+};
+
+const PYTHON_SUGGESTIONS: CodeSuggestion[] = [
+  { label: "print()", detail: "Mostrar un resultado", insert: "print()", cursorOffset: 6 },
+  { label: "input()", detail: "Leer un valor", insert: "input()", cursorOffset: 6 },
+  { label: "len()", detail: "Obtener longitud", insert: "len()", cursorOffset: 4 },
+  { label: "range()", detail: "Crear un rango", insert: "range()", cursorOffset: 6 },
+  { label: "def funcion():", detail: "Nueva función", insert: "def funcion():\n  pass", cursorOffset: 4 },
+  { label: "class Clase:", detail: "Nueva clase", insert: "class Clase:\n  pass", cursorOffset: 6 },
+  { label: "return", detail: "Devolver un valor", insert: "return ", cursorOffset: 7 },
 ];
 
-const JAVA_SYMBOLS = [
-  { label: "( )", insert: "()", cursorOffset: 1 },
-  { label: "{ }", insert: "{}", cursorOffset: 1 },
-  { label: "[ ]", insert: "[]", cursorOffset: 1 },
-  { label: '" "', insert: '""', cursorOffset: 1 },
-  { label: ";", insert: ";", cursorOffset: 1 },
-  { label: "sout", insert: "System.out.println();", cursorOffset: 19 },
-  { label: "public ", insert: "public ", cursorOffset: 7 },
-  { label: "class ", insert: "class ", cursorOffset: 6 },
-  { label: "void ", insert: "void ", cursorOffset: 5 },
-  { label: "this.", insert: "this.", cursorOffset: 5 },
+const JAVA_SUGGESTIONS: CodeSuggestion[] = [
+  {
+    label: "System.out.println()",
+    detail: "Mostrar un resultado",
+    insert: "System.out.println();",
+    cursorOffset: 19,
+    aliases: ["sout", "system"],
+  },
+  { label: "class Clase", detail: "Nueva clase", insert: "class Clase {\n  \n}", cursorOffset: 6 },
+  { label: "public", detail: "Acceso público", insert: "public ", cursorOffset: 7 },
+  { label: "private", detail: "Acceso privado", insert: "private ", cursorOffset: 8 },
+  { label: "public static void main", detail: "Método principal", insert: "public static void main(String[] args) {\n  \n}", cursorOffset: 42, aliases: ["main"] },
+  { label: "return", detail: "Devolver un valor", insert: "return ", cursorOffset: 7 },
 ];
 
 export function CodeEditor({
@@ -61,7 +74,47 @@ export function CodeEditor({
   modo = "normal",
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [suggestions, setSuggestions] = useState<SuggestionState | null>(null);
   const lineCount = Math.max(codigo.split("\n").length, 1);
+
+  function refreshSuggestions(value: string, cursor: number) {
+    if (modo !== "normal") {
+      setSuggestions(null);
+      return;
+    }
+
+    const token = value.slice(0, cursor).match(/([A-Za-z][A-Za-z0-9_.]*)$/)?.[1] ?? "";
+    if (token.length < 2) {
+      setSuggestions(null);
+      return;
+    }
+
+    const normalized = token.toLowerCase();
+    const source = lenguaje === "python" ? PYTHON_SUGGESTIONS : JAVA_SUGGESTIONS;
+    const items = source.filter((item) =>
+      [item.label, ...(item.aliases ?? [])].some((term) => term.toLowerCase().startsWith(normalized)),
+    ).slice(0, 4);
+
+    setSuggestions(items.length > 0 ? {
+      start: cursor - token.length,
+      end: cursor,
+      selected: 0,
+      items,
+    } : null);
+  }
+
+  function applySuggestion(item: CodeSuggestion) {
+    const ta = textareaRef.current;
+    if (!ta || !suggestions) return;
+    const newCode = codigo.substring(0, suggestions.start) + item.insert + codigo.substring(suggestions.end);
+    const targetPos = suggestions.start + item.cursorOffset;
+    onChange(newCode);
+    setSuggestions(null);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = targetPos;
+    });
+  }
 
   // Insert helper with cursor positioning
   function insertAtCursor(text: string, cursorOffset?: number) {
@@ -85,6 +138,27 @@ export function CodeEditor({
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
     const isNormal = modo === "normal";
+
+    if (isNormal && suggestions) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setSuggestions((current) => current ? {
+          ...current,
+          selected: (current.selected + (e.key === "ArrowDown" ? 1 : -1) + current.items.length) % current.items.length,
+        } : current);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setSuggestions(null);
+        return;
+      }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        applySuggestion(suggestions.items[suggestions.selected]);
+        return;
+      }
+    }
 
     // ─── TAB KEY (always active for clean indent) ───
     if (e.key === "Tab") {
@@ -208,35 +282,8 @@ export function CodeEditor({
     }
   }
 
-  const quickSymbols = lenguaje === "python" ? PYTHON_SYMBOLS : JAVA_SYMBOLS;
-
   return (
     <div className="code-editor-shell flex flex-col flex-1 min-h-0 overflow-hidden">
-      {/* Quick Snippet/Symbol Bar in Modo Normal (Ideal for mobile & desktop) */}
-      {modo === "normal" && (
-        <div
-          className="flex items-center gap-1.5 px-3 py-1.5 overflow-x-auto border-b border-white/[0.07] bg-white/[0.02] flex-shrink-0 scrollbar-none"
-          role="toolbar"
-          aria-label="Atajos de autocompletado"
-        >
-          <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider flex-shrink-0 mr-1 flex items-center gap-1">
-            <span>⚡</span> Atajos:
-          </span>
-          {quickSymbols.map((s) => (
-            <button
-              key={s.label}
-              type="button"
-              disabled={disabled}
-              onClick={() => insertAtCursor(s.insert, s.cursorOffset)}
-              className="px-2 py-0.5 text-xs font-mono font-medium rounded-md bg-white/[0.05] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.08] transition active:scale-95 flex-shrink-0"
-              title={`Insertar ${s.label}`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Editor Body: Line numbers + Textarea */}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
         {/* Line numbers */}
@@ -253,8 +300,12 @@ export function CodeEditor({
           <textarea
             ref={textareaRef}
             value={codigo}
-            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
+              onChange(e.target.value);
+              refreshSuggestions(e.target.value, e.target.selectionStart);
+            }}
             onKeyDown={handleKeyDown}
+            onClick={(e) => refreshSuggestions(e.currentTarget.value, e.currentTarget.selectionStart)}
             spellCheck={false}
             autoCorrect="off"
             autoCapitalize="off"
@@ -264,6 +315,24 @@ export function CodeEditor({
             aria-label={`Editor de código ${lenguaje} (${modo === "normal" ? "Modo Normal" : "Modo Difícil"})`}
             placeholder={`// Escribe tu código ${lenguaje === "python" ? "Python" : "Java"} aquí...`}
           />
+          {modo === "normal" && suggestions ? (
+            <div className="code-suggestion-popover" role="listbox" aria-label="Sugerencias del editor">
+              <div className="code-suggestion-title">Sugerencias · Tab para completar</div>
+              {suggestions.items.map((item, index) => (
+                <button
+                  key={`${item.label}-${index}`}
+                  type="button"
+                  role="option"
+                  aria-selected={suggestions.selected === index}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => applySuggestion(item)}
+                >
+                  <code>{item.label}</code>
+                  <span>{item.detail}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

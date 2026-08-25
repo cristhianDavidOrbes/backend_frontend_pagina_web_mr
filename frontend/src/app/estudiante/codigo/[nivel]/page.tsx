@@ -7,21 +7,15 @@ import {
   ArrowLeft,
   Play,
   RotateCcw,
-  ChevronLeft,
-  ChevronRight,
   HelpCircle,
   Lightbulb,
   CheckCheck,
   X,
-  Layers,
   Code2,
   BookOpen,
   TerminalSquare,
-  Keyboard,
-  CloudCheck,
   CloudOff,
   RefreshCw,
-  Zap,
 } from "lucide-react";
 import { OOP_NIVELES, type LenguajeOOP } from "@/lib/oop-niveles";
 import { validarEstructuraCodigo } from "@/lib/oop-validador";
@@ -782,35 +776,30 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
   if (!progresoCargado || nivelBloqueado) {
     return (
-      <div className="grid min-h-screen place-items-center p-8 text-center" role="status">
-        <div>
-          <p className="text-4xl" aria-hidden="true">🔐</p>
-          <p className="mt-4 text-slate-300">
-            {nivelBloqueado ? "Volviendo al último subnivel disponible…" : "Cargando tu progreso…"}
-          </p>
+      <div className={styles.levelLoading} role="status" aria-live="polite">
+        <div className={styles.levelLoadingCard}>
+          <RefreshCw size={26} aria-hidden="true" />
+          <strong>{nivelBloqueado ? "Preparando tu ruta" : "Cargando laboratorio"}</strong>
+          <p>{nivelBloqueado ? "Abriendo el último reto disponible…" : "Recuperando tu progreso y el editor…"}</p>
+          <span aria-hidden="true"><i /></span>
         </div>
       </div>
     );
   }
 
-  const prevNivel = OOP_NIVELES.find((n) => n.id === nivelId - 1);
   const nextNivel = OOP_NIVELES.find((n) => n.id === nivelId + 1);
   const ayudaHabilitada = intentos >= MAX_INTENTOS || mostroPista;
   const rutaCompleta = OOP_NIVELES.every(
     (item) => progreso.niveles[String(item.id)]?.completado,
   );
-  const estaDesbloqueado = (id: number) =>
-    id === OOP_NIVELES[0]?.id ||
-    Boolean(progreso.niveles[String(id - 1)]?.completado);
   const codigoBaseActual =
     lenguaje === "python" ? nivel.codigoBasePython : nivel.codigoBaseJava;
   const editorModificado = codigo.trim() !== codigoBaseActual.trim();
   const ejecutoAlgunaVez = ejecucionesSesion > 0 || intentos > 0;
   const pasosMision = [
-    { etiqueta: "Comprende la guía", completo: true },
-    { etiqueta: "Construye la solución", completo: editorModificado || completado },
-    { etiqueta: "Ejecuta tu código", completo: ejecutoAlgunaVez || completado },
-    { etiqueta: "Supera la prueba", completo: completado },
+    { etiqueta: "Lee la guía", completo: true },
+    { etiqueta: "Prueba tu código", completo: ejecutoAlgunaVez || completado },
+    { etiqueta: "Completa el reto", completo: completado },
   ];
   const claseVistaMovil =
     mobileVista === "code"
@@ -825,66 +814,24 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
         ? styles.syncPending
         : estadoSync === "sincronizando"
           ? styles.syncWorking
-          : styles.syncOk;
+          : "";
 
   return (
     <div className={`oop-level-page ${styles.levelShell} ${celebrando ? "oop-celebrating" : ""}`}>
-      {/* ─── TOP BAR (Clean, Single Row on Desktop / Concise 2-tier on Mobile) ─── */}
+      {/* Navegación compacta: contexto, lenguaje y dificultad. */}
       <nav className="oop-level-nav">
-        {/* Main Row */}
         <div className="flex items-center justify-between w-full gap-2 flex-wrap sm:flex-nowrap">
-          {/* Left: Back + Sublevel Title */}
           <div className="flex items-center gap-2 min-w-0">
             <Link href="/estudiante/codigo" className="oop-back-link flex-shrink-0" title="Volver al catálogo OOP">
               <ArrowLeft size={15} />
-              <span className="font-semibold text-xs text-slate-300">OOP</span>
+              <span className="font-semibold text-xs text-slate-300">Retos</span>
             </Link>
             <span className="text-xs text-slate-600">|</span>
-            <div className="flex items-center gap-1 font-mono text-xs font-bold text-slate-200">
-              <span className="text-emerald-400 font-extrabold">{nivel.subnivel}</span>
-              <span className="text-slate-500 font-normal">/ 4.2</span>
-            </div>
-            <span className="hidden sm:inline text-xs text-slate-400 font-medium truncate max-w-[160px]">
-              · {nivel.titulo}
-            </span>
+            <span className="text-emerald-400 font-mono text-xs font-extrabold">{nivel.subnivel}</span>
+            <strong className="text-xs text-slate-300 font-semibold truncate max-w-[210px]">{nivel.titulo}</strong>
           </div>
 
-          {/* Center / Right: Sublevel Pills (Desktop) + Language Selector + Mode Toggle + Mobile Run */}
           <div className="flex items-center gap-1.5 ml-auto">
-            {/* Sublevel stepper indicators (Desktop only) */}
-            <div className="hidden lg:flex items-center gap-1 mr-1">
-              {OOP_NIVELES.map((n) => {
-                const esActual = n.id === nivelId;
-                const esCompletado = progreso.niveles[String(n.id)]?.completado;
-                const desbloqueado = estaDesbloqueado(n.id);
-                return (
-                  <button
-                    key={n.id}
-                    disabled={!desbloqueado}
-                    onClick={() => {
-                      if (desbloqueado) {
-                        router.push(`/estudiante/codigo/${n.id}?lang=${lenguaje}`);
-                      }
-                    }}
-                    className={`flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold transition ${
-                      esActual
-                        ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/50"
-                        : esCompletado
-                        ? "bg-white/10 text-emerald-400 hover:bg-white/15"
-                        : desbloqueado
-                          ? "bg-white/5 text-slate-400 hover:bg-white/10"
-                          : "cursor-not-allowed bg-white/[.025] text-slate-600"
-                    }`}
-                    title={`${n.titulo} (Subnivel ${n.subnivel})`}
-                  >
-                    <span>{n.subnivel}</span>
-                    {esCompletado && <span className="text-[9px]">✓</span>}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Language Selector */}
             <div className="oop-lang-tabs-mini">
               <button
                 className={`oop-lang-tab-mini ${lenguaje === "python" ? "active" : ""}`}
@@ -902,7 +849,6 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               </button>
             </div>
 
-            {/* Mode Switcher: Normal vs Difícil */}
             <div
               className="flex items-center p-0.5 rounded-lg border border-white/[0.08] bg-white/[0.03]"
               role="group"
@@ -916,7 +862,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                     ? "bg-emerald-500/20 text-emerald-300 shadow-sm border border-emerald-500/30"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                title="Modo Normal: Autocompletado y atajos"
+                title="Modo Normal: el editor cierra símbolos y sugiere funciones"
               >
                 <span>⚡</span>
                 <span className="hidden md:inline">Normal</span>
@@ -936,29 +882,6 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               </button>
             </div>
 
-            {/* Level Navigation Arrows (Desktop) */}
-            <div className="oop-level-nav-arrows hidden sm:flex">
-              {prevNivel && (
-                <button
-                  className="oop-nav-arrow"
-                  onClick={() => router.push(`/estudiante/codigo/${prevNivel.id}?lang=${lenguaje}`)}
-                  title={`Subnivel anterior: ${prevNivel.subnivel}`}
-                >
-                  <ChevronLeft size={14} />
-                </button>
-              )}
-              {nextNivel && (completado || progreso.niveles[String(nextNivel.id)]?.completado) && (
-                <button
-                  className="oop-nav-arrow"
-                  onClick={() => router.push(`/estudiante/codigo/${nextNivel.id}?lang=${lenguaje}`)}
-                  title={`Siguiente subnivel: ${nextNivel.subnivel}`}
-                >
-                  <ChevronRight size={14} />
-                </button>
-              )}
-            </div>
-
-            {/* Quick Run button on mobile top bar */}
             <button
               onClick={ejecutar}
               disabled={ejecutando}
@@ -974,7 +897,6 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           </div>
         </div>
 
-        {/* Mobile View Switcher (Clean, concise tab bar on small screens) */}
         <div className="flex items-center justify-between w-full gap-2 mt-1.5 md:hidden">
           <div className={`${styles.mobileViewTabs} flex-1`} role="tablist" aria-label="Vista del laboratorio">
             <button
@@ -1018,31 +940,24 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
         </div>
       </nav>
 
-      {/* Sync Status Banner */}
-      <div
-        className={`${styles.syncBanner} ${claseEstadoSync}`}
-        role="status"
-        aria-live="polite"
-      >
-        <span className={styles.syncIcon} aria-hidden="true">
-          {estadoSync === "sincronizado" ? (
-            <CloudCheck size={14} />
-          ) : estadoSync === "sincronizando" ? (
-            <RefreshCw size={14} className={styles.syncSpinner} />
-          ) : (
-            <CloudOff size={14} />
+      {estadoSync !== "sincronizado" ? (
+        <div className={`${styles.syncBanner} ${claseEstadoSync}`} role="status" aria-live="polite">
+          <span className={styles.syncIcon} aria-hidden="true">
+            {estadoSync === "sincronizando" ? (
+              <RefreshCw size={14} className={styles.syncSpinner} />
+            ) : (
+              <CloudOff size={14} />
+            )}
+          </span>
+          <span className={styles.syncMessage}>{mensajeSync}</span>
+          {pendientesSync > 0 && (
+            <span className={styles.syncCount}>{pendientesSync} pendiente{pendientesSync === 1 ? "" : "s"}</span>
           )}
-        </span>
-        <span className={styles.syncMessage}>{mensajeSync}</span>
-        {pendientesSync > 0 && (
-          <span className={styles.syncCount}>{pendientesSync} pendiente{pendientesSync === 1 ? "" : "s"}</span>
-        )}
-        {(estadoSync === "error" || estadoSync === "pendiente") && token && (
-          <button type="button" onClick={() => void procesarColaSync()}>
-            Reintentar
-          </button>
-        )}
-      </div>
+          {(estadoSync === "error" || estadoSync === "pendiente") && token && (
+            <button type="button" onClick={() => void procesarColaSync()}>Reintentar</button>
+          )}
+        </div>
+      ) : null}
 
       {/* Main split layout */}
       <div className={`oop-split-layout ${claseVistaMovil}`}>
@@ -1052,22 +967,12 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           <div className="oop-editor-container">
             <div className="oop-editor-header flex items-center justify-between px-3 py-2 border-b border-white/[0.07] bg-black/40">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="oop-editor-lang-badge text-xs">
-                  {lenguaje === "python" ? "🐍 Python" : "☕ Java"}
-                </div>
-                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                  modoEditor === "normal"
-                    ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                    : "bg-purple-500/15 text-purple-300 border border-purple-500/30"
-                }`}>
-                  {modoEditor === "normal" ? "⚡ Normal" : "🧠 Difícil"}
+                <span className="text-[11px] text-slate-400">
+                  Intentos: {intentos}/{MAX_INTENTOS}
                 </span>
-                <span className="text-[11px] text-slate-400 hidden sm:inline">
-                  {intentos > 0 ? `Intentos: ${intentos}/${MAX_INTENTOS}` : "Práctica limpia"}
-                </span>
-                <span className={`${styles.keyboardHint} hidden lg:inline-flex`}>
-                  <Keyboard size={12} /> <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
-                </span>
+                {modoEditor === "normal" ? (
+                  <span className="hidden sm:inline text-[10px] text-emerald-300/70">Sugerencias con Tab</span>
+                ) : null}
               </div>
 
               <div className="oop-editor-actions flex items-center gap-2">

@@ -32,9 +32,7 @@ import {
 } from "@/lib/institutional-email";
 import {
   clearAuthSession,
-  saveAuthToken,
-  saveAuthUser,
-  useAuthSession,
+  saveAuthSession,
   type UsuarioSesion,
 } from "@/lib/use-auth-session";
 import { autenticarPasskeyEnNavegador, isWebAuthnSupported } from "@/lib/webauthn-client";
@@ -65,7 +63,6 @@ type Metodos2faInfo = {
 
 export default function IniciarSesionPage() {
   const router = useRouter();
-  const { hydrated, token: existingToken, usuario } = useAuthSession();
 
   // Estados del formulario de credenciales
   const [correo, setCorreo] = useState("");
@@ -73,6 +70,7 @@ export default function IniciarSesionPage() {
   const [verPass, setVerPass] = useState(false);
   const [correoTocado, setCorreoTocado] = useState(false);
   const [cargandoLogin, setCargandoLogin] = useState(false);
+  const [estadoCargaLogin, setEstadoCargaLogin] = useState("Verificando credenciales…");
   const [errorLogin, setErrorLogin] = useState("");
 
   // Estado de decisión 2FA
@@ -105,6 +103,12 @@ export default function IniciarSesionPage() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    router.prefetch("/estudiante");
+    router.prefetch("/docente");
+    router.prefetch("/administrador");
+  }, [router]);
 
   // Manejo del contador de reenvío
   useEffect(() => {
@@ -139,6 +143,7 @@ export default function IniciarSesionPage() {
     }
 
     setCargandoLogin(true);
+    setEstadoCargaLogin("Verificando credenciales…");
     setErrorLogin("");
 
     try {
@@ -227,9 +232,9 @@ export default function IniciarSesionPage() {
     }
   }
 
-  async function finalizarLoginExitoso(token: string, usuarioDto: UsuarioSesion) {
-    saveAuthToken(token);
-    saveAuthUser(usuarioDto);
+  function finalizarLoginExitoso(token: string, usuarioDto: UsuarioSesion) {
+    setEstadoCargaLogin("Abriendo tu espacio…");
+    saveAuthSession(token, usuarioDto);
     const destino =
       usuarioDto.rol === "ADMINISTRADOR"
         ? "/administrador"
@@ -296,7 +301,7 @@ export default function IniciarSesionPage() {
         throw new Error(data.mensaje || "No se pudo reenviar el código");
       }
 
-      setMensaje2fa("Nuevo código enviado a tu correo personal.");
+      setMensaje2fa("Nuevo código enviado a tu correo institucional.");
       setSegundosReenvio(60);
       setOtpDigitos(["", "", "", "", "", ""]);
       otpInputsRef.current[0]?.focus();
@@ -448,7 +453,7 @@ export default function IniciarSesionPage() {
                 <span className="section-kicker">Portal Seguro</span>
                 <h1 className="mt-2 text-2xl font-extrabold text-white">Iniciar Sesión</h1>
                 <p className="mt-1.5 text-xs text-slate-400">
-                  Accede a AlgoLab con tu correo personal (Gmail).
+                  Accede con tu cuenta institucional de la Universidad Cooperativa de Colombia.
                 </p>
               </div>
 
@@ -470,7 +475,7 @@ export default function IniciarSesionPage() {
                       type="email"
                       value={correo}
                       onChange={(e) => setCorreo(e.target.value)}
-                      placeholder="usuario@gmail.com"
+                      placeholder="usuario@campusucc.edu.co"
                       className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
                       required
                       autoFocus
@@ -511,7 +516,7 @@ export default function IniciarSesionPage() {
                   {cargandoLogin ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Verificando credenciales...
+                      {estadoCargaLogin}
                     </>
                   ) : (
                     "Continuar a AlgoLab"
