@@ -12,7 +12,6 @@ import {
   ScanLine,
   ShieldCheck,
   Sparkles,
-  CircleUserRound,
   Bot,
 } from "lucide-react";
 import { FloatLayer, Reveal } from "@/components/reveal";
@@ -81,6 +80,13 @@ export default function Home() {
         ? "Volver al centro de control"
         : "Volver a mi ruta"
     : "Ingresar";
+  const compactPortalLabel = usuario
+    ? usuario.rol === "DOCENTE"
+      ? "Observatorio"
+      : usuario.rol === "ADMINISTRADOR"
+        ? "Control"
+        : "Mi ruta"
+    : "Ingresar";
 
   return (
     <main className="landing-shell min-h-screen overflow-x-clip text-slate-100">
@@ -104,14 +110,9 @@ export default function Home() {
         </nav>
         <div className="landing-actions">
           {hydrated && usuario ? (
-            <>
-              <span className="landing-session-chip">
-                <CircleUserRound size={15} /> Registrado como {usuario.nombre.split(" ")[0]}
-              </span>
-              <Link className="primary-button inline-flex items-center" href={portalHref}>
-                {portalLabel} <ArrowRight size={16} />
-              </Link>
-            </>
+            <Link className="primary-button inline-flex items-center" href={portalHref}>
+              {compactPortalLabel} <ArrowRight size={16} />
+            </Link>
           ) : (
             <>
               <Link className="ghost-button" href="/iniciar-sesion">Ingresar</Link>

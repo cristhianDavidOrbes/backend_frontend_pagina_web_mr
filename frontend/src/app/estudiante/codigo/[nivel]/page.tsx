@@ -820,8 +820,8 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     <div className={`oop-level-page ${styles.levelShell} ${celebrando ? "oop-celebrating" : ""}`}>
       {/* Navegación compacta: contexto, lenguaje y dificultad. */}
       <nav className="oop-level-nav">
-        <div className="flex items-center justify-between w-full gap-2 flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className={styles.levelNavRow}>
+          <div className={styles.levelIdentity}>
             <Link href="/estudiante/codigo" className="oop-back-link flex-shrink-0" title="Volver al catálogo OOP">
               <ArrowLeft size={15} />
               <span className="font-semibold text-xs text-slate-300">Retos</span>
@@ -831,7 +831,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
             <strong className="text-xs text-slate-300 font-semibold truncate max-w-[210px]">{nivel.titulo}</strong>
           </div>
 
-          <div className="flex items-center gap-1.5 ml-auto">
+          <div className={styles.levelControls}>
             <div className="oop-lang-tabs-mini">
               <button
                 className={`oop-lang-tab-mini ${lenguaje === "python" ? "active" : ""}`}
@@ -897,7 +897,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between w-full gap-2 mt-1.5 md:hidden">
+        <div className={styles.levelMobileRow}>
           <div className={`${styles.mobileViewTabs} flex-1`} role="tablist" aria-label="Vista del laboratorio">
             <button
               type="button"

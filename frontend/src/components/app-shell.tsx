@@ -9,7 +9,6 @@ import {
   X,
   Sparkles,
   LogOut,
-  Headphones,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -311,21 +310,6 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           })}
         </nav>
 
-        {/* Puente con las gafas banner */}
-        <div className="mt-5 rounded-[1.25rem] border border-cyan-200/10 bg-gradient-to-br from-cyan-300/[.07] to-emerald-300/[.025] p-3.5" data-sidebar-hide>
-          <div className="flex items-start justify-between gap-3">
-            <span className="grid h-8 w-8 place-items-center rounded-xl border border-cyan-200/15 bg-cyan-200/[.07] text-cyan-200">
-              <Headphones size={16} />
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-emerald-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> En línea
-            </span>
-          </div>
-          <p className="mt-3 text-xs font-semibold text-slate-200">Puente con las gafas</p>
-          <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
-            Perfil, progreso e informes sincronizados en tiempo real con Meta Quest.
-          </p>
-        </div>
       </div>
 
       {/* User card at bottom */}
@@ -365,13 +349,13 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
   return (
     <div className="app-surface min-h-screen text-slate-100">
       {/* Mobile Sticky Top Header (< md screens) */}
-      <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/10 bg-[#05100e]/95 px-4 backdrop-blur-xl md:hidden">
+      <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-white/10 bg-[#05100e]/95 px-3 backdrop-blur-xl md:hidden">
         <div className="flex items-center gap-3">
           <button
             aria-controls="algolab-mobile-navigation"
             aria-expanded={mobileMenuOpen}
             aria-label="Abrir menú de navegación"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-300 transition hover:bg-white/[.08] hover:text-white active:scale-95"
+            className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-300 transition hover:bg-white/[.08] hover:text-white active:scale-95"
             onClick={() => setMobileMenuOpen(true)}
             ref={mobileMenuButtonRef}
             type="button"
@@ -380,12 +364,12 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           </button>
           <Link className="flex items-center gap-2" href="/">
             <span className="brand-mark h-8 w-8 text-sm font-bold">A</span>
-            <strong className="text-base font-bold text-white">AlgoLab</strong>
+            <strong className="hidden text-sm font-bold text-white min-[370px]:block">AlgoLab</strong>
           </Link>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-emerald-300 uppercase">
+          <span className="hidden rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 font-mono text-[8px] font-semibold text-emerald-300 uppercase min-[420px]:inline-flex">
             {config.label.split(" ")[1] ?? "MR"}
           </span>
           {usuario ? (
@@ -483,7 +467,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
         >
           {/* Main Top Header Banner */}
           {!isCodeWorkspace ? (
-          <header className="relative mb-7 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#071713]/70 p-5 shadow-[0_26px_80px_rgba(0,0,0,.2)] backdrop-blur-xl sm:p-6 lg:mb-8">
+          <header className="relative mb-5 overflow-hidden border-b border-white/10 pb-4 pt-1 lg:mb-6">
             <div
               aria-hidden="true"
               className="absolute -right-20 -top-28 h-64 w-64 rounded-full bg-emerald-300/[.07] blur-3xl"
@@ -492,32 +476,20 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
               aria-hidden="true"
               className="absolute right-[18%] top-0 h-px w-40 bg-gradient-to-r from-transparent via-cyan-200/50 to-transparent"
             />
-            <div className="relative flex flex-wrap items-end justify-between gap-5">
-              <div className="flex min-w-0 items-center gap-4">
-                {usuario ? (
-                  <AvatarDisplay
-                    className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-emerald-200/15 text-base font-extrabold text-white shadow-[0_12px_35px_rgba(0,0,0,.28)] [&>img]:object-cover"
-                    usuario={usuario}
-                  />
-                ) : null}
+            <div className="relative flex min-w-0 items-end justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="min-w-0">
                   <p className="section-kicker flex items-center gap-2">
-                    <Sparkles size={14} className="text-emerald-300" /> {eyebrow}
+                    <Sparkles size={12} className="text-emerald-300" /> {eyebrow}
                   </p>
-                  <h1 className="mt-1.5 truncate text-2xl font-bold tracking-[-.04em] text-white sm:text-3xl lg:text-4xl">
+                  <h1 className="mt-1 truncate text-xl font-bold tracking-[-.035em] text-white sm:text-2xl">
                     {title}
                   </h1>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] uppercase tracking-[.14em] text-slate-300">
-                  {usuario ? config.label : "Sesión"}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[.08] px-3 py-1.5 text-[10px] text-emerald-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_#6ee7b7]" />{" "}
-                  Datos sincronizados
-                </span>
-              </div>
+              <span className="hidden items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[.08] px-3 py-1.5 text-[9px] text-emerald-200 sm:inline-flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_#6ee7b7]" /> Sincronizado
+              </span>
             </div>
           </header>
           ) : null}

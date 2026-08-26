@@ -304,7 +304,7 @@ button, a {
 }
 
 .recommendation {
-  padding: 1.1rem;
+  padding: .85rem;
   border: 1px solid rgba(63,229,169,.18);
   border-radius: 16px;
   background: rgba(44,208,147,.07);
@@ -1819,6 +1819,22 @@ button, a {
   .ai-section { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 1360px) and (min-width: 881px) {
+  .landing-nav {
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    padding-inline: 1.5rem;
+  }
+  .brand-lockup small { display: none; }
+  .landing-nav nav { justify-content: center; gap: 1.25rem; }
+  .landing-actions .primary-button {
+    min-height: 42px;
+    padding-inline: 1rem;
+    font-size: .76rem;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 880px) {
   .landing-nav { grid-template-columns: 1fr auto; }
   .landing-nav nav { display: none; }
@@ -2179,7 +2195,7 @@ button, a {
 
 .oop-module-levels {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   flex: 1;
   gap: .8rem;
 }
@@ -3042,7 +3058,7 @@ button, a {
 @media (max-width: 640px) {
   .oop-main { padding: 1rem; }
   .oop-nivel-grid { grid-template-columns: 1fr; }
-  .oop-module-levels { grid-template-columns: 1fr; }
+  .oop-module-card { padding: .7rem; border-radius: 15px; }
   .oop-level-nav { gap: .35rem; padding: .5rem .65rem; }
   .oop-lang-tab-mini { padding: .25rem .5rem; font-size: .72rem; }
   .oop-editor-lang-badge { font-size: .65rem; padding: .15rem .45rem; }

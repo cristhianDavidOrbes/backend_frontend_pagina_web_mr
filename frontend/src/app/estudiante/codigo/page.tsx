@@ -7,7 +7,6 @@ import {
   Circle,
   Lock,
   ChevronRight,
-  TerminalSquare,
   ArrowRight,
 } from "lucide-react";
 import { OOP_NIVELES, type MiniNivel } from "@/lib/oop-niveles";
@@ -246,26 +245,23 @@ export default function CodigoPage() {
               {rutaCompleta ? "Volver al laboratorio" : completados > 0 ? "Continuar misión" : "Comenzar aventura"}
               <ArrowRight size={17} />
             </Link>
-            <span className={styles.shortcutHint}>
-              <TerminalSquare size={15} /> Código ejecutado en tu navegador
-            </span>
           </div>
 
-          <div className={styles.inlineLanguage} aria-label="Lenguaje de aprendizaje">
-            <span>Lenguaje</span>
+          <div className={styles.languageOrb} aria-label="Lenguaje de aprendizaje">
+            <span>LENGUAJE</span>
             <button
               type="button"
               aria-pressed={lenguaje === "python"}
               onClick={() => cambiarLenguaje("python")}
             >
-              🐍 Python
+              <span aria-hidden="true">🐍</span> Python
             </button>
             <button
               type="button"
               aria-pressed={lenguaje === "java"}
               onClick={() => cambiarLenguaje("java")}
             >
-              ☕ Java
+              <span aria-hidden="true">☕</span> Java
             </button>
           </div>
 
@@ -303,24 +299,19 @@ export default function CodigoPage() {
 
           return (
             <section key={mod.numero} className={`oop-module-card ${styles.moduleStage}`}>
-              {/* Module Header */}
               <div className={styles.moduleHeader}>
-                <div className="flex items-center gap-2">
+                <div className={styles.moduleIdentity}>
                   <span className={styles.moduleNumber}>{String(mod.numero).padStart(2, "0")}</span>
-                  <div>
-                    <p>CAPÍTULO</p>
-                    <h2>{mod.nombre}</h2>
-                  </div>
+                  <h2>{mod.nombre}</h2>
                 </div>
                 <span className={styles.moduleCounter}>
-                  {subnivelesCompletados} de {mod.niveles.length} completados
+                  {subnivelesCompletados}/{mod.niveles.length}
                 </span>
                 <div className={styles.moduleProgress} aria-hidden="true">
                   <span style={{ width: `${(subnivelesCompletados / mod.niveles.length) * 100}%` }} />
                 </div>
               </div>
 
-              {/* Sublevels Grid (2 sub-levels side by side) */}
               <div className="oop-module-levels">
                 {mod.niveles.map((nivel) => {
                   const nivelIdx = OOP_NIVELES.findIndex((n) => n.id === nivel.id);
@@ -331,63 +322,32 @@ export default function CodigoPage() {
                   return (
                     <div
                       key={nivel.id}
-                      className={`oop-nivel-card ${styles.levelCard} flex flex-col justify-between border ${BG_MAP[nivel.color]} ${bloqueado ? `${styles.levelLocked} opacity-50` : ""} ${completado ? styles.levelComplete : ""}`}
+                      className={`${styles.compactLevelCard} border ${BG_MAP[nivel.color]} ${bloqueado ? `${styles.levelLocked} opacity-50` : ""} ${completado ? styles.levelComplete : ""}`}
                     >
-                      <div className="space-y-2.5">
-                        <div className="oop-nivel-card-top">
-                          <div className="flex items-center gap-2">
-                            <span className="oop-nivel-emoji">{nivel.emoji}</span>
-                            <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300">
-                              Subnivel {nivel.subnivel}
-                            </span>
-                          </div>
-                          <div className="oop-nivel-status">
-                            {completado ? (
-                              <CheckCircle2 size={18} className="text-emerald-400" />
-                            ) : bloqueado ? (
-                              <Lock size={15} className="text-slate-500" />
-                            ) : (
-                              <Circle size={18} className="text-slate-600" />
-                            )}
-                          </div>
+                      <span className={styles.compactLevelEmoji}>{nivel.emoji}</span>
+                      <div className={styles.compactLevelCopy}>
+                        <div className={styles.compactLevelMeta}>
+                          <span>Subnivel {nivel.subnivel}</span>
+                          <b className={COLOR_MAP[nivel.color]}>{nivel.concepto}</b>
                         </div>
-
-                        <div className={styles.levelSignal} aria-hidden="true">
-                          <span />
-                          <span />
-                          <span />
-                        </div>
-
-                        <div className="oop-nivel-info">
-                          <p className={`oop-nivel-num text-[11px] ${COLOR_MAP[nivel.color]}`}>
-                            {nivel.concepto}
-                          </p>
-                          <h3 className="oop-nivel-title text-sm font-bold">{nivel.titulo}</h3>
-                          <p className="oop-nivel-desc text-xs text-slate-400 line-clamp-2">{nivel.descripcionCorta}</p>
-                        </div>
+                        <h3>{nivel.titulo}</h3>
                       </div>
-
-                      <div className="oop-nivel-footer mt-4 pt-3 border-t border-white/5">
-                        <div className="oop-nivel-pts text-xs">
-                          <span className="text-yellow-400">⭐</span>
-                          <span>
-                            {completado
-                              ? `${nivelProgreso.puntos} pts`
-                              : `${nivel.puntaje} pts`}
-                          </span>
-                        </div>
-
+                      <div className={styles.compactLevelAction}>
                         {bloqueado ? (
-                          <span className="oop-locked-text text-[11px]">Completa el reto anterior</span>
+                          <span className={styles.lockedLabel}><Lock size={13} /> Anterior</span>
                         ) : (
                           <Link
                             href={`/estudiante/codigo/${nivel.id}?lang=${lenguaje}`}
-                            className="oop-nivel-btn text-xs py-1 px-2.5"
+                            className={styles.compactLevelButton}
                           >
                             {completado ? "Repasar" : "Empezar"}
                             <ChevronRight size={13} />
                           </Link>
                         )}
+                        <span className={styles.compactPoints}>
+                          {completado ? <CheckCircle2 size={14} /> : bloqueado ? <Lock size={13} /> : <Circle size={13} />}
+                          {completado ? nivelProgreso.puntos : nivel.puntaje} pts
+                        </span>
                       </div>
                     </div>
                   );
