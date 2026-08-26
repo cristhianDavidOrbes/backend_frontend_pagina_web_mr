@@ -14,7 +14,6 @@ import {
   Mail,
   ShieldCheck,
   Smartphone,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -61,6 +60,23 @@ type Metodos2faInfo = {
   codigosRecuperacionDisponibles: boolean;
 };
 
+function mensajeDeError(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function mensajeDeRespuesta(payload: unknown) {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "mensaje" in payload &&
+    typeof payload.mensaje === "string"
+  ) {
+    return payload.mensaje;
+  }
+
+  return undefined;
+}
+
 export default function IniciarSesionPage() {
   const router = useRouter();
 
@@ -68,10 +84,10 @@ export default function IniciarSesionPage() {
   const [correo, setCorreo] = useState("");
   const [pass, setPass] = useState("");
   const [verPass, setVerPass] = useState(false);
-  const [correoTocado, setCorreoTocado] = useState(false);
   const [cargandoLogin, setCargandoLogin] = useState(false);
   const [estadoCargaLogin, setEstadoCargaLogin] = useState("Verificando credenciales…");
   const [errorLogin, setErrorLogin] = useState("");
+  const [avisoLogin, setAvisoLogin] = useState("");
 
   // Estado de decisión 2FA
   const [enPaso2FA, setEnPaso2FA] = useState(false);
@@ -93,15 +109,29 @@ export default function IniciarSesionPage() {
 
 
 
-  // Si se redirige por sesión expirada, limpiar y mostrar aviso sin loop
+  // Recupera el correo al volver del registro y muestra avisos sin provocar
+  // renders encadenados durante la hidratación.
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("expirado") === "1") {
-        clearAuthSession();
-        setErrorLogin("Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.");
+    const params = new URLSearchParams(window.location.search);
+    const correoRegistrado = normalizeInstitutionalEmail(params.get("correo") ?? "");
+    const sesionExpirada = params.get("expirado") === "1";
+    const registroExitoso = params.get("registro") === "exitoso";
+
+    if (!sesionExpirada && !registroExitoso && !correoRegistrado) return;
+
+    if (sesionExpirada) clearAuthSession();
+    const aviso = window.setTimeout(() => {
+      if (correoRegistrado && !institutionalEmailError(correoRegistrado)) {
+        setCorreo(correoRegistrado);
       }
-    }
+      if (sesionExpirada) {
+        setErrorLogin("Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.");
+      } else if (registroExitoso) {
+        setAvisoLogin("Cuenta creada correctamente. Inicia sesión para completar la verificación.");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(aviso);
   }, []);
 
   useEffect(() => {
@@ -120,17 +150,20 @@ export default function IniciarSesionPage() {
   // Autofoco al cambiar de método
   useEffect(() => {
     if (enPaso2FA && (metodoActivo === "EMAIL" || metodoActivo === "TOTP")) {
-      setOtpDigitos(["", "", "", "", "", ""]);
-      setError2fa("");
-      setMensaje2fa("");
       const f = requestAnimationFrame(() => otpInputsRef.current[0]?.focus());
       return () => cancelAnimationFrame(f);
     }
   }, [enPaso2FA, metodoActivo]);
 
+  function cambiarMetodoActivo(metodo: MetodoActivo) {
+    setOtpDigitos(["", "", "", "", "", ""]);
+    setError2fa("");
+    setMensaje2fa("");
+    setMetodoActivo(metodo);
+  }
+
   async function handleLoginInicial(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setCorreoTocado(true);
     const emailNorm = normalizeInstitutionalEmail(correo);
     const err = institutionalEmailError(emailNorm);
     if (err) {
@@ -145,6 +178,7 @@ export default function IniciarSesionPage() {
     setCargandoLogin(true);
     setEstadoCargaLogin("Verificando credenciales…");
     setErrorLogin("");
+    setAvisoLogin("");
 
     try {
       const res = await fetch("/api/auth/2fa/iniciar-sesion", {
@@ -172,20 +206,24 @@ export default function IniciarSesionPage() {
         setEnPaso2FA(true);
 
         // Determinar método inicial según preferencia
-        if (info.metodoPreferido === "PASSKEY" && info.passkey.registered) {
-          setMetodoActivo("PASSKEY");
+        if (info.metodoPreferido === "EMAIL" && info.email.enabled && info.email.available) {
+          cambiarMetodoActivo("EMAIL");
+        } else if (info.metodoPreferido === "PASSKEY" && info.passkey.registered) {
+          cambiarMetodoActivo("PASSKEY");
         } else if (info.metodoPreferido === "TOTP" && info.totp.configured) {
-          setMetodoActivo("TOTP");
+          cambiarMetodoActivo("TOTP");
+        } else if (info.email.enabled && info.email.available) {
+          cambiarMetodoActivo("EMAIL");
         } else if (info.totp.configured) {
-          setMetodoActivo("TOTP");
+          cambiarMetodoActivo("TOTP");
         } else if (info.passkey.registered) {
-          setMetodoActivo("PASSKEY");
+          cambiarMetodoActivo("PASSKEY");
         } else {
-          setMetodoActivo("RECOVERY");
+          cambiarMetodoActivo("RECOVERY");
         }
       }
-    } catch (err: any) {
-      setErrorLogin(err.message || "Error al conectar con el servidor.");
+    } catch (err: unknown) {
+      setErrorLogin(mensajeDeError(err, "Error al conectar con el servidor."));
     } finally {
       setCargandoLogin(false);
     }
@@ -273,8 +311,8 @@ export default function IniciarSesionPage() {
       }
 
       await finalizarLoginExitoso(data.token, data.usuario);
-    } catch (err: any) {
-      setError2fa(err.message || "Error al verificar código");
+    } catch (err: unknown) {
+      setError2fa(mensajeDeError(err, "Error al verificar código"));
     } finally {
       setVerificando2fa(false);
     }
@@ -305,8 +343,8 @@ export default function IniciarSesionPage() {
       setSegundosReenvio(60);
       setOtpDigitos(["", "", "", "", "", ""]);
       otpInputsRef.current[0]?.focus();
-    } catch (err: any) {
-      setError2fa(err.message || "Error al reenviar código");
+    } catch (err: unknown) {
+      setError2fa(mensajeDeError(err, "Error al reenviar código"));
     } finally {
       setReenviandoEmail(false);
     }
@@ -341,8 +379,8 @@ export default function IniciarSesionPage() {
       }
 
       await finalizarLoginExitoso(data.token, data.usuario);
-    } catch (err: any) {
-      setError2fa(err.message || "Código incorrecto");
+    } catch (err: unknown) {
+      setError2fa(mensajeDeError(err, "Código incorrecto"));
     } finally {
       setVerificando2fa(false);
     }
@@ -366,8 +404,10 @@ export default function IniciarSesionPage() {
       });
 
       if (!resOpciones.ok) {
-        const err = await resOpciones.json().catch(() => ({}));
-        throw new Error(err.mensaje || "No se pudieron obtener las opciones biométricas");
+        const payload: unknown = await resOpciones.json().catch(() => null);
+        throw new Error(
+          mensajeDeRespuesta(payload) || "No se pudieron obtener las opciones biométricas",
+        );
       }
 
       const opciones = await resOpciones.json();
@@ -391,9 +431,9 @@ export default function IniciarSesionPage() {
       }
 
       await finalizarLoginExitoso(data.token, data.usuario);
-    } catch (err: any) {
-      if (err.name !== "NotAllowedError") {
-        setError2fa(err.message || "Error al verificar con huella/dispositivo");
+    } catch (err: unknown) {
+      if (!(err instanceof Error && err.name === "NotAllowedError")) {
+        setError2fa(mensajeDeError(err, "Error al verificar con huella/dispositivo"));
       }
     } finally {
       setVerificando2fa(false);
@@ -428,8 +468,8 @@ export default function IniciarSesionPage() {
       }
 
       await finalizarLoginExitoso(data.token, data.usuario);
-    } catch (err: any) {
-      setError2fa(err.message || "Error al validar código de recuperación");
+    } catch (err: unknown) {
+      setError2fa(mensajeDeError(err, "Error al validar código de recuperación"));
     } finally {
       setVerificando2fa(false);
     }
@@ -461,6 +501,13 @@ export default function IniciarSesionPage() {
                 <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-300">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
                   <span>{errorLogin}</span>
+                </div>
+              )}
+
+              {avisoLogin && (
+                <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                  <span>{avisoLogin}</span>
                 </div>
               )}
 
@@ -567,23 +614,38 @@ export default function IniciarSesionPage() {
 
               {/* Selector de Métodos Diferenciado según cuenta */}
               <div className="flex rounded-xl bg-white/5 p-1 border border-white/5">
-                {/* 2. Opción Google Authenticator: Disponible para todas las cuentas */}
-                <button
-                  onClick={() => setMetodoActivo("TOTP")}
-                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
-                    metodoActivo === "TOTP"
-                      ? "bg-emerald-500 text-slate-950 shadow"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <Smartphone className="h-3.5 w-3.5" />
-                  Authenticator
-                </button>
+                {info2fa?.email.enabled && info2fa.email.available && (
+                  <button
+                    onClick={() => cambiarMetodoActivo("EMAIL")}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
+                      metodoActivo === "EMAIL"
+                        ? "bg-emerald-500 text-slate-950 shadow"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    Correo
+                  </button>
+                )}
+
+                {info2fa?.totp.configured && (
+                  <button
+                    onClick={() => cambiarMetodoActivo("TOTP")}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
+                      metodoActivo === "TOTP"
+                        ? "bg-emerald-500 text-slate-950 shadow"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <Smartphone className="h-3.5 w-3.5" />
+                    Authenticator
+                  </button>
+                )}
 
                 {/* 3. Opción Huella / Passkey */}
                 {info2fa?.passkey.registered && (
                   <button
-                    onClick={() => setMetodoActivo("PASSKEY")}
+                    onClick={() => cambiarMetodoActivo("PASSKEY")}
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
                       metodoActivo === "PASSKEY"
                         ? "bg-emerald-500 text-slate-950 shadow"
@@ -806,7 +868,7 @@ export default function IniciarSesionPage() {
               {metodoActivo !== "RECOVERY" && info2fa?.codigosRecuperacionDisponibles && (
                 <div className="pt-2 text-center">
                   <button
-                    onClick={() => setMetodoActivo("RECOVERY")}
+                    onClick={() => cambiarMetodoActivo("RECOVERY")}
                     className="flex items-center justify-center gap-1.5 mx-auto text-xs text-slate-400 hover:text-amber-400"
                   >
                     <KeyRound className="h-3.5 w-3.5" />

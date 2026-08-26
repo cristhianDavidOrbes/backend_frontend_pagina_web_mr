@@ -7,7 +7,6 @@ import {
   Fingerprint,
   KeyRound,
   Loader2,
-  Mail,
   Plus,
   RefreshCw,
   Shield,
@@ -19,6 +18,8 @@ import { isWebAuthnSupported, registrarPasskeyEnNavegador } from "@/lib/webauthn
 import { RecoveryCodesModal } from "./recovery-codes-modal";
 import { TotpSetupModal } from "./totp-setup-modal";
 
+type Metodo2fa = "EMAIL" | "PASSKEY" | "TOTP";
+
 type Configuracion2fa = {
   emailHabilitado: boolean;
   emailDisponible: boolean;
@@ -27,13 +28,34 @@ type Configuracion2fa = {
   totpConfigurado: boolean;
   passkeyHabilitado: boolean;
   passkeys: { id: number; nombreDispositivo: string; creadoEn: string; ultimoUsoEn?: string }[];
-  metodoPreferido: "EMAIL" | "PASSKEY" | "TOTP";
+  metodoPreferido: Metodo2fa;
   codigosRecuperacionRestantes: number;
 };
 
 type Props = {
   token: string;
 };
+
+const METODOS_PREFERIDOS: ReadonlyArray<{
+  id: Exclude<Metodo2fa, "EMAIL">;
+  label: string;
+}> = [
+  { id: "PASSKEY", label: "Huella" },
+  { id: "TOTP", label: "Authenticator" },
+];
+
+function mensajeDeError(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+async function consultarConfiguracion(token: string) {
+  const res = await fetch("/api/auth/2fa/configuracion", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) return null;
+  return (await res.json()) as Configuracion2fa;
+}
 
 export function TwoFactorSettings({ token }: Props) {
   const [config, setConfig] = useState<Configuracion2fa | null>(null);
@@ -60,11 +82,8 @@ export function TwoFactorSettings({ token }: Props) {
   async function cargarConfiguracion() {
     try {
       setCargando(true);
-      const res = await fetch("/api/auth/2fa/configuracion", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await consultarConfiguracion(token);
+      if (data) {
         setConfig(data);
       }
     } catch {
@@ -75,10 +94,27 @@ export function TwoFactorSettings({ token }: Props) {
   }
 
   useEffect(() => {
-    cargarConfiguracion();
+    let cancelado = false;
+
+    consultarConfiguracion(token)
+      .then((data) => {
+        if (!cancelado && data) setConfig(data);
+      })
+      .catch(() => {
+        if (!cancelado) {
+          setMensaje({ tipo: "error", texto: "No se pudo cargar la configuración 2FA" });
+        }
+      })
+      .finally(() => {
+        if (!cancelado) setCargando(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
   }, [token]);
 
-  async function handleCambiarMetodoPreferido(nuevoMetodo: "EMAIL" | "PASSKEY" | "TOTP") {
+  async function handleCambiarMetodoPreferido(nuevoMetodo: Metodo2fa) {
     try {
       const res = await fetch("/api/auth/2fa/preferido", {
         method: "PUT",
@@ -155,9 +191,12 @@ export function TwoFactorSettings({ token }: Props) {
         setNuevosCodigos(data.codigosRecuperacion);
         setModalCodigosAbierto(true);
       }
-    } catch (err: any) {
-      if (err.name !== "NotAllowedError") {
-        setMensaje({ tipo: "error", texto: err.message || "Error al registrar dispositivo biométrico" });
+    } catch (err: unknown) {
+      if (!(err instanceof Error && err.name === "NotAllowedError")) {
+        setMensaje({
+          tipo: "error",
+          texto: mensajeDeError(err, "Error al registrar dispositivo biométrico"),
+        });
       }
     } finally {
       setRegistrandoPasskey(false);
@@ -218,8 +257,8 @@ export function TwoFactorSettings({ token }: Props) {
         setNuevosCodigos(data.codigosRecuperacion || []);
         setModalCodigosAbierto(true);
       }
-    } catch (err: any) {
-      setErrorPassword(err.message || "Error al procesar la solicitud");
+    } catch (err: unknown) {
+      setErrorPassword(mensajeDeError(err, "Error al procesar la solicitud"));
     } finally {
       setProcesandoAccion(false);
     }
@@ -396,13 +435,10 @@ export function TwoFactorSettings({ token }: Props) {
           </p>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {[
-              { id: "PASSKEY", label: "Huella" },
-              { id: "TOTP", label: "Authenticator" },
-            ].map((m) => (
+            {METODOS_PREFERIDOS.map((m) => (
               <button
                 key={m.id}
-                onClick={() => handleCambiarMetodoPreferido(m.id as any)}
+                onClick={() => handleCambiarMetodoPreferido(m.id)}
                 className={`rounded-xl border py-2 text-xs font-semibold transition-all ${
                   config?.metodoPreferido === m.id
                     ? "border-emerald-400 bg-emerald-500/20 text-emerald-300"

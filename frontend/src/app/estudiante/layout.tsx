@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import { clearAuthSession, saveAuthUser, useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
 export default function EstudianteLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const { hydrated, token, usuario: sesion } = useAuthSession();
   const [usuario, setUsuario] = useState<UsuarioSesion | null>(null);
   const [validando, setValidando] = useState(true);
@@ -14,9 +16,7 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
   useEffect(() => {
     if (!hydrated) return;
     if (!token) {
-      if (typeof window !== "undefined") {
-        window.location.href = "/iniciar-sesion";
-      }
+      router.replace("/iniciar-sesion");
       return;
     }
 
@@ -27,7 +27,7 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
         if (cancelado) return;
         setErrorSincronizacion(null);
         if (perfil.rol !== "ESTUDIANTE") {
-          window.location.href = perfil.rol === "DOCENTE" ? "/docente" : "/administrador";
+          router.replace(perfil.rol === "DOCENTE" ? "/docente" : "/administrador");
           return;
         }
         setUsuario(perfil);
@@ -37,7 +37,7 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
         if (cancelado) return;
         if (error instanceof ApiRequestError && error.status === 401) {
           clearAuthSession();
-          window.location.href = "/iniciar-sesion?expirado=1";
+          router.replace("/iniciar-sesion?expirado=1");
           return;
         }
         setErrorSincronizacion(
@@ -53,7 +53,7 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
     return () => {
       cancelado = true;
     };
-  }, [hydrated, token]);
+  }, [hydrated, token, router]);
 
   if (!hydrated || !token) {
     return (
@@ -86,7 +86,7 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
             type="button"
             onClick={() => {
               clearAuthSession();
-              window.location.href = "/iniciar-sesion";
+              router.replace("/iniciar-sesion");
             }}
             className="mt-4 rounded-xl bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200"
           >

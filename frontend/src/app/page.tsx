@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { Component, type ReactNode } from "react";
 import {
   ArrowRight,
   BrainCircuit,
@@ -26,6 +27,26 @@ function LandingModuleFallback({ label }: { label: string }) {
       <i aria-hidden="true" />
     </div>
   );
+}
+
+class LandingFeatureBoundary extends Component<
+  { children: ReactNode; fallbackLabel: string },
+  { failed: boolean }
+> {
+  constructor(props: { children: ReactNode; fallbackLabel: string }) {
+    super(props);
+    this.state = { failed: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    return this.state.failed
+      ? <LandingModuleFallback label={this.props.fallbackLabel} />
+      : this.props.children;
+  }
 }
 
 const RobotStage = dynamic(
@@ -65,25 +86,26 @@ const pasos = [
 ];
 
 export default function Home() {
-  const { hydrated, usuario } = useAuthSession();
-  const portalHref = usuario
-    ? usuario.rol === "DOCENTE"
+  const { hydrated, token, usuario } = useAuthSession();
+  const sessionUser = token ? usuario : null;
+  const portalHref = sessionUser
+    ? sessionUser.rol === "DOCENTE"
       ? "/docente"
-      : usuario.rol === "ADMINISTRADOR"
+      : sessionUser.rol === "ADMINISTRADOR"
         ? "/administrador"
         : "/estudiante"
     : "/iniciar-sesion";
-  const portalLabel = usuario
-    ? usuario.rol === "DOCENTE"
+  const portalLabel = sessionUser
+    ? sessionUser.rol === "DOCENTE"
       ? "Volver al observatorio"
-      : usuario.rol === "ADMINISTRADOR"
+      : sessionUser.rol === "ADMINISTRADOR"
         ? "Volver al centro de control"
         : "Volver a mi ruta"
     : "Ingresar";
-  const compactPortalLabel = usuario
-    ? usuario.rol === "DOCENTE"
+  const compactPortalLabel = sessionUser
+    ? sessionUser.rol === "DOCENTE"
       ? "Observatorio"
-      : usuario.rol === "ADMINISTRADOR"
+      : sessionUser.rol === "ADMINISTRADOR"
         ? "Control"
         : "Mi ruta"
     : "Ingresar";
@@ -109,10 +131,17 @@ export default function Home() {
           <a className="nav-anchor" href="#roles">Comunidad</a>
         </nav>
         <div className="landing-actions">
-          {hydrated && usuario ? (
-            <Link className="primary-button inline-flex items-center" href={portalHref}>
-              {compactPortalLabel} <ArrowRight size={16} />
-            </Link>
+          {hydrated && sessionUser ? (
+            <div className="landing-user-cluster" aria-label={`Sesión iniciada como ${sessionUser.nombre}`}>
+              <span className="landing-session-chip">
+                <i aria-hidden="true" />
+                <span>Sesión activa</span>
+                <strong>{sessionUser.nombre.split(" ")[0]}</strong>
+              </span>
+              <Link className="primary-button inline-flex items-center" href={portalHref}>
+                {compactPortalLabel} <ArrowRight size={16} />
+              </Link>
+            </div>
           ) : (
             <>
               <Link className="ghost-button" href="/iniciar-sesion">Ingresar</Link>
@@ -137,8 +166,8 @@ export default function Home() {
             Puertas para entender clases. Vehículos para construir objetos. Un robot para proteger su estado interno. AlgoLab convierte la programación orientada a objetos en un laboratorio interactivo que aparece en tu espacio real.
           </p>
           <div className="hero-actions">
-            <Link className="primary-button hero-primary" href={usuario ? portalHref : "/registrarse"}>
-              {usuario ? portalLabel : "Entrar al laboratorio"} <ArrowRight size={18} />
+            <Link className="primary-button hero-primary" href={sessionUser ? portalHref : "/registrarse"}>
+              {sessionUser ? portalLabel : "Entrar al laboratorio"} <ArrowRight size={18} />
             </Link>
             <a className="play-link" href="#niveles">
               <span><MousePointer2 size={16} /></span> Ver misiones interactivas
@@ -163,7 +192,9 @@ export default function Home() {
             <span>+ enfriar()</span>
           </div>
           <div className="controller-ray" />
-          <RobotStage />
+          <LandingFeatureBoundary fallbackLabel="Vista ligera del robot disponible">
+            <RobotStage />
+          </LandingFeatureBoundary>
           <div className="stage-platform"><i /><i /><i /></div>
           <FloatLayer className="stage-callout" delay={0.4}>
             <span>+ método público</span>
@@ -211,14 +242,18 @@ export default function Home() {
         </Reveal>
 
         <Reveal delay={0.1}>
-          <LevelsCarousel />
+          <LandingFeatureBoundary fallbackLabel="Las misiones no pudieron cargarse ahora">
+            <LevelsCarousel />
+          </LandingFeatureBoundary>
         </Reveal>
       </section>
 
       {/* Interactive Encapsulation Workshop Section */}
       <section className="workshop-story" id="taller">
         <Reveal className="w-full" direction="left">
-          <WorkshopSimulator />
+          <LandingFeatureBoundary fallbackLabel="El simulador estará disponible al ingresar">
+            <WorkshopSimulator />
+          </LandingFeatureBoundary>
         </Reveal>
 
         <Reveal className="workshop-copy" direction="right">
@@ -299,8 +334,8 @@ export default function Home() {
             <span>ESTUDIANTE</span>
             <h3>Una ruta que se siente como una misión interactiva.</h3>
             <p>Niveles progresivos, objetos desbloqueables, ranking, avatar personalizado y diagnósticos de IA.</p>
-            <Link href={usuario ? portalHref : "/registrarse"}>
-              {usuario ? portalLabel : "Crear mi perfil"} <ArrowRight size={15} />
+            <Link href={sessionUser ? portalHref : "/registrarse"}>
+              {sessionUser ? portalLabel : "Crear mi perfil"} <ArrowRight size={15} />
             </Link>
           </Reveal>
 
@@ -309,8 +344,8 @@ export default function Home() {
             <span>DOCENTE</span>
             <h3>La evidencia detrás de cada interacción en las gafas.</h3>
             <p>Dominio por nivel del grupo, alertas tempranas de estudiantes con dificultades y reportes detallados.</p>
-            <Link href="/iniciar-sesion">
-              Abrir observatorio <ArrowRight size={15} />
+            <Link href={sessionUser ? portalHref : "/iniciar-sesion"}>
+              {sessionUser ? portalLabel : "Abrir observatorio"} <ArrowRight size={15} />
             </Link>
           </Reveal>
 
@@ -319,8 +354,8 @@ export default function Home() {
             <span>ADMINISTRACIÓN</span>
             <h3>Control del ecosistema y gestión de contenidos.</h3>
             <p>Gestión completa de usuarios, asignación de roles y constructor de niveles y experiencias pedagógicas.</p>
-            <Link href="/iniciar-sesion">
-              Gestionar plataforma <ArrowRight size={15} />
+            <Link href={sessionUser ? portalHref : "/iniciar-sesion"}>
+              {sessionUser ? portalLabel : "Gestionar plataforma"} <ArrowRight size={15} />
             </Link>
           </Reveal>
         </div>
@@ -336,8 +371,8 @@ export default function Home() {
               Crea tu cuenta, personaliza tu avatar y continúa aprendiendo dentro y fuera de las gafas de realidad mixta.
             </p>
           </div>
-          <Link className="primary-button hero-primary" href={usuario ? portalHref : "/registrarse"}>
-            {usuario ? portalLabel : "Comenzar ahora"} <ArrowRight size={18} />
+          <Link className="primary-button hero-primary" href={sessionUser ? portalHref : "/registrarse"}>
+            {sessionUser ? portalLabel : "Comenzar ahora"} <ArrowRight size={18} />
           </Link>
         </Reveal>
       </section>

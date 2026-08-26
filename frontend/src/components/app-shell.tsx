@@ -184,7 +184,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
 
     const previousOverflow = document.body.style.overflow;
     const menuButton = mobileMenuButtonRef.current;
-    const desktopMedia = window.matchMedia("(min-width: 768px)");
+    const desktopMedia = window.matchMedia("(min-width: 1024px)");
     document.body.style.overflow = "hidden";
     mobileMenuCloseRef.current?.focus();
 
@@ -349,7 +349,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
   return (
     <div className="app-surface min-h-screen text-slate-100">
       {/* Mobile Sticky Top Header (< md screens) */}
-      <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-white/10 bg-[#05100e]/95 px-3 backdrop-blur-xl md:hidden">
+      <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-white/10 bg-[#05100e]/95 px-3 backdrop-blur-xl lg:hidden">
         <div className="flex items-center gap-3">
           <button
             aria-controls="algolab-mobile-navigation"
@@ -369,8 +369,10 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="hidden rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 font-mono text-[8px] font-semibold text-emerald-300 uppercase min-[420px]:inline-flex">
-            {config.label.split(" ")[1] ?? "MR"}
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 font-mono text-[8px] font-semibold uppercase text-emerald-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" />
+            <span className="min-[390px]:hidden">Sesión</span>
+            <span className="hidden min-[390px]:inline">{config.label.split(" ")[1] ?? "Sesión"}</span>
           </span>
           {usuario ? (
             <AvatarDisplay
@@ -388,7 +390,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
             <motion.div
               aria-hidden="true"
               animate={{ opacity: 1 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm lg:hidden"
               exit={{ opacity: 0 }}
               initial={{ opacity: 0 }}
               onClick={() => setMobileMenuOpen(false)}
@@ -397,7 +399,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
               animate={{ x: 0 }}
               aria-labelledby="algolab-mobile-menu-title"
               aria-modal="true"
-              className="fixed inset-y-0 left-0 z-50 flex w-[290px] max-w-[85vw] flex-col border-r border-white/10 bg-[#05100e] p-5 shadow-2xl overflow-y-auto scrollbar-none md:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-[290px] max-w-[88vw] flex-col overflow-y-auto border-r border-white/10 bg-[#05100e] p-4 shadow-2xl scrollbar-none sm:p-5 lg:hidden"
               exit={{ x: "-100%" }}
               id="algolab-mobile-navigation"
               initial={{ x: "-100%" }}
@@ -429,7 +431,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
 
       {/* Desktop & Tablet 100% FIXED Left Sidebar (>= md screens) */}
       <aside
-        className={`desktop-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-white/10 bg-[#05100e]/98 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-2xl transition-[width,padding] duration-300 overflow-y-auto scrollbar-none md:flex ${
+        className={`desktop-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-white/10 bg-[#05100e]/98 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-2xl transition-[width,padding] duration-300 scrollbar-none lg:flex ${
           desktopCollapsed
             ? "desktop-sidebar-collapsed w-[84px] p-3"
             : "w-[260px] p-5 xl:w-[285px]"
@@ -455,19 +457,19 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
       {/* Main Content Area: Offset with padding-left on >= md */}
       <div
         className={`min-h-screen w-full transition-[padding] duration-300 ${
-          desktopCollapsed ? "md:pl-[84px]" : "md:pl-[260px] xl:pl-[285px]"
+          desktopCollapsed ? "lg:pl-[84px]" : "lg:pl-[260px] xl:pl-[285px]"
         }`}
       >
         <main
           className={
             isCodeWorkspace
               ? "mx-auto w-full max-w-none p-2 sm:p-3 lg:p-4"
-              : "mx-auto max-w-[1600px] px-4 py-5 sm:px-7 lg:px-9 lg:py-8 xl:px-12"
+              : "mx-auto w-full max-w-[1680px] px-3 py-4 min-[390px]:px-4 sm:px-6 sm:py-5 lg:px-8 lg:py-7 2xl:px-10"
           }
         >
           {/* Main Top Header Banner */}
           {!isCodeWorkspace ? (
-          <header className="relative mb-5 overflow-hidden border-b border-white/10 pb-4 pt-1 lg:mb-6">
+          <header className="relative mb-4 min-w-0 overflow-hidden border-b border-white/10 pb-3 pt-1 sm:mb-5 sm:pb-4 lg:mb-6">
             <div
               aria-hidden="true"
               className="absolute -right-20 -top-28 h-64 w-64 rounded-full bg-emerald-300/[.07] blur-3xl"
@@ -476,13 +478,13 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
               aria-hidden="true"
               className="absolute right-[18%] top-0 h-px w-40 bg-gradient-to-r from-transparent via-cyan-200/50 to-transparent"
             />
-            <div className="relative flex min-w-0 items-end justify-between gap-4">
+            <div className="relative flex min-w-0 items-end justify-between gap-3 sm:gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="min-w-0">
                   <p className="section-kicker flex items-center gap-2">
                     <Sparkles size={12} className="text-emerald-300" /> {eyebrow}
                   </p>
-                  <h1 className="mt-1 truncate text-xl font-bold tracking-[-.035em] text-white sm:text-2xl">
+                  <h1 className="mt-1 break-words text-lg font-bold leading-tight tracking-[-.035em] text-white min-[390px]:text-xl sm:text-2xl">
                     {title}
                   </h1>
                 </div>

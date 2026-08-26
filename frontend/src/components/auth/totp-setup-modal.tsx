@@ -11,10 +11,37 @@ type Props = {
   token: string;
 };
 
+function mensajeDeError(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function leerTexto(payload: unknown, campo: string) {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    campo in payload &&
+    typeof (payload as Record<string, unknown>)[campo] === "string"
+  ) {
+    return (payload as Record<string, string>)[campo];
+  }
+
+  return undefined;
+}
+
+function leerCodigos(payload: unknown) {
+  if (typeof payload !== "object" || payload === null || !("codigosRecuperacion" in payload)) {
+    return [];
+  }
+
+  const codigos = (payload as Record<string, unknown>).codigosRecuperacion;
+  return Array.isArray(codigos) && codigos.every((codigo) => typeof codigo === "string")
+    ? codigos
+    : [];
+}
+
 export function TotpSetupModal({ isOpen, onClose, onSuccess, token }: Props) {
   const [loading, setLoading] = useState(true);
   const [verificando, setVerificando] = useState(false);
-  const [otpAuthUri, setOtpAuthUri] = useState("");
   const [secretManual, setSecretManual] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [codigo, setCodigo] = useState(["", "", "", "", "", ""]);
@@ -26,9 +53,12 @@ export function TotpSetupModal({ isOpen, onClose, onSuccess, token }: Props) {
     if (!isOpen) return;
 
     let cancelado = false;
-    setLoading(true);
-    setError("");
-    setCodigo(["", "", "", "", "", ""]);
+    queueMicrotask(() => {
+      if (cancelado) return;
+      setLoading(true);
+      setError("");
+      setCodigo(["", "", "", "", "", ""]);
+    });
 
     async function cargarSetup() {
       try {
@@ -41,18 +71,18 @@ export function TotpSetupModal({ isOpen, onClose, onSuccess, token }: Props) {
         });
 
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.mensaje || "Error al iniciar configuración");
+          const payload: unknown = await res.json().catch(() => null);
+          throw new Error(leerTexto(payload, "mensaje") || "Error al iniciar configuración");
         }
 
-        const data = await res.json();
+        const data: unknown = await res.json();
         if (cancelado) return;
 
-        setOtpAuthUri(data.otpAuthUri || "");
-        setSecretManual(data.secretClaveManual || "");
+        const otpAuthUri = leerTexto(data, "otpAuthUri") || "";
+        setSecretManual(leerTexto(data, "secretClaveManual") || "");
 
-        if (data.otpAuthUri) {
-          const url = await QRCode.toDataURL(data.otpAuthUri, {
+        if (otpAuthUri) {
+          const url = await QRCode.toDataURL(otpAuthUri, {
             width: 220,
             margin: 2,
             color: {
@@ -64,9 +94,9 @@ export function TotpSetupModal({ isOpen, onClose, onSuccess, token }: Props) {
             setQrDataUrl(url);
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelado) {
-          setError(err.message || "No se pudo generar el código QR");
+          setError(mensajeDeError(err, "No se pudo generar el código QR"));
         }
       } finally {
         if (!cancelado) {
@@ -145,14 +175,21 @@ export function TotpSetupModal({ isOpen, onClose, onSuccess, token }: Props) {
         body: JSON.stringify({ codigo: codeStr }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.exitoso) {
-        throw new Error(data.mensaje || "Código incorrecto. Intenta de nuevo.");
+      const data: unknown = await res.json();
+      const exitoso =
+        typeof data === "object" &&
+        data !== null &&
+        "exitoso" in data &&
+        data.exitoso === true;
+      if (!res.ok || !exitoso) {
+        throw new Error(
+          leerTexto(data, "mensaje") || "Código incorrecto. Intenta de nuevo.",
+        );
       }
 
-      onSuccess(data.codigosRecuperacion || []);
-    } catch (err: any) {
-      setError(err.message || "Error al verificar código");
+      onSuccess(leerCodigos(data));
+    } catch (err: unknown) {
+      setError(mensajeDeError(err, "Error al verificar código"));
     } finally {
       setVerificando(false);
     }

@@ -848,7 +848,10 @@
   }
 }
 
-@media (max-width: 900px) {
+/* Con la barra lateral abierta, 1024-1180 px dejan menos de 920 px útiles.
+   En ese rango conviene una sola vista (guía/editor/terminal) para evitar
+   dos columnas demasiado estrechas y controles cortados. */
+@media (max-width: 1180px) {
   .missionHero { grid-template-columns: 1fr; }
   .missionCopy { padding-right: 220px; }
   .languageOrb { width: 198px; right: 1rem; }
@@ -881,6 +884,22 @@
     height: auto;
     min-height: 0;
     flex: 1;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1180px) {
+  .levelNavRow {
+    flex-wrap: wrap;
+  }
+
+  .levelIdentity {
+    flex: 1 1 100%;
+  }
+
+  .levelControls {
+    flex: 1 1 100%;
+    margin-left: 0;
+    justify-content: flex-end;
   }
 }
 

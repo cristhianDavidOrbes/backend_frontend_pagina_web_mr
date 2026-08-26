@@ -147,6 +147,87 @@
   font-family: var(--font-geist-mono);
 }
 
+/* ─── Legal consent ───────────────────────────────────── */
+.consentGroup {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(2, 11, 9, 0.55);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.consentGroup legend {
+  padding: 0 0.35rem;
+  color: #9ab4aa;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.consentGroupError {
+  border-color: rgba(255, 128, 128, 0.55);
+  background: rgba(98, 27, 38, 0.11);
+}
+
+.consentRow {
+  display: grid;
+  grid-template-columns: 1.15rem minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.consentRow input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0.15rem 0 0;
+  accent-color: #57eeb2;
+  cursor: pointer;
+}
+
+.consentRow input:focus-visible {
+  outline: 3px solid rgba(87, 238, 178, 0.35);
+  outline-offset: 3px;
+}
+
+.consentRow label {
+  display: block;
+  color: #d5e5df;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.consentRow a {
+  display: inline-block;
+  margin-top: 0.18rem;
+  color: #6ef2bd;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.consentGroup > small {
+  color: #637f75;
+  font-size: 0.67rem;
+  line-height: 1.4;
+}
+
+.consentGroup .consentError {
+  color: #ff9aa9;
+  font-weight: 700;
+}
+
+@media (max-width: 430px) {
+  .consentGroup { padding: 0.75rem; }
+  .consentRow { gap: 0.55rem; }
+}
+
 /* ─── Portal Orb (OTP header) ─────────────────────────── */
 .portalHeader {
   display: grid;

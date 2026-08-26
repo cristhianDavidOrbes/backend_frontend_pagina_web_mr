@@ -49,8 +49,8 @@ export default function DocenteEstudiantesPage() {
   return (
     <>
       {error && <div className="alert-error">{error}</div>}
-      <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
-        <aside className="panel-card p-5 h-[calc(100vh-8rem)] overflow-y-auto">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] xl:gap-5">
+        <aside className="panel-card p-4 sm:p-5 xl:h-[calc(100dvh-8rem)] xl:overflow-y-auto">
           <div className="flex items-center justify-between"><div><p className="section-kicker">Estudiantes</p><h2 className="mt-2 text-xl font-semibold">Tu grupo</h2></div><span className="count-badge">{visibles.length}</span></div>
           <input className="field-input mt-4" onChange={(event) => setBusqueda(event.target.value)} placeholder="Buscar por nombre o correo" value={busqueda} />
           <div className="student-list mt-4">{visibles.map((item) => {
@@ -60,7 +60,7 @@ export default function DocenteEstudiantesPage() {
           })}{!visibles.length ? <div className="empty-state"><p>No hay estudiantes que coincidan.</p></div> : null}</div>
         </aside>
 
-        <article className="panel-card p-5 sm:p-6 h-[calc(100vh-8rem)] overflow-y-auto">
+        <article className="panel-card min-w-0 p-4 sm:p-6 xl:h-[calc(100dvh-8rem)] xl:overflow-y-auto">
           {seleccionado ? <>
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5"><div className="flex items-center gap-3"><div className="relative"><span className="absolute -inset-1 animate-pulse rounded-[20px] border border-emerald-300/15" /><AvatarDisplay className="!h-[52px] !w-[52px] !rounded-[17px]" usuario={seleccionado} /></div><div><p className="text-xl font-semibold">{seleccionado.nombre}</p><p className="mt-1 text-sm text-slate-400">{seleccionado.programa || "Ruta de programación orientada a objetos"}</p><span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-2.5 py-1 text-[10px] uppercase tracking-[.12em] text-emerald-200"><ScanLine size={11} /> Perfil sincronizado</span></div></div><div className="text-right"><span className="section-kicker">Puntaje</span><strong className="mt-1 block text-2xl text-emerald-300">{progreso?.puntajeTotal ?? seleccionado.puntaje}</strong></div></div>
             <div className="mt-5 grid gap-3 sm:grid-cols-3"><MiniMetric label="Nivel actual" value={progreso?.nivelActual ?? seleccionado.nivelActual} /><MiniMetric label="Completados" value={progreso?.niveles.filter((item) => item.completado).length ?? 0} /><MiniMetric label="Informes IA" value={reportesSeleccionado.filter((item) => item.generadoPorIa).length} /></div>

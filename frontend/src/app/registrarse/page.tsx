@@ -2,28 +2,22 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  ArrowLeft,
   CheckCircle2,
   Eye,
   EyeOff,
   LockKeyhole,
   Mail,
   RefreshCw,
-  ShieldCheck,
   Sparkles,
   User,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
-  type ClipboardEvent as ReactClipboardEvent,
   type FormEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 
 import css from "@/components/auth-security.module.css";
@@ -33,40 +27,16 @@ import {
   normalizeInstitutionalEmail,
 } from "@/lib/institutional-email";
 import {
-  saveAuthToken,
-  saveAuthUser,
+  saveAuthSession,
   useAuthSession,
   type UsuarioSesion,
 } from "@/lib/use-auth-session";
 
 type Paso = "datos" | "codigo" | "bienvenida";
 type Tono = "error" | "aviso" | "exito";
-type DesafioRespuesta = {
-  exitoso?: boolean;
-  requiereSegundoFactor?: boolean;
-  mensaje?: string;
-  desafioId?: string;
-  destinoEnmascarado?: string;
-  expiraEnSegundos?: number;
-  reenvioDisponibleEnSegundos?: number;
-};
-type LoginRespuesta = {
-  exitoso?: boolean;
-  mensaje?: string;
-  token?: string;
-  usuario?: UsuarioSesion;
-};
 
-const EMPTY6 = ["", "", "", "", "", ""];
+const LEGAL_VERSION = "2026-08-26";
 
-function fmtTime(s: number) {
-  const t = Math.max(0, s);
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-}
-function extractNum(txt: string, re: RegExp) {
-  const m = txt.match(re);
-  return m ? Number(m[1]) : null;
-}
 function pw(p: string) {
   if (!p) return { pct: 0, label: "", color: "" };
   let pts = 0;
@@ -247,7 +217,6 @@ export default function RegistrarsePage() {
   const router = useRouter();
   const rm = useReducedMotion();
   const { hydrated, token: existingToken, usuario } = useAuthSession();
-  const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const [paso, setPaso] = useState<Paso>("datos");
   const [nombre, setNombre] = useState("");
@@ -255,43 +224,18 @@ export default function RegistrarsePage() {
   const [pass, setPass] = useState("");
   const [verPass, setVerPass] = useState(false);
   const [correoTocado, setCorreoTocado] = useState(false);
-  const [dir, setDir] = useState(1);
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [aceptaDatos, setAceptaDatos] = useState(false);
+  const [consentimientoTocado, setConsentimientoTocado] = useState(false);
+  const dir = 1;
 
   const [enviando, setEnviando] = useState(false);
-  const [verificando, setVerificando] = useState(false);
-  const [reenviando, setReenviando] = useState(false);
   const [msg, setMsg] = useState<{ texto: string; tono: Tono } | null>(null);
 
-  const [desafio, setDesafio] = useState<DesafioRespuesta | null>(null);
-  const [codigo, setCodigo] = useState<string[]>(EMPTY6);
-  const [ahora, setAhora] = useState(() => Date.now());
-  const [expiraEn, setExpiraEn] = useState(0);
-  const [expTotal, setExpTotal] = useState(1);
-  const [reenvioEn, setReenvioEn] = useState(0);
-  const [intentosRest, setIntentosRest] = useState<number | null>(null);
-  const [bloqueado, setBloqueado] = useState(false);
-  const [otpKey, setOtpKey] = useState(0);
   const [usuarioReg, setUsuarioReg] = useState<UsuarioSesion | undefined>();
 
   const errCorreo = correoTocado ? institutionalEmailError(correo) : "";
   const pwState = useMemo(() => pw(pass), [pass]);
-  const completo = codigo.every(Boolean);
-  const segsExp = Math.max(0, Math.ceil((expiraEn - ahora) / 1000));
-  const segsRenv = Math.max(0, Math.ceil((reenvioEn - ahora) / 1000));
-  const prgTiempo = Math.max(0, Math.min(100, (segsExp / expTotal) * 100));
-
-
-
-  const destino = useMemo(() => {
-    if (desafio?.destinoEnmascarado) return desafio.destinoEnmascarado;
-    return correo ? correo.replace(/^(.{2}).*(@.*)$/, "$1••••$2") : "tu correo";
-  }, [correo, desafio?.destinoEnmascarado]);
-
-  function navTo(next: Paso, d: number) {
-    setDir(d);
-    setPaso(next);
-    setMsg(null);
-  }
 
   useEffect(() => {
     if (!hydrated || !existingToken || !usuario) return;
@@ -304,21 +248,10 @@ export default function RegistrarsePage() {
     );
   }, [hydrated, existingToken, usuario, router]);
 
-  useEffect(() => {
-    if (paso !== "codigo") return;
-    const t = setInterval(() => setAhora(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [paso]);
-
-  useEffect(() => {
-    if (paso !== "codigo") return;
-    const f = requestAnimationFrame(() => codeRefs.current[0]?.focus());
-    return () => cancelAnimationFrame(f);
-  }, [paso, otpKey]);
-
   async function registrar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setCorreoTocado(true);
+    setConsentimientoTocado(true);
     const email = normalizeInstitutionalEmail(correo);
     const eE = institutionalEmailError(email);
     if (eE) {
@@ -327,6 +260,13 @@ export default function RegistrarsePage() {
     }
     if (!pass || pass.length < 6) {
       setMsg({ texto: "La contraseña debe tener mínimo 6 caracteres.", tono: "error" });
+      return;
+    }
+    if (!aceptaTerminos || !aceptaDatos) {
+      setMsg({
+        texto: "Para crear tu cuenta debes aceptar ambos documentos legales.",
+        tono: "error",
+      });
       return;
     }
 
@@ -342,184 +282,58 @@ export default function RegistrarsePage() {
           correo: email,
           contrasena: pass,
           rol: "ESTUDIANTE",
+          aceptaTerminos,
+          aceptaTratamientoDatos: aceptaDatos,
+          versionConsentimiento: LEGAL_VERSION,
         }),
       });
 
       const data = await rj<{ exitoso?: boolean; mensaje?: string; token?: string; usuario?: UsuarioSesion }>(res);
 
-      if (!res.ok && res.status !== 409 && data.exitoso === false) {
+      if (!res.ok || data.exitoso === false) {
         throw new Error(data.mensaje || "No se pudo crear la cuenta.");
       }
 
-      // Acceso Directo inmediato sin requerir OTP
+      // Completar una autenticación real: nunca se crea una sesión local sin JWT.
       const loginRes = await fetch("/api/auth/2fa/iniciar-sesion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ correo: email, contrasena: pass }),
       });
-      const loginData = await rj<{ token?: string; usuario?: UsuarioSesion }>(loginRes);
-      if (loginData.token && loginData.usuario) {
-        saveAuthToken(loginData.token);
-        saveAuthUser(loginData.usuario);
-        setUsuarioReg(loginData.usuario);
-      } else {
-        const u: UsuarioSesion = {
-          id: 1,
-          nombre: nombre.trim(),
-          correo: email,
-          rol: "ESTUDIANTE",
-          nivelActual: 1,
-          puntaje: 0,
-          avatar: "orbita",
-        };
-        saveAuthUser(u);
-        setUsuarioReg(u);
+      const loginData = await rj<{
+        exitoso?: boolean;
+        mensaje?: string;
+        requiere2fa?: boolean;
+        token?: string;
+        usuario?: UsuarioSesion;
+      }>(loginRes);
+
+      if (!loginRes.ok || loginData.exitoso === false) {
+        throw new Error(loginData.mensaje || "La cuenta se creó, pero no fue posible iniciar sesión.");
       }
+
+      if (loginData.requiere2fa) {
+        router.replace(`/iniciar-sesion?correo=${encodeURIComponent(email)}&registro=exitoso`);
+        return;
+      }
+
+      if (!loginData.token || !loginData.usuario) {
+        throw new Error("La cuenta se creó, pero el servidor no entregó una sesión válida. Inicia sesión nuevamente.");
+      }
+
+      saveAuthSession(loginData.token, loginData.usuario);
+      setUsuarioReg(loginData.usuario);
       setPaso("bienvenida");
 
-    } catch (err: any) {
-      setMsg({ texto: err.message || "Error al conectar con el servidor.", tono: "error" });
+    } catch (err: unknown) {
+      setMsg({
+        texto: err instanceof Error ? err.message : "Error al conectar con el servidor.",
+        tono: "error",
+      });
     } finally {
       setEnviando(false);
     }
   }
-
-
-  function updateDigit(idx: number, raw: string) {
-    const d = raw.replace(/\D/g, "");
-    if (d.length > 1) {
-      distribuir(d, idx);
-      return;
-    }
-    setCodigo((c) => {
-      const n = [...c];
-      n[idx] = d.slice(-1);
-      return n;
-    });
-    if (d && idx < 5) codeRefs.current[idx + 1]?.focus();
-  }
-
-  function distribuir(raw: string, start = 0) {
-    const d = raw.replace(/\D/g, "").slice(0, 6 - start);
-    if (!d) return;
-    setCodigo((c) => {
-      const n = [...c];
-      d.split("").forEach((ch, i) => {
-        n[start + i] = ch;
-      });
-      return n;
-    });
-    requestAnimationFrame(() => codeRefs.current[Math.min(start + d.length, 5)]?.focus());
-  }
-
-  function pegar(e: ReactClipboardEvent<HTMLFieldSetElement>) {
-    const d = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!d) return;
-    e.preventDefault();
-    distribuir(d);
-  }
-
-  function navKey(e: ReactKeyboardEvent<HTMLInputElement>, idx: number) {
-    if (e.key === "Backspace" && !codigo[idx] && idx > 0) codeRefs.current[idx - 1]?.focus();
-    if (e.key === "ArrowLeft" && idx > 0) {
-      e.preventDefault();
-      codeRefs.current[idx - 1]?.focus();
-    }
-    if (e.key === "ArrowRight" && idx < 5) {
-      e.preventDefault();
-      codeRefs.current[idx + 1]?.focus();
-    }
-  }
-
-  async function verificar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!completo || bloqueado) return;
-    if (segsExp <= 0) {
-      setMsg({ texto: "El código expiró. Reenvía uno nuevo.", tono: "aviso" });
-      return;
-    }
-    setVerificando(true);
-    setMsg(null);
-    try {
-      const res = await fetch("/api/segundo-factor/verificar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          desafioId: desafio?.desafioId ?? "demo",
-          codigo: codigo.join(""),
-        }),
-      });
-      const data = await rj<LoginRespuesta>(res);
-      if (!res.ok || !data.token || !data.usuario) {
-        const m = data.mensaje ?? "Código incorrecto.";
-        const rem = extractNum(m, /intentos restantes:\s*(\d+)/i);
-        if (rem !== null) setIntentosRest(rem);
-        if (res.status === 429) setBloqueado(true);
-        setCodigo([...EMPTY6]);
-        setOtpKey((k) => k + 1);
-        requestAnimationFrame(() => codeRefs.current[0]?.focus());
-        setMsg({ texto: m, tono: "error" });
-        return;
-      }
-      saveAuthToken(data.token);
-      saveAuthUser(data.usuario);
-      setUsuarioReg(data.usuario);
-      setPaso("bienvenida");
-    } catch {
-      const demo: UsuarioSesion = {
-        id: 1,
-        nombre: nombre || "Estudiante",
-        correo: normalizeInstitutionalEmail(correo),
-        rol: "ESTUDIANTE",
-        nivelActual: 1,
-        puntaje: 0,
-        avatar: "orbita",
-      };
-      saveAuthUser(demo);
-      setUsuarioReg(demo);
-      setPaso("bienvenida");
-    } finally {
-      setVerificando(false);
-    }
-  }
-
-  async function reenviar() {
-    if (!desafio?.desafioId || segsRenv > 0 || reenviando || bloqueado) return;
-    setReenviando(true);
-    setMsg(null);
-    try {
-      const res = await fetch("/api/segundo-factor/reenviar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ desafioId: desafio.desafioId }),
-      });
-      const data = await rj<DesafioRespuesta>(res);
-      if (res.ok && data.desafioId) {
-        const exp = Math.max(1, Number(data.expiraEnSegundos) || 300);
-        const resend = Math.max(0, Number(data.reenvioDisponibleEnSegundos) || 30);
-        const ts = Date.now();
-        setDesafio(data);
-        setExpTotal(exp);
-        setExpiraEn(ts + exp * 1000);
-        setReenvioEn(ts + resend * 1000);
-        setAhora(ts);
-        setMsg({ texto: data.mensaje || "Nuevo código enviado a tu correo.", tono: "exito" });
-      } else {
-        setReenvioEn(Date.now() + 30_000);
-        setMsg({ texto: data.mensaje || "Código reenviado.", tono: "exito" });
-      }
-      setCodigo([...EMPTY6]);
-      setOtpKey((k) => k + 1);
-    } catch {
-      setReenvioEn(Date.now() + 30_000);
-      setCodigo([...EMPTY6]);
-      setOtpKey((k) => k + 1);
-      setMsg({ texto: "Código reenviado.", tono: "exito" });
-    } finally {
-      setReenviando(false);
-    }
-  }
-
   if (paso === "bienvenida") {
     return (
       <main className="auth-shell flex min-h-screen items-center justify-center p-4 md:p-8">
@@ -692,9 +506,74 @@ export default function RegistrarsePage() {
                       </div>
                     )}
                   </div>
+                  <fieldset
+                    className={`${css.consentGroup} ${
+                      consentimientoTocado && (!aceptaTerminos || !aceptaDatos)
+                        ? css.consentGroupError
+                        : ""
+                    }`}
+                    aria-describedby="consent-help consent-error"
+                  >
+                    <legend>Consentimientos requeridos</legend>
+                    <div className={css.consentRow}>
+                      <input
+                        id="acepta-terminos"
+                        type="checkbox"
+                        checked={aceptaTerminos}
+                        onChange={(event) => {
+                          setAceptaTerminos(event.target.checked);
+                          setMsg(null);
+                        }}
+                        aria-invalid={consentimientoTocado && !aceptaTerminos}
+                        required
+                      />
+                      <div>
+                        <label htmlFor="acepta-terminos">Acepto los Términos y Condiciones.</label>
+                        <Link href="/terminos-y-condiciones" target="_blank" rel="noopener noreferrer">
+                          Leer documento completo
+                        </Link>
+                      </div>
+                    </div>
+                    <div className={css.consentRow}>
+                      <input
+                        id="acepta-datos"
+                        type="checkbox"
+                        checked={aceptaDatos}
+                        onChange={(event) => {
+                          setAceptaDatos(event.target.checked);
+                          setMsg(null);
+                        }}
+                        aria-invalid={consentimientoTocado && !aceptaDatos}
+                        required
+                      />
+                      <div>
+                        <label htmlFor="acepta-datos">
+                          Autorizo el tratamiento de mis datos personales para operar AlgoLab.
+                        </label>
+                        <Link href="/tratamiento-de-datos" target="_blank" rel="noopener noreferrer">
+                          Consultar política de datos
+                        </Link>
+                      </div>
+                    </div>
+                    <small id="consent-help">
+                      Son autorizaciones independientes y necesarias para crear la cuenta.
+                    </small>
+                    {consentimientoTocado && (!aceptaTerminos || !aceptaDatos) && (
+                      <small id="consent-error" role="alert" className={css.consentError}>
+                        Marca las dos casillas para continuar.
+                      </small>
+                    )}
+                  </fieldset>
                   <button
                     className="primary-button flex w-full items-center justify-center gap-2 mt-2"
-                    disabled={enviando || !nombre.trim() || !pass || Boolean(errCorreo)}
+                    disabled={
+                      enviando ||
+                      !nombre.trim() ||
+                      !pass ||
+                      Boolean(errCorreo) ||
+                      !aceptaTerminos ||
+                      !aceptaDatos
+                    }
                     type="submit"
                   >
                     {enviando ? (

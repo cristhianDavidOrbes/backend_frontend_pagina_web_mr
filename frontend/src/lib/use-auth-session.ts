@@ -96,6 +96,7 @@ export function useAuthSession() {
   return {
     hydrated,
     token,
-    usuario,
+    // Un perfil aislado en localStorage no representa una sesión autenticada.
+    usuario: token ? usuario : null,
   };
 }

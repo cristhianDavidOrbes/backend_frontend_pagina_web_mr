@@ -4,7 +4,7 @@ export function normalizeInstitutionalEmail(value: string) {
 
 export function isInstitutionalEmail(value: string) {
   const normalized = normalizeInstitutionalEmail(value);
-  return normalized.endsWith("@campusucc.edu.co") && normalized.length > 18;
+  return /^[^@\s]+@campusucc\.edu\.co$/.test(normalized);
 }
 
 export function institutionalEmailError(value: string) {
