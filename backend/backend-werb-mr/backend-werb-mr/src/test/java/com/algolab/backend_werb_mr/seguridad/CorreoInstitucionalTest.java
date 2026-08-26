@@ -9,17 +9,17 @@ import org.junit.jupiter.api.Test;
 class CorreoInstitucionalTest {
     @Test
     void normalizaMayusculasYEspaciosExteriores() {
-        assertEquals("estudiante@gmail.com",
-                CorreoInstitucional.normalizar("  ESTUDIANTE@GMAIL.COM  "));
+        assertEquals("estudiante@campusucc.edu.co",
+                CorreoInstitucional.normalizar("  ESTUDIANTE@CAMPUSUCC.EDU.CO  "));
     }
 
     @Test
-    void aceptaCorreosValidosUniversalmente() {
+    void aceptaSoloCorreosInstitucionalesValidos() {
         assertTrue(CorreoInstitucional.esValido("ana.maria@campusucc.edu.co"));
-        assertTrue(CorreoInstitucional.esValido("ana@gmail.com"));
-        assertTrue(CorreoInstitucional.esValido("usuario@hotmail.com"));
+        assertFalse(CorreoInstitucional.esValido("ana@gmail.com"));
+        assertFalse(CorreoInstitucional.esValido("usuario@hotmail.com"));
         assertFalse(CorreoInstitucional.esValido("correo_invalido_sin_arroba"));
         assertFalse(CorreoInstitucional.esValido("ana@otro.com@campusucc.edu.co"));
-        assertFalse(CorreoInstitucional.esValido("ana maria@gmail.com"));
+        assertFalse(CorreoInstitucional.esValido("ana maria@campusucc.edu.co"));
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.HtmlUtils;
@@ -42,14 +43,25 @@ public class EnvioCorreoSegundoFactor implements IEnvioSegundoFactor {
 
     @Override
     public boolean disponible() {
-        return true;
+        return estaConfigurado();
     }
 
     @Override
     public boolean estaConfigurado() {
-        return mailSenderProvider.getIfAvailable() != null
-                && limpiar(hostSmtp) != null
-                && limpiar(propiedades.getRemitente()) != null;
+        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+        if (mailSender == null
+                || limpiar(hostSmtp) == null
+                || limpiar(propiedades.getRemitente()) == null) {
+            return false;
+        }
+
+        // Con autenticacion SMTP habilitada, crear el bean no significa que el
+        // transporte sea utilizable. Evita anunciar el canal y crear desafios
+        // que nunca podran llegar al usuario cuando faltan las credenciales.
+        if (mailSender instanceof JavaMailSenderImpl impl) {
+            return limpiar(impl.getUsername()) != null && limpiar(impl.getPassword()) != null;
+        }
+        return true;
     }
 
     @Override
@@ -58,10 +70,9 @@ public class EnvioCorreoSegundoFactor implements IEnvioSegundoFactor {
         String remitente = limpiar(propiedades.getRemitente());
 
         if (!estaConfigurado() || mailSender == null || remitente == null) {
-            logger.info("════════════════════════════════════════════════════════════════════");
-            logger.info("[2FA CORREO] SMTP no configurado en el servidor. Código OTP para {}: {}", usuario.getCorreo(), codigo);
-            logger.info("════════════════════════════════════════════════════════════════════");
-            return;
+            logger.warn("[2FA CORREO] SMTP no configurado para el destinatario {}.", enmascararCorreo(usuario.getCorreo()));
+            throw new SegundoFactorException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "El servicio de correo no está disponible temporalmente");
         }
 
         try {
@@ -75,7 +86,9 @@ public class EnvioCorreoSegundoFactor implements IEnvioSegundoFactor {
         } catch (SegundoFactorException error) {
             throw error;
         } catch (Exception error) {
-            logger.error("Error enviando correo SMTP a {}: {}. Código OTP de respaldo: {}", usuario.getCorreo(), error.getMessage(), codigo);
+            logger.error("Error enviando correo SMTP a {}: {}", enmascararCorreo(usuario.getCorreo()), error.getMessage());
+            throw new SegundoFactorException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "No fue posible enviar el código de seguridad", error);
         }
     }
 
@@ -109,5 +122,12 @@ public class EnvioCorreoSegundoFactor implements IEnvioSegundoFactor {
             return null;
         }
         return valor.trim();
+    }
+
+    private String enmascararCorreo(String correo) {
+        if (correo == null || !correo.contains("@")) return "***";
+        int arroba = correo.indexOf('@');
+        String local = correo.substring(0, arroba);
+        return local.substring(0, Math.min(2, local.length())) + "***" + correo.substring(arroba);
     }
 }

@@ -2,9 +2,9 @@ package com.algolab.backend_werb_mr.seguridad;
 
 import java.util.Locale;
 
-/** Validación de correos electrónicos restringida exclusivamente a @gmail.com */
+/** Validación de correos electrónicos institucionales de la Universidad Cooperativa. */
 public final class CorreoInstitucional {
-    public static final String DOMINIO = "@gmail.com";
+    public static final String DOMINIO = "@campusucc.edu.co";
 
     private CorreoInstitucional() {
     }
@@ -20,6 +20,13 @@ public final class CorreoInstitucional {
 
     public static boolean esValido(String correo) {
         String normalizado = normalizar(correo);
-        return normalizado != null && normalizado.endsWith("@gmail.com") && normalizado.length() > 10;
+        if (normalizado == null || !normalizado.endsWith(DOMINIO)) {
+            return false;
+        }
+
+        String cuenta = normalizado.substring(0, normalizado.length() - DOMINIO.length());
+        return !cuenta.isBlank()
+                && cuenta.indexOf('@') < 0
+                && cuenta.chars().noneMatch(Character::isWhitespace);
     }
 }

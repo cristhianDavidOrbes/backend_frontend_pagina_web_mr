@@ -88,6 +88,7 @@ class SegundoFactorServicioTest {
         assertNotEquals(canal.codigos.get(0), desafioGuardado.getCodigoHash());
         assertTrue(encoder.matches(canal.codigos.get(0), desafioGuardado.getCodigoHash()));
         assertFalse(desafioGuardado.getCodigoHash().contains(canal.codigos.get(0)));
+        assertFalse(respuesta.getMensaje().contains(canal.codigos.get(0)));
     }
 
     @Test

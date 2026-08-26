@@ -6,6 +6,9 @@ public class RegistroUsuarioRequest {
     private String rol;
     private String contrasena;
     private String celular;
+    private Boolean aceptaTerminos;
+    private Boolean aceptaTratamientoDatos;
+    private String versionConsentimiento;
 
     public RegistroUsuarioRequest() {
     }
@@ -48,5 +51,29 @@ public class RegistroUsuarioRequest {
 
     public void setCelular(String celular) {
         this.celular = celular;
+    }
+
+    public Boolean getAceptaTerminos() {
+        return aceptaTerminos;
+    }
+
+    public void setAceptaTerminos(Boolean aceptaTerminos) {
+        this.aceptaTerminos = aceptaTerminos;
+    }
+
+    public Boolean getAceptaTratamientoDatos() {
+        return aceptaTratamientoDatos;
+    }
+
+    public void setAceptaTratamientoDatos(Boolean aceptaTratamientoDatos) {
+        this.aceptaTratamientoDatos = aceptaTratamientoDatos;
+    }
+
+    public String getVersionConsentimiento() {
+        return versionConsentimiento;
+    }
+
+    public void setVersionConsentimiento(String versionConsentimiento) {
+        this.versionConsentimiento = versionConsentimiento;
     }
 }

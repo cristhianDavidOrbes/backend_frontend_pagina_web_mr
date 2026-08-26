@@ -243,7 +243,8 @@ public class TwoFactorServicioImpl implements ITwoFactorService {
         nuevoDesafio.setInvalidado(false);
         desafioRepo.save(nuevoDesafio);
 
-        logger.info("[2FA] Despachando nuevo OTP {} al correo {}", otp, usuario.getCorreo());
+        logger.info("[2FA] Despachando un nuevo código de seguridad al correo institucional {}",
+                enmascararCorreo(usuario.getCorreo()));
         emailService.enviarOtp(usuario.getCorreo(), otp, VIGENCIA_OTP_MINUTOS);
     }
 

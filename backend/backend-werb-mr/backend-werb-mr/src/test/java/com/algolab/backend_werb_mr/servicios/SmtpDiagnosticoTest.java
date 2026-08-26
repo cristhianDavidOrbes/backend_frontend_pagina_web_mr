@@ -15,8 +15,13 @@ public class SmtpDiagnosticoTest {
         JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
         mailSender.setHost("smtp.gmail.com");
         mailSender.setPort(587);
-        mailSender.setUsername("cristiandavid11232@gmail.com");
-        mailSender.setPassword("yhrffjfrhvueufci");
+        String usuario = System.getenv("SMTP_USERNAME");
+        String contrasena = System.getenv("SMTP_PASSWORD");
+        if (usuario == null || usuario.isBlank() || contrasena == null || contrasena.isBlank()) {
+            return;
+        }
+        mailSender.setUsername(usuario);
+        mailSender.setPassword(contrasena);
 
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
@@ -24,7 +29,8 @@ public class SmtpDiagnosticoTest {
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.starttls.required", "true");
         props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
-        props.put("mail.smtp.ssl.trust", "*");
+        props.put("mail.smtp.ssl.trust", "smtp.gmail.com");
+        props.put("mail.smtp.ssl.checkserveridentity", "true");
         props.put("mail.smtp.connectiontimeout", "10000");
         props.put("mail.smtp.timeout", "10000");
         props.put("mail.smtp.writetimeout", "10000");
@@ -33,8 +39,8 @@ public class SmtpDiagnosticoTest {
             mailSender.testConnection();
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom("cristiandavid11232@gmail.com", "AlgoLab UCC");
-            helper.setTo("cristiandavid11232@gmail.com");
+            helper.setFrom(usuario, "AlgoLab UCC");
+            helper.setTo(usuario);
             helper.setSubject("Código de verificación");
             helper.setText("Tu código de seguridad es:\n\n583921\n\nEste código vence en 5 minutos.", false);
             mailSender.send(message);

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -63,13 +64,37 @@ class UsuarioControladorTest {
     }
 
     @Test
-    void registroPublicoAceptaCorreoGmail() {
+    void registroPublicoExigeConsentimientosLegales() {
+        RegistroUsuarioRequest request = solicitudRegistro(
+                "Estudiante", "consentimiento@campusucc.edu.co", Rol.ESTUDIANTE, "123456");
+        request.setAceptaTratamientoDatos(false);
+
+        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
+        assertFalse(respuesta.getBody().isExitoso());
+    }
+
+    @Test
+    void registroPublicoGuardaFechaYVersionDelConsentimiento() {
+        String correo = "auditoria@campusucc.edu.co";
+        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(
+                solicitudRegistro("Estudiante", correo, Rol.ESTUDIANTE, "123456"));
+
+        assertEquals(HttpStatus.CREATED, respuesta.getStatusCode());
+        Usuario guardado = usuarioServicio.buscarPorCorreo(correo).orElseThrow();
+        assertNotNull(guardado.getTerminosAceptadosEn());
+        assertNotNull(guardado.getTratamientoDatosAceptadoEn());
+        assertEquals("2026-08-26", guardado.getVersionConsentimiento());
+    }
+
+    @Test
+    void registroPublicoRechazaCorreoNoInstitucional() {
         ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(
                 solicitudRegistro("Estudiante", "estudiante@gmail.com", Rol.ESTUDIANTE, "123456"));
 
-        assertEquals(HttpStatus.CREATED, respuesta.getStatusCode());
-        assertNull(respuesta.getBody().getToken());
-        assertEquals("estudiante@gmail.com", respuesta.getBody().getUsuario().getCorreo());
+        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
+        assertFalse(respuesta.getBody().isExitoso());
     }
 
     @Test
@@ -391,6 +416,9 @@ class UsuarioControladorTest {
         request.setCorreo(correo);
         request.setRol(rol.name());
         request.setContrasena(contrasena);
+        request.setAceptaTerminos(true);
+        request.setAceptaTratamientoDatos(true);
+        request.setVersionConsentimiento("2026-08-26");
         return request;
     }
 

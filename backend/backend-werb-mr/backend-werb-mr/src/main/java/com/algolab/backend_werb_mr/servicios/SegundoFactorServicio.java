@@ -100,13 +100,8 @@ public class SegundoFactorServicio implements ISegundoFactorServicio {
             }
         }
 
-        String mensajeRespuesta;
-        if (!servicioCanal.estaConfigurado()) {
-            mensajeRespuesta = "Código de verificación: " + codigo + " (Modo prueba - servicio " + canal + " sin configurar)";
-        } else {
-            String destino = canal == CanalSegundoFactor.CORREO ? "correo institucional" : "celular";
-            mensajeRespuesta = "Enviamos un código de acceso a tu " + destino;
-        }
+        String destino = canal == CanalSegundoFactor.CORREO ? "correo institucional" : "celular";
+        String mensajeRespuesta = "Enviamos un código de acceso a tu " + destino;
         return respuesta(desafio, ahora, mensajeRespuesta);
     }
 
@@ -199,13 +194,8 @@ public class SegundoFactorServicio implements ISegundoFactorServicio {
             }
         }
 
-        String mensajeRespuesta;
-        if (!servicioCanal.estaConfigurado()) {
-            mensajeRespuesta = "Nuevo código de verificación: " + codigo + " (Modo prueba - servicio " + desafio.getCanal() + " sin configurar)";
-        } else {
-            String destino = desafio.getCanal() == CanalSegundoFactor.CORREO ? "correo institucional" : "celular";
-            mensajeRespuesta = "Enviamos un nuevo código a tu " + destino;
-        }
+        String destino = desafio.getCanal() == CanalSegundoFactor.CORREO ? "correo institucional" : "celular";
+        String mensajeRespuesta = "Enviamos un nuevo código a tu " + destino;
         return respuesta(desafio, ahora, mensajeRespuesta);
     }
 

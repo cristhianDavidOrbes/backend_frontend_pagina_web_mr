@@ -48,7 +48,7 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
 
     @Override
     public boolean disponible() {
-        return true;
+        return estaConfigurado();
     }
 
     @Override
@@ -66,10 +66,9 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
         }
 
         if (!estaConfigurado()) {
-            logger.info("════════════════════════════════════════════════════════════════════");
-            logger.info("[2FA SMS] Proveedor SMS no configurado. Código OTP para {}: {}", usuario.getCelular(), codigo);
-            logger.info("════════════════════════════════════════════════════════════════════");
-            return;
+            logger.warn("[2FA SMS] Proveedor no configurado para el destino {}.", enmascararCelular(usuario.getCelular()));
+            throw new SegundoFactorException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "El servicio de mensajes no está disponible temporalmente");
         }
 
         long minutos = Math.max(1, (long) Math.ceil(vigenciaSegundos / 60.0));
@@ -91,10 +90,10 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
                         .body(formulario)
                         .retrieve()
                         .toBodilessEntity();
-                logger.info("[2FA SMS] SMS enviado exitosamente via Twilio a {}", usuario.getCelular());
+                logger.info("[2FA SMS] Mensaje enviado vía Twilio a {}", enmascararCelular(usuario.getCelular()));
                 return;
             } catch (Exception error) {
-                logger.error("Error enviando SMS via Twilio a {}: {}. Código OTP de respaldo: {}", usuario.getCelular(), error.getMessage(), codigo);
+                logger.warn("Error enviando SMS vía Twilio a {}: {}", enmascararCelular(usuario.getCelular()), error.getMessage());
             }
         }
 
@@ -112,11 +111,15 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
                         .body(formulario)
                         .retrieve()
                         .toBodilessEntity();
-                logger.info("[2FA SMS] SMS enviado exitosamente via TextBelt a {}", usuario.getCelular());
+                logger.info("[2FA SMS] Mensaje enviado vía TextBelt a {}", enmascararCelular(usuario.getCelular()));
+                return;
             } catch (Exception error) {
-                logger.error("Error enviando SMS via TextBelt a {}: {}. Código OTP de respaldo: {}", usuario.getCelular(), error.getMessage(), codigo);
+                logger.error("Error enviando SMS vía TextBelt a {}: {}", enmascararCelular(usuario.getCelular()), error.getMessage());
             }
         }
+
+        throw new SegundoFactorException(HttpStatus.SERVICE_UNAVAILABLE,
+                "No fue posible enviar el código de seguridad por mensaje");
     }
 
     private static String limpiar(String valor) {
@@ -124,5 +127,10 @@ public class EnvioSmsSegundoFactor implements IEnvioSegundoFactor {
             return null;
         }
         return valor.trim();
+    }
+
+    private static String enmascararCelular(String celular) {
+        if (celular == null || celular.length() < 4) return "***";
+        return "***" + celular.substring(celular.length() - 4);
     }
 }

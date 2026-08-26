@@ -1,5 +1,7 @@
 package com.algolab.backend_werb_mr.modelos;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -59,6 +61,15 @@ public class Usuario {
 
     @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean tutorialCompletado = false;
+
+    @Column(name = "terminos_aceptados_en")
+    private LocalDateTime terminosAceptadosEn;
+
+    @Column(name = "tratamiento_datos_aceptado_en")
+    private LocalDateTime tratamientoDatosAceptadoEn;
+
+    @Column(name = "version_consentimiento", length = 32)
+    private String versionConsentimiento;
 
     public Usuario() {
     }
@@ -215,5 +226,29 @@ public class Usuario {
 
     public void setTutorialCompletado(boolean tutorialCompletado) {
         this.tutorialCompletado = tutorialCompletado;
+    }
+
+    public LocalDateTime getTerminosAceptadosEn() {
+        return terminosAceptadosEn;
+    }
+
+    public void setTerminosAceptadosEn(LocalDateTime terminosAceptadosEn) {
+        this.terminosAceptadosEn = terminosAceptadosEn;
+    }
+
+    public LocalDateTime getTratamientoDatosAceptadoEn() {
+        return tratamientoDatosAceptadoEn;
+    }
+
+    public void setTratamientoDatosAceptadoEn(LocalDateTime tratamientoDatosAceptadoEn) {
+        this.tratamientoDatosAceptadoEn = tratamientoDatosAceptadoEn;
+    }
+
+    public String getVersionConsentimiento() {
+        return versionConsentimiento;
+    }
+
+    public void setVersionConsentimiento(String versionConsentimiento) {
+        this.versionConsentimiento = versionConsentimiento;
     }
 }

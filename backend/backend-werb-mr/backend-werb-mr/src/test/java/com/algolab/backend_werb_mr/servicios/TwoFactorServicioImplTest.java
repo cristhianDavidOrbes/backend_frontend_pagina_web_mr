@@ -59,8 +59,7 @@ class TwoFactorServicioImplTest {
     private JwtServicio jwtServicio;
     private PasswordEncoder passwordEncoder;
     private TwoFactorServicioImpl service;
-    private Usuario usuarioGmail;
-    private Usuario usuarioUcc;
+    private Usuario usuarioInstitucional;
 
     @BeforeEach
     void setUp() {
@@ -77,19 +76,24 @@ class TwoFactorServicioImplTest {
                 webAuthnService,
                 recoveryCodeService);
 
-        usuarioGmail = new Usuario(1L, "Ada Lovelace", "ada@gmail.com", Rol.ESTUDIANTE, passwordEncoder.encode("Secret123!"));
-        usuarioUcc = new Usuario(2L, "Carlos Ucc", "carlos@campusucc.edu.co", Rol.ESTUDIANTE, passwordEncoder.encode("Secret123!"));
+        usuarioInstitucional = new Usuario(
+                1L,
+                "Ada Lovelace",
+                "ada@campusucc.edu.co",
+                Rol.ESTUDIANTE,
+                passwordEncoder.encode("Secret123!"));
     }
 
     @Test
-    void loginCon2faHabilitadoEnGmailRetornaRequiere2faYSesionTemporal() {
-        when(usuarioRepo.buscarPorCorreo(usuarioGmail.getCorreo())).thenReturn(Optional.of(usuarioGmail));
-        Usuario2faConfiguracion config = new Usuario2faConfiguracion(usuarioGmail);
-        config.setEmailHabilitado(true);
-        when(configRepo.findByUsuarioId(usuarioGmail.getId())).thenReturn(Optional.of(config));
-        when(emailService.estaDisponible()).thenReturn(true);
+    void loginInstitucionalConTotpHabilitadoRetornaRequiere2faYSesionTemporal() {
+        when(usuarioRepo.buscarPorCorreo(usuarioInstitucional.getCorreo()))
+                .thenReturn(Optional.of(usuarioInstitucional));
+        Usuario2faConfiguracion config = new Usuario2faConfiguracion(usuarioInstitucional);
+        config.setTotpHabilitado(true);
+        config.setTotpConfigurado(true);
+        when(configRepo.findByUsuarioId(usuarioInstitucional.getId())).thenReturn(Optional.of(config));
 
-        Login2faRespuestaDTO respuesta = service.procesarLogin("ada@gmail.com", "Secret123!");
+        Login2faRespuestaDTO respuesta = service.procesarLogin("ada@campusucc.edu.co", "Secret123!");
 
         assertTrue(respuesta.isExitoso());
         assertTrue(respuesta.isRequiere2fa());
@@ -100,11 +104,12 @@ class TwoFactorServicioImplTest {
 
     @Test
     void loginCuentasUccSinTotpRetornaTokenDirecto() {
-        when(usuarioRepo.buscarPorCorreo(usuarioUcc.getCorreo())).thenReturn(Optional.of(usuarioUcc));
-        Usuario2faConfiguracion config = new Usuario2faConfiguracion(usuarioUcc);
-        when(configRepo.findByUsuarioId(usuarioUcc.getId())).thenReturn(Optional.of(config));
+        when(usuarioRepo.buscarPorCorreo(usuarioInstitucional.getCorreo()))
+                .thenReturn(Optional.of(usuarioInstitucional));
+        Usuario2faConfiguracion config = new Usuario2faConfiguracion(usuarioInstitucional);
+        when(configRepo.findByUsuarioId(usuarioInstitucional.getId())).thenReturn(Optional.of(config));
 
-        Login2faRespuestaDTO respuesta = service.procesarLogin("carlos@campusucc.edu.co", "Secret123!");
+        Login2faRespuestaDTO respuesta = service.procesarLogin("ada@campusucc.edu.co", "Secret123!");
 
         assertTrue(respuesta.isExitoso());
         assertFalse(respuesta.isRequiere2fa());
@@ -114,15 +119,14 @@ class TwoFactorServicioImplTest {
     }
 
     @Test
-    void consultaMetodosMuestraDisponibilidadEmailCorrectamenteParaGmail() {
-        Usuario2faConfiguracion config = new Usuario2faConfiguracion(usuarioGmail);
+    void consultaMetodosMantieneEmailDeshabilitadoParaCuentaInstitucional() {
+        Usuario2faConfiguracion config = new Usuario2faConfiguracion(usuarioInstitucional);
         config.setEmailHabilitado(true);
-        when(configRepo.findByUsuarioId(usuarioGmail.getId())).thenReturn(Optional.of(config));
-        when(emailService.estaDisponible()).thenReturn(false);
+        when(configRepo.findByUsuarioId(usuarioInstitucional.getId())).thenReturn(Optional.of(config));
 
-        Metodos2faDisponiblesDTO metodos = service.consultarMetodosDisponibles(usuarioGmail, "token");
+        Metodos2faDisponiblesDTO metodos = service.consultarMetodosDisponibles(usuarioInstitucional, "token");
         assertNotNull(metodos);
-        assertTrue(metodos.getEmail().isEnabled());
-        assertFalse(metodos.getEmail().isAvailable()); // Email quota exhausted
+        assertFalse(metodos.getEmail().isEnabled());
+        assertFalse(metodos.getEmail().isAvailable());
     }
 }
