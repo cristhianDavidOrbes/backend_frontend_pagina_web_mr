@@ -210,7 +210,10 @@ export default function CodigoPage() {
       <header className={styles.compactRouteHeader}>
         <div>
           <span className={styles.optionalBadge}>COMPLEMENTO OPCIONAL</span>
-          <h1>Programar POO</h1>
+          <h1>
+            <span className={styles.desktopTitle}>Programar POO</span>
+            <span className={styles.mobileTitle}>POO</span>
+          </h1>
           <p>Practica en código los conceptos que aprendiste con objetos en las gafas.</p>
         </div>
         <div className={styles.routeSummary} aria-label="Resumen de tu progreso">
@@ -222,9 +225,34 @@ export default function CodigoPage() {
 
       <section className={styles.missionHero} aria-labelledby="mision-programar-poo">
         <div className={styles.missionCopy}>
-          <span className={styles.liveBadge}>
-            <span aria-hidden="true" /> {rutaCompleta ? "RUTA DOMINADA" : "MISIÓN ACTIVA"}
-          </span>
+          <div className={styles.missionTopRow}>
+            <span className={styles.liveBadge}>
+              <span aria-hidden="true" /> {rutaCompleta ? "RUTA DOMINADA" : "MISIÓN ACTIVA"}
+            </span>
+
+            <div className={styles.languageOrb} aria-label="Lenguaje de aprendizaje">
+              <span className={styles.languageOrbLabel}>LENGUAJE</span>
+              <div className={styles.languageOrbButtons}>
+                <button
+                  type="button"
+                  aria-pressed={lenguaje === "python"}
+                  onClick={() => cambiarLenguaje("python")}
+                  title="Aprender en Python"
+                >
+                  <span aria-hidden="true">🐍</span> Python
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={lenguaje === "java"}
+                  onClick={() => cambiarLenguaje("java")}
+                  title="Aprender en Java"
+                >
+                  <span aria-hidden="true">☕</span> Java
+                </button>
+              </div>
+            </div>
+          </div>
+
           <p className={styles.eyebrow}>
             {rutaCompleta ? "Laboratorio completado" : `Siguiente desafío · ${siguienteNivel?.subnivel ?? "1.1"}`}
           </p>
@@ -245,24 +273,6 @@ export default function CodigoPage() {
               {rutaCompleta ? "Volver al laboratorio" : completados > 0 ? "Continuar misión" : "Comenzar aventura"}
               <ArrowRight size={17} />
             </Link>
-          </div>
-
-          <div className={styles.languageOrb} aria-label="Lenguaje de aprendizaje">
-            <span>LENGUAJE</span>
-            <button
-              type="button"
-              aria-pressed={lenguaje === "python"}
-              onClick={() => cambiarLenguaje("python")}
-            >
-              <span aria-hidden="true">🐍</span> Python
-            </button>
-            <button
-              type="button"
-              aria-pressed={lenguaje === "java"}
-              onClick={() => cambiarLenguaje("java")}
-            >
-              <span aria-hidden="true">☕</span> Java
-            </button>
           </div>
 
           <div className={styles.compactProgress} aria-label={`${porcentaje}% de la ruta completado`}>

@@ -38,7 +38,7 @@ const roleConfig: Record<UsuarioSesion["rol"], RoleConfig> = {
     links: [
       { href: "/estudiante", label: "Mi ruta", icon: "route", exact: true },
       { href: "/estudiante/reportes", label: "Recomendaciones IA", icon: "reports" },
-      { href: "/estudiante/codigo", label: "Programar OOP", icon: "code" },
+      { href: "/estudiante/codigo", label: "Programar POO", icon: "code" },
       { href: "/estudiante/perfil", label: "Mi perfil", icon: "profile" },
       { href: "/", label: "Explorar AlgoLab", icon: "world", exact: true },
     ],

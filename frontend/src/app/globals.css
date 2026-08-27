@@ -790,37 +790,58 @@ button, a {
 .ambient-orb-one { top: 14rem; left: -16rem; background: #2ed6a1; }
 .ambient-orb-two { top: 50rem; right: -16rem; background: #148cff; }
 
-.landing-nav {
-  position: relative;
-  z-index: 30;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  width: min(100%, 1600px);
-  min-height: 88px;
-  margin: auto;
-  padding: 1rem clamp(1.25rem, 4vw, 4.5rem);
+.landing-nav-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
   border-bottom: 1px solid rgba(187,196,204,.1);
-  background: rgba(7, 18, 15, .75);
+  background: rgba(7, 18, 15, .82);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: min(100%, 1600px);
+  min-height: 80px;
+  margin: 0 auto;
+  padding: 0.85rem clamp(1.25rem, 4vw, 4.5rem);
 }
 
 .brand-lockup {
   display: inline-flex;
   align-items: center;
-  gap: .8rem;
+  gap: .85rem;
   width: fit-content;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.brand-copy,
+.brand-lockup > span:not(.brand-mark) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.15;
 }
 
 .brand-lockup strong {
-  font-size: 1.05rem;
-  letter-spacing: -.02em;
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -.025em;
+  color: #f2fff9;
 }
 
 .brand-lockup small {
-  margin-top: .08rem;
-  color: #7f8a91;
-  font: 600 .58rem var(--font-geist-mono);
+  display: block;
+  margin-top: .18rem;
+  color: #79958e;
+  font: 650 .58rem var(--font-geist-mono);
   letter-spacing: .12em;
   text-transform: uppercase;
 }
@@ -828,7 +849,7 @@ button, a {
 .landing-nav nav {
   display: flex;
   align-items: center;
-  gap: 2.2rem;
+  gap: clamp(1.25rem, 2.5vw, 2.4rem);
 }
 
 .nav-anchor {
@@ -1921,12 +1942,11 @@ button, a {
 
 @media (max-width: 1360px) and (min-width: 881px) {
   .landing-nav {
-    grid-template-columns: auto 1fr auto;
     gap: 1rem;
     padding-inline: 1.5rem;
   }
   .brand-lockup small { display: none; }
-  .landing-nav nav { justify-content: center; gap: 1.25rem; }
+  .landing-nav nav { gap: 1.25rem; }
   .landing-actions .primary-button {
     min-height: 42px;
     padding-inline: 1rem;
@@ -1937,7 +1957,6 @@ button, a {
 }
 
 @media (max-width: 880px) {
-  .landing-nav { grid-template-columns: 1fr auto; }
   .landing-nav nav { display: none; }
   .experience-steps, .role-grid { grid-template-columns: 1fr; }
   .final-cta-inner { grid-template-columns: 1fr; }

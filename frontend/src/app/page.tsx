@@ -116,40 +116,42 @@ export default function Home() {
       <div className="ambient-orb ambient-orb-two" />
 
       {/* Top Navbar */}
-      <header className="landing-nav">
-        <Link className="brand-lockup" href="/" aria-label="AlgoLab, inicio">
-          <span className="brand-mark">A</span>
-          <span>
-            <strong>AlgoLab</strong>
-            <small>Laboratorio de realidad mixta</small>
-          </span>
-        </Link>
-        <nav aria-label="Navegación principal">
-          <a className="nav-anchor" href="#experiencia">Experiencia</a>
-          <a className="nav-anchor" href="#niveles">Niveles</a>
-          <a className="nav-anchor" href="#taller">Taller</a>
-          <a className="nav-anchor" href="#roles">Comunidad</a>
-        </nav>
-        <div className="landing-actions">
-          {hydrated && sessionUser ? (
-            <div className="landing-user-cluster" aria-label={`Sesión iniciada como ${sessionUser.nombre}`}>
-              <span className="landing-session-chip">
-                <i aria-hidden="true" />
-                <span>Sesión activa</span>
-                <strong>{sessionUser.nombre.split(" ")[0]}</strong>
-              </span>
-              <Link className="primary-button inline-flex items-center" href={portalHref}>
-                {compactPortalLabel} <ArrowRight size={16} />
-              </Link>
-            </div>
-          ) : (
-            <>
-              <Link className="ghost-button" href="/iniciar-sesion">Ingresar</Link>
-              <Link className="primary-button hidden items-center sm:inline-flex" href="/registrarse">
-                Crear cuenta <ArrowRight size={16} />
-              </Link>
-            </>
-          )}
+      <header className="landing-nav-bar">
+        <div className="landing-nav">
+          <Link className="brand-lockup" href="/" aria-label="AlgoLab, inicio">
+            <span className="brand-mark">A</span>
+            <span className="brand-copy">
+              <strong>AlgoLab</strong>
+              <small>Laboratorio de realidad mixta</small>
+            </span>
+          </Link>
+          <nav aria-label="Navegación principal">
+            <a className="nav-anchor" href="#experiencia">Experiencia</a>
+            <a className="nav-anchor" href="#niveles">Niveles</a>
+            <a className="nav-anchor" href="#taller">Taller</a>
+            <a className="nav-anchor" href="#roles">Comunidad</a>
+          </nav>
+          <div className="landing-actions">
+            {hydrated && sessionUser ? (
+              <div className="landing-user-cluster" aria-label={`Sesión iniciada como ${sessionUser.nombre}`}>
+                <span className="landing-session-chip">
+                  <i aria-hidden="true" />
+                  <span>Sesión activa</span>
+                  <strong>{sessionUser.nombre.split(" ")[0]}</strong>
+                </span>
+                <Link className="primary-button inline-flex items-center" href={portalHref}>
+                  {compactPortalLabel} <ArrowRight size={16} />
+                </Link>
+              </div>
+            ) : (
+              <>
+                <Link className="ghost-button" href="/iniciar-sesion">Ingresar</Link>
+                <Link className="primary-button hidden items-center sm:inline-flex" href="/registrarse">
+                  Crear cuenta <ArrowRight size={16} />
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -381,7 +383,7 @@ export default function Home() {
       <footer className="landing-footer">
         <div className="brand-lockup">
           <span className="brand-mark">A</span>
-          <span>
+          <span className="brand-copy">
             <strong>AlgoLab</strong>
             <small>Ideas que puedes tocar</small>
           </span>

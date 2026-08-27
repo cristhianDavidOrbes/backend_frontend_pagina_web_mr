@@ -21,6 +21,9 @@
   mask-image: linear-gradient(to bottom, black, transparent 82%);
 }
 
+.desktopTitle { display: inline; }
+.mobileTitle { display: none; }
+
 .compactRouteHeader {
   display: flex;
   align-items: center;
@@ -97,16 +100,23 @@
   box-shadow: 0 24px 90px rgba(0, 0, 0, 0.32), inset 0 1px rgba(255, 255, 255, 0.04);
 }
 
+.missionTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+  width: 100%;
+}
+
 .languageOrb {
-  position: absolute;
+  position: relative;
   z-index: 3;
-  top: 1.4rem;
-  right: 1.5rem;
-  display: grid;
-  grid-template-columns: repeat(2, auto);
+  display: flex;
+  flex-direction: column;
   gap: 0.38rem;
-  width: 218px;
-  padding: 0.85rem;
+  width: auto;
+  padding: 0.75rem 0.85rem;
   border: 1px solid rgba(53, 214, 255, 0.2);
   border-radius: 18px;
   background: rgba(4, 19, 17, 0.82);
@@ -114,11 +124,16 @@
   backdrop-filter: blur(14px);
 }
 
-.languageOrb > span {
-  grid-column: 1 / -1;
+.languageOrbLabel {
   color: #829d95;
   font: 750 0.56rem var(--font-geist-mono);
   letter-spacing: 0.14em;
+}
+
+.languageOrbButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
 }
 
 .languageOrb button {
@@ -904,27 +919,82 @@
 }
 
 @media (max-width: 640px) {
+  .desktopTitle { display: none; }
+  .mobileTitle { display: inline; }
+
   .compactRouteHeader { align-items: flex-start; }
   .routeSummary { display: none; }
-  .missionHero { min-height: 0; padding: 4.25rem 1rem 1rem; border-radius: 16px; }
+  .missionHero {
+    min-height: 0;
+    padding: 1.25rem 1rem 1.15rem;
+    border-radius: 18px;
+  }
+  .missionHero::before {
+    width: 220px;
+    height: 220px;
+    right: -40px;
+    top: -50px;
+    opacity: 0.5;
+  }
+  .missionTopRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+  }
+  .liveBadge {
+    margin-bottom: 0;
+  }
+  .languageOrb {
+    position: static;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+    width: auto;
+    padding: 0.3rem 0.55rem;
+    border-radius: 12px;
+    background: rgba(4, 19, 17, 0.88);
+    border: 1px solid rgba(53, 214, 255, 0.25);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+  .languageOrbLabel {
+    font-size: 0.52rem;
+    margin-right: 0.15rem;
+  }
+  .languageOrbButtons {
+    display: inline-flex;
+    gap: 0.25rem;
+  }
+  .languageOrb button {
+    min-height: 28px;
+    padding: 0.22rem 0.48rem;
+    font-size: 0.64rem;
+    border-radius: 7px;
+  }
   .missionCopy { padding-right: 0; }
-  .missionCopy h2 { font-size: 1.5rem; }
+  .eyebrow {
+    margin-top: 0.2rem;
+    font-size: 0.68rem;
+  }
+  .missionCopy h2 {
+    margin: 0.25rem 0 0.5rem;
+    font-size: 1.45rem;
+    line-height: 1.15;
+  }
+  .missionCopy > p:not(.eyebrow) {
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+  .missionActions {
+    margin-top: 1rem;
+  }
   .missionMetrics { display: grid; grid-template-columns: 1fr; }
   .missionMetrics span { width: 100%; }
   .missionActions > * { width: 100%; }
-  .languageOrb {
-    top: 0.8rem;
-    right: 0.8rem;
-    left: 0.8rem;
-    display: flex;
-    width: auto;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 0.45rem;
-    border-radius: 12px;
-  }
-  .languageOrb > span { margin-right: auto; }
-  .languageOrb button { min-height: 30px; padding: 0.32rem 0.5rem; font-size: 0.64rem; }
   .compactProgress { grid-template-columns: 1fr; gap: 0.35rem; }
   .progressCore { grid-template-columns: 80px 1fr; gap: 0.75rem; }
   .progressRing { width: 80px; }
