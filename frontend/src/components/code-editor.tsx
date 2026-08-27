@@ -32,7 +32,7 @@ type CodeSuggestion = {
   insert: string;
   cursorOffset: number;
   aliases?: string[];
-  kind?: "estructura" | "funcion" | "variable" | "tipo" | "palabra";
+  kind?: "estructura" | "funcion" | "variable" | "tipo" | "clase" | "metodo" | "propiedad" | "palabra";
 };
 
 type SuggestionState = {
@@ -108,14 +108,22 @@ type SyntaxToken = { value: string; type: string };
 
 function dynamicSuggestions(code: string, language: "python" | "java"): CodeSuggestion[] {
   const results = new Map<string, CodeSuggestion>();
-  const add = (name: string, kind: "variable" | "funcion", detail: string) => {
-    if (!name || results.has(`${kind}:${name}`)) return;
-    results.set(`${kind}:${name}`, {
-      label: kind === "funcion" ? `${name}()` : name,
+  const add = (
+    name: string,
+    kind: "variable" | "funcion" | "clase" | "metodo" | "propiedad",
+    detail: string,
+    insertValue?: string,
+    aliases?: string[],
+  ) => {
+    const insert = insertValue ?? (kind === "funcion" || kind === "metodo" ? `${name}()` : name);
+    const label = insert;
+    if (!name || results.has(`${kind}:${label}`)) return;
+    results.set(`${kind}:${label}`, {
+      label,
       detail,
-      insert: kind === "funcion" ? `${name}()` : name,
-      cursorOffset: kind === "funcion" ? name.length + 1 : name.length,
-      aliases: [name],
+      insert,
+      cursorOffset: kind === "funcion" || kind === "metodo" ? Math.max(0, insert.length - 1) : insert.length,
+      aliases: [name, ...(aliases ?? [])],
       kind,
     });
   };
@@ -127,9 +135,77 @@ function dynamicSuggestions(code: string, language: "python" | "java"): CodeSugg
     for (const match of code.matchAll(/\bdef\s+[A-Za-z_]\w*\s*\(([^)]*)\)/g)) {
       match[1].split(",").map((part) => part.trim().split(/[=:]/)[0].trim()).forEach((name) => add(name, "variable", "Parámetro de función"));
     }
+
+    const classes = new Map<string, { methods: Set<string>; properties: Set<string> }>();
+    let currentClass: { name: string; indent: number } | null = null;
+    for (const line of code.split("\n")) {
+      const indent = line.match(/^\s*/)?.[0].replace(/\t/g, "  ").length ?? 0;
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const classMatch = trimmed.match(/^class\s+([A-Za-z_]\w*)/);
+      if (classMatch) {
+        currentClass = { name: classMatch[1], indent };
+        if (!classes.has(classMatch[1])) classes.set(classMatch[1], { methods: new Set(), properties: new Set() });
+        add(classMatch[1], "clase", "Clase definida en tu código", `${classMatch[1]}()`, ["clase"]);
+        continue;
+      }
+      if (currentClass && indent <= currentClass.indent) currentClass = null;
+      if (!currentClass) continue;
+      const methodMatch = trimmed.match(/^def\s+([A-Za-z_]\w*)\s*\(/);
+      if (methodMatch) classes.get(currentClass.name)?.methods.add(methodMatch[1]);
+      for (const propertyMatch of trimmed.matchAll(/\bself\.([A-Za-z_]\w*)\s*=/g)) {
+        classes.get(currentClass.name)?.properties.add(propertyMatch[1]);
+      }
+    }
+
+    const instances = new Map<string, string>();
+    for (const match of code.matchAll(/(?:^|\n)\s*([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*\(/g)) {
+      if (classes.has(match[2])) instances.set(match[1], match[2]);
+    }
+    for (const [className, members] of classes) {
+      for (const method of members.methods) add(`self.${method}`, "metodo", `Método de ${className}`, `self.${method}()`, [method]);
+      for (const property of members.properties) add(`self.${property}`, "propiedad", `Atributo de ${className}`);
+    }
+    for (const [instance, className] of instances) {
+      const members = classes.get(className);
+      if (!members) continue;
+      for (const method of members.methods) add(`${instance}.${method}`, "metodo", `Método de ${className}`, `${instance}.${method}()`, [method, instance]);
+      for (const property of members.properties) add(`${instance}.${property}`, "propiedad", `Atributo de ${className}`);
+    }
   } else {
     for (const match of code.matchAll(/\b(?:public|private|protected|static|final|synchronized|abstract|\s)*\s*(?:void|int|double|float|boolean|String|[A-Z]\w*)\s+([a-zA-Z_]\w*)\s*\(/g)) add(match[1], "funcion", "Método de tu código");
     for (const match of code.matchAll(/\b(?:int|double|float|long|short|byte|boolean|char|String|[A-Z]\w*(?:<[^>]+>)?)\s+([a-zA-Z_]\w*)\b(?!\s*\()/g)) add(match[1], "variable", "Variable de tu código");
+
+    const classes = new Map<string, { methods: Set<string>; properties: Set<string> }>();
+    const classMatches = [...code.matchAll(/\bclass\s+([A-Za-z_]\w*)[^\{]*\{/g)];
+    for (const classMatch of classMatches) {
+      const className = classMatch[1];
+      add(className, "clase", "Clase definida en tu código", `new ${className}()`, ["new", "clase"]);
+      const openIndex = (classMatch.index ?? 0) + classMatch[0].lastIndexOf("{");
+      let depth = 1;
+      let closeIndex = code.length;
+      for (let index = openIndex + 1; index < code.length; index += 1) {
+        if (code[index] === "{") depth += 1;
+        if (code[index] === "}") depth -= 1;
+        if (depth === 0) { closeIndex = index; break; }
+      }
+      const body = code.slice(openIndex + 1, closeIndex);
+      const members = { methods: new Set<string>(), properties: new Set<string>() };
+      for (const match of body.matchAll(/\b(?:public|private|protected|static|final|synchronized|abstract|\s)*\s*(?:void|int|double|float|boolean|String|[A-Z]\w*)\s+([a-zA-Z_]\w*)\s*\(/g)) members.methods.add(match[1]);
+      for (const match of body.matchAll(/\b(?:public|private|protected|static|final|\s)*\s*(?:int|double|float|long|short|byte|boolean|char|String|[A-Z]\w*(?:<[^>]+>)?)\s+([a-zA-Z_]\w*)\b(?!\s*\()/g)) members.properties.add(match[1]);
+      classes.set(className, members);
+    }
+
+    const instances = new Map<string, string>();
+    for (const match of code.matchAll(/\b([A-Z]\w*)\s+([a-zA-Z_]\w*)\s*=\s*new\s+\1\s*\(/g)) {
+      if (classes.has(match[1])) instances.set(match[2], match[1]);
+    }
+    for (const [instance, className] of instances) {
+      const members = classes.get(className);
+      if (!members) continue;
+      for (const method of members.methods) add(`${instance}.${method}`, "metodo", `Método de ${className}`, `${instance}.${method}()`, [method, instance]);
+      for (const property of members.properties) add(`${instance}.${property}`, "propiedad", `Atributo de ${className}`);
+    }
   }
   return [...results.values()];
 }

@@ -1,4 +1,4 @@
-// Módulo de datos para los niveles y subniveles de OOP
+// Módulo de datos para los niveles y subniveles de POO
 // Contiene documentación detallada, ejemplos, glosario interactivo de sintaxis y retos prácticos.
 
 export type LenguajeOOP = "python" | "java";
@@ -1313,7 +1313,7 @@ public class Main {
     moduloNumero: 4,
     moduloNombre: "Módulo 4: Polimorfismo y Desafío",
     subnivel: "4.2",
-    titulo: "Desafío Final OOP",
+    titulo: "Desafío Final POO",
     concepto: "Los 4 Pilares Unidos",
     descripcionCorta: "Aplica todo lo aprendido en un sistema completo",
     puntaje: 50,

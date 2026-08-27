@@ -35,6 +35,87 @@ const ERROR_TIMEOUT = "__ALGOLAB_EXECUTION_TIMEOUT__";
 
 let pythonRuntime: PythonRuntime | null = null;
 
+function numeroDeLinea(mensaje: string): string {
+  const coincidencia = mensaje.match(/(?:line|línea)\s+(\d+)/i);
+  return coincidencia ? `Línea ${coincidencia[1]} · ` : "";
+}
+
+/**
+ * Convierte los errores técnicos de los runtimes en una pista corta y útil.
+ * Conservamos la última línea original cuando aporta un nombre concreto para
+ * que el estudiante pueda relacionar la explicación con su código.
+ */
+export function explicarErrorEnEspanol(
+  error: string | null,
+  lenguaje: LenguajeWorker,
+): string | null {
+  if (!error) return null;
+
+  const mensaje = error.trim();
+  if (!mensaje) return "No fue posible ejecutar el código. Revisa la solución e inténtalo otra vez.";
+
+  const linea = numeroDeLinea(mensaje);
+  const ultimaLinea = mensaje.split("\n").map((parte) => parte.trim()).filter(Boolean).at(-1) ?? mensaje;
+
+  if (/IndentationError|unexpected indent|expected an indented block/i.test(mensaje)) {
+    return `${linea}Error de sangría: revisa los espacios al inicio de la línea y alinea el bloque con su estructura.`;
+  }
+  if (/SyntaxError|invalid syntax|unexpected (?:token|identifier)|';' expected|illegal start/i.test(mensaje)) {
+    return `${linea}Error de sintaxis: revisa paréntesis, llaves, comillas, dos puntos y separadores cerca de esa línea.`;
+  }
+
+  const nombreNoDefinido = mensaje.match(/NameError:\s*name ['"]([^'"]+)['"] is not defined/i)
+    ?? mensaje.match(/(?:ReferenceError:\s*)?([A-Za-z_]\w*) is not defined/i);
+  if (nombreNoDefinido) {
+    return `${linea}“${nombreNoDefinido[1]}” no está definido. Decláralo antes de utilizarlo o corrige su nombre.`;
+  }
+
+  const atributoPython = mensaje.match(/AttributeError:.*has no attribute ['"]([^'"]+)['"]/i);
+  if (atributoPython) {
+    return `${linea}El objeto no tiene el atributo o método “${atributoPython[1]}”. Revisa la clase y la escritura del nombre.`;
+  }
+  const miembroJava = mensaje.match(/(?:cannot find symbol|is undefined)[\s\S]*?(?:method|variable)\s+([A-Za-z_]\w*)/i);
+  if (miembroJava) {
+    return `${linea}No se encontró “${miembroJava[1]}”. Comprueba que exista en la clase y que sea accesible desde este punto.`;
+  }
+
+  if (/TypeError|incompatible types|cannot be converted/i.test(mensaje)) {
+    return `${linea}Error de tipo: estás combinando valores u operaciones incompatibles. Revisa los tipos de las variables y parámetros.`;
+  }
+  if (/ZeroDivisionError|division by zero|\/ by zero/i.test(mensaje)) {
+    return `${linea}No se puede dividir entre cero. Valida el divisor antes de realizar la operación.`;
+  }
+  if (/IndexError|index out of (?:range|bounds)/i.test(mensaje)) {
+    return `${linea}La posición solicitada no existe en la colección. Revisa su tamaño y el índice utilizado.`;
+  }
+  if (/KeyError/i.test(mensaje)) {
+    return `${linea}La clave solicitada no existe. Verifica el nombre de la clave antes de consultarla.`;
+  }
+  if (/NullPointerException|Cannot read properties of (?:undefined|null)|undefined is not an object/i.test(mensaje)) {
+    return `${linea}Intentaste usar un objeto que todavía no tiene valor. Créalo o asígnalo antes de acceder a sus propiedades.`;
+  }
+  if (/RecursionError|Maximum call stack/i.test(mensaje)) {
+    return `${linea}La función se está llamando demasiadas veces. Revisa la condición que debe detener la recursión.`;
+  }
+  if (/ModuleNotFoundError|ImportError|package .* does not exist/i.test(mensaje)) {
+    return `${linea}No se encontró una librería utilizada por el código. En estos ejercicios usa únicamente las herramientas disponibles en el navegador.`;
+  }
+
+  const etiqueta = lenguaje === "python" ? "Python" : "Java";
+  return `${linea}${etiqueta} encontró un error: ${ultimaLinea}`;
+}
+
+function normalizarResultado(
+  resultado: ResultadoEjecucion,
+  lenguaje: LenguajeWorker,
+): ResultadoEjecucion {
+  if (!resultado.error) return resultado;
+  return {
+    ...resultado,
+    error: explicarErrorEnEspanol(resultado.error, lenguaje),
+  };
+}
+
 function crearId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -168,7 +249,7 @@ async function ejecutarJava(codigo: string): Promise<ResultadoEjecucion> {
     );
     if (respuesta.error) throw new Error(respuesta.error);
     if (!respuesta.resultado) throw new Error("Java no devolvió un resultado válido.");
-    return respuesta.resultado;
+    return normalizarResultado(respuesta.resultado, "java");
   } catch (error) {
     return resultadoDeError(error, "java");
   } finally {
@@ -187,7 +268,7 @@ async function ejecutarPython(codigo: string): Promise<ResultadoEjecucion> {
     );
     if (respuesta.error) throw new Error(respuesta.error);
     if (!respuesta.resultado) throw new Error("Python no devolvió un resultado válido.");
-    return respuesta.resultado;
+    return normalizarResultado(respuesta.resultado, "python");
   } catch (error) {
     // Terminate es también el corte duro para ciclos infinitos; la siguiente
     // ejecución empieza con un intérprete limpio y sin estado compartido.

@@ -522,14 +522,14 @@ export default function IniciarSesionPage() {
                       type="email"
                       value={correo}
                       onChange={(e) => setCorreo(e.target.value)}
-                      placeholder="usuario@campusucc.edu.co"
+                      placeholder="Correo electrónico"
                       className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
                       required
                       autoFocus
                     />
                   </div>
                   <p className="text-[10px] text-slate-400">
-                    Acceso con contraseña o Google Authenticator.
+                    Acceso seguro con contraseña o código de verificación.
                   </p>
                 </div>
 
@@ -748,13 +748,13 @@ export default function IniciarSesionPage() {
                 </div>
               )}
 
-              {/* ─── VISTA: GOOGLE AUTHENTICATOR ─────────────────── */}
+              {/* ─── VISTA: APLICACIÓN DE SEGURIDAD ──────────────── */}
               {metodoActivo === "TOTP" && (
                 <div className="space-y-4">
                   <div className="text-center">
-                    <h3 className="text-sm font-bold text-white">Google Authenticator</h3>
+                    <h3 className="text-sm font-bold text-white">Código de tu aplicación de seguridad</h3>
                     <p className="mt-1 text-xs text-slate-400">
-                      Abre tu aplicación (Google Authenticator, Microsoft Authenticator o 2FAS) e introduce el código de 6 dígitos.
+                      Abre la aplicación de seguridad que vinculaste e introduce el código de 6 dígitos.
                     </p>
                   </div>
 

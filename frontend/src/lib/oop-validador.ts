@@ -479,7 +479,7 @@ export function validarEstructuraCodigo(
     }
 
     case 8: {
-      // Nivel 8: Desafío Final OOP (Integración de los 4 Pilares)
+      // Nivel 8: Desafío Final POO (Integración de los 4 Pilares)
       if (lenguaje === "python") {
         const tienePublicacion = /\bclass\s+Publicacion\s*\(\s*ABC\s*\)/i.test(code);
         const tieneEncapsulamiento = /self\.__titulo\b|self\._titulo\b|get_titulo/i.test(code);

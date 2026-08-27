@@ -376,7 +376,7 @@ export function TwoFactorSettings({ token }: Props) {
           </div>
         </div>
 
-        {/* 2. Google Authenticator */}
+        {/* 2. Aplicación de seguridad */}
         <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0d1628]/80 p-5 backdrop-blur-md">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -395,7 +395,7 @@ export function TwoFactorSettings({ token }: Props) {
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-white">Google Authenticator</h3>
+              <h3 className="text-sm font-bold text-white">Aplicación de seguridad</h3>
               <p className="mt-1 text-xs text-slate-400">
                 Genera códigos de 6 dígitos cada 30s sin necesidad de conexión.
               </p>
@@ -486,7 +486,7 @@ export function TwoFactorSettings({ token }: Props) {
         onClose={() => setModalTotpAbierto(false)}
         onSuccess={(codigos) => {
           setModalTotpAbierto(false);
-          setMensaje({ tipo: "exito", texto: "¡Google Authenticator configurado con éxito!" });
+          setMensaje({ tipo: "exito", texto: "¡Aplicación de seguridad configurada con éxito!" });
           cargarConfiguracion();
           if (codigos && codigos.length > 0) {
             setNuevosCodigos(codigos);

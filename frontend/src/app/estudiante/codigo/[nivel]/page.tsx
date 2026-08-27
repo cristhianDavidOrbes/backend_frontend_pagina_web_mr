@@ -767,7 +767,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           <p className="text-4xl">🤔</p>
           <p className="mt-4 text-slate-400">Subnivel no encontrado.</p>
           <Link href="/estudiante/codigo" className="oop-back-link mt-6 inline-flex">
-            ← Volver al módulo OOP
+            ← Volver al módulo POO
           </Link>
         </div>
       </div>
@@ -822,7 +822,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
       <nav className="oop-level-nav">
         <div className={styles.levelNavRow}>
           <div className={styles.levelIdentity}>
-            <Link href="/estudiante/codigo" className="oop-back-link flex-shrink-0" title="Volver al catálogo OOP">
+            <Link href="/estudiante/codigo" className="oop-back-link flex-shrink-0" title="Volver al catálogo POO">
               <ArrowLeft size={15} />
               <span className="font-semibold text-xs text-slate-300">Retos</span>
             </Link>

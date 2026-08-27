@@ -205,7 +205,7 @@ export function TotpSetupModal({ isOpen, onClose, onSuccess, token }: Props) {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Google Authenticator</h3>
+              <h3 className="text-base font-bold text-white">Aplicación de seguridad</h3>
               <p className="text-xs text-slate-400">Protege tu cuenta con códigos de seguridad</p>
             </div>
           </div>
@@ -299,14 +299,14 @@ export function TotpSetupModal({ isOpen, onClose, onSuccess, token }: Props) {
                 onClick={() => setMostrarAyuda(!mostrarAyuda)}
                 className="flex w-full items-center justify-between text-left text-[11px] text-slate-400 hover:text-slate-200"
               >
-                <span>¿No tienes Google Authenticator?</span>
+                <span>¿No tienes una aplicación de seguridad?</span>
                 {mostrarAyuda ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               </button>
 
               {mostrarAyuda && (
                 <div className="mt-2 space-y-2 rounded-lg bg-white/5 p-2.5 text-[11px] text-slate-300">
                   <p>
-                    Puedes usar <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong>, <strong>2FAS</strong> o cualquier aplicación compatible desde tu tienda de aplicaciones (Play Store / App Store).
+                    Puedes usar cualquier aplicación compatible con códigos de verificación desde la tienda de tu dispositivo.
                   </p>
                   {secretManual && (
                     <div className="pt-1">

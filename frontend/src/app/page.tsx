@@ -61,7 +61,7 @@ const LevelsCarousel = dynamic(
 
 const WorkshopSimulator = dynamic(
   () => import("@/components/workshop-simulator").then((module) => module.WorkshopSimulator),
-  { ssr: false, loading: () => <LandingModuleFallback label="Cargando simulador" /> },
+  { ssr: false, loading: () => <LandingModuleFallback label="Cargando experiencia" /> },
 );
 
 const pasos = [
@@ -250,19 +250,19 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* Interactive Encapsulation Workshop Section */}
+      {/* Physical action to visible learning journey */}
       <section className="workshop-story" id="taller">
         <Reveal className="w-full" direction="left">
-          <LandingFeatureBoundary fallbackLabel="El simulador estará disponible al ingresar">
+          <LandingFeatureBoundary fallbackLabel="La experiencia estará disponible al ingresar">
             <WorkshopSimulator />
           </LandingFeatureBoundary>
         </Reveal>
 
         <Reveal className="workshop-copy" direction="right">
-          <p className="section-kicker">Simulador interactivo</p>
-          <h2>Repara el robot. Domina el encapsulamiento.</h2>
+          <p className="section-kicker">Aprendizaje que puedes tocar</p>
+          <h2>Cada acción física revela una idea de POO.</h2>
           <p>
-            El robot expone métodos seguros, pero protege sus variables internas como <strong>batería</strong> y <strong>temperatura</strong>. Si intentas manipularlas directamente, el sistema rechaza el acceso. Si usas <strong>cargar()</strong>, <strong>enfriar()</strong> y <strong>apagar()</strong>, ves con claridad por qué una clase debe gobernar su propio estado.
+            En AlgoLab no memorizas una definición aislada: manipulas un objeto, observas cómo cambia su clase y recibes una explicación en el momento. Así conectas <strong>lo que haces</strong>, <strong>la lógica POO</strong> y <strong>el resultado</strong> en una sola experiencia.
           </p>
           <ul>
             <li>

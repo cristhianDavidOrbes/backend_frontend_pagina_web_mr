@@ -213,6 +213,8 @@ function FInput({
   );
 }
 
+const REGISTRO_DRAFT_KEY = "algolab_registro_draft";
+
 export default function RegistrarsePage() {
   const router = useRouter();
   const rm = useReducedMotion();
@@ -236,6 +238,44 @@ export default function RegistrarsePage() {
 
   const errCorreo = correoTocado ? institutionalEmailError(correo) : "";
   const pwState = useMemo(() => pw(pass), [pass]);
+
+  // 1. Restaurar automáticamente el borrador guardado en sessionStorage (al volver de ver términos)
+  useEffect(() => {
+    const restaurar = window.setTimeout(() => {
+      try {
+        const raw = sessionStorage.getItem(REGISTRO_DRAFT_KEY);
+        if (raw) {
+          const draft = JSON.parse(raw) as {
+            nombre?: string;
+            correo?: string;
+            aceptaTerminos?: boolean;
+            aceptaDatos?: boolean;
+          };
+          if (draft.nombre) setNombre(draft.nombre);
+          if (draft.correo) setCorreo(draft.correo);
+          if (typeof draft.aceptaTerminos === "boolean") setAceptaTerminos(draft.aceptaTerminos);
+          if (typeof draft.aceptaDatos === "boolean") setAceptaDatos(draft.aceptaDatos);
+        }
+      } catch {
+        // Ignorar excepciones de lectura
+      }
+    }, 0);
+    return () => window.clearTimeout(restaurar);
+  }, []);
+
+  // 2. Persistir automáticamente el borrador cada vez que el usuario escribe
+  useEffect(() => {
+    try {
+      if (nombre || correo || aceptaTerminos || aceptaDatos) {
+        sessionStorage.setItem(
+          REGISTRO_DRAFT_KEY,
+          JSON.stringify({ nombre, correo, aceptaTerminos, aceptaDatos })
+        );
+      }
+    } catch {
+      // Ignorar excepciones de cuota de storage
+    }
+  }, [nombre, correo, aceptaTerminos, aceptaDatos]);
 
   useEffect(() => {
     if (!hydrated || !existingToken || !usuario) return;
@@ -321,6 +361,11 @@ export default function RegistrarsePage() {
         throw new Error("La cuenta se creó, pero el servidor no entregó una sesión válida. Inicia sesión nuevamente.");
       }
 
+      try {
+        sessionStorage.removeItem(REGISTRO_DRAFT_KEY);
+      } catch {
+        // ignore
+      }
       saveAuthSession(loginData.token, loginData.usuario);
       setUsuarioReg(loginData.usuario);
       setPaso("bienvenida");
@@ -458,7 +503,7 @@ export default function RegistrarsePage() {
                       id="re"
                       icon={<Mail size={18} />}
                       type="email"
-                      placeholder="usuario@campusucc.edu.co"
+                      placeholder="Correo institucional"
                       value={correo}
                       onChange={(v) => {
                         setCorreo(v);
@@ -470,7 +515,7 @@ export default function RegistrarsePage() {
                       hasError={Boolean(errCorreo)}
                     />
                     <small className={errCorreo ? css.fieldError : css.fieldHelp}>
-                      {errCorreo || "Usa tu correo institucional @campusucc.edu.co."}
+                      {errCorreo || "Ingresa el correo institucional asignado por tu universidad."}
                     </small>
                   </div>
                   <div>
