@@ -434,7 +434,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
         className={`desktop-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-white/10 bg-[#05100e]/98 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-2xl transition-[width,padding] duration-300 scrollbar-none lg:flex ${
           desktopCollapsed
             ? "desktop-sidebar-collapsed w-[84px] p-3"
-            : "w-[260px] p-5 xl:w-[285px]"
+            : "w-[260px] p-5 xl:w-[285px] 2xl:w-[320px] min-[2560px]:w-[360px]"
         }`}
       >
         <div
@@ -457,14 +457,16 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
       {/* Main Content Area: Offset with padding-left on >= md */}
       <div
         className={`min-h-screen w-full transition-[padding] duration-300 ${
-          desktopCollapsed ? "lg:pl-[84px]" : "lg:pl-[260px] xl:pl-[285px]"
+          desktopCollapsed
+            ? "lg:pl-[84px]"
+            : "lg:pl-[260px] xl:pl-[285px] 2xl:pl-[320px] min-[2560px]:pl-[360px]"
         }`}
       >
         <main
           className={
             isCodeWorkspace
-              ? "mx-auto w-full max-w-none p-2 sm:p-3 lg:p-4"
-              : "mx-auto w-full max-w-[1680px] px-3 py-4 min-[390px]:px-4 sm:px-6 sm:py-5 lg:px-8 lg:py-7 2xl:px-10"
+              ? "mx-auto w-full max-w-none p-2 sm:p-3 lg:p-4 min-[2560px]:p-8"
+              : "mx-auto w-full max-w-[1720px] 2xl:max-w-[2200px] min-[2560px]:max-w-[2700px] px-3 py-4 min-[390px]:px-4 sm:px-6 sm:py-5 lg:px-8 lg:py-7 2xl:px-10 min-[2560px]:px-14 min-[2560px]:py-10"
           }
         >
           {/* Main Top Header Banner */}

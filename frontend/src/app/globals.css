@@ -4113,3 +4113,367 @@ button, a {
   .student-preview-object { width: 108px; height: 108px; }
   .student-ai-empty { padding: 1rem; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   PANTALLAS GRANDES Y TELEVISORES 4K (1920px - 3840px+)
+   ═══════════════════════════════════════════════════════════ */
+
+@media (min-width: 1920px) {
+  .landing-nav,
+  .landing-hero,
+  .experience-section,
+  .levels-section,
+  .workshop-story,
+  .ai-section,
+  .roles-section,
+  .final-cta {
+    width: min(100%, 1920px);
+  }
+
+  .oop-main {
+    max-width: 1920px;
+  }
+}
+
+@media (min-width: 2560px) {
+  /* Landing Page 4K / 1440p+ Scaling */
+  .landing-nav-bar {
+    border-bottom-width: 2px;
+  }
+
+  .landing-nav {
+    width: min(100%, 2500px);
+    min-height: 100px;
+    padding: 1.25rem clamp(2rem, 4vw, 6rem);
+  }
+
+  .brand-lockup {
+    gap: 1.1rem;
+  }
+
+  .brand-mark {
+    width: 52px;
+    height: 52px;
+    font-size: 26px;
+    border-radius: 16px;
+  }
+
+  .brand-lockup strong {
+    font-size: 1.35rem;
+  }
+
+  .brand-lockup small {
+    font-size: 0.72rem;
+  }
+
+  .landing-nav nav {
+    gap: 3rem;
+  }
+
+  .nav-anchor {
+    font-size: 1.05rem;
+  }
+
+  .landing-hero {
+    width: min(100%, 2500px);
+    grid-template-columns: minmax(0, 1.2fr) minmax(680px, 1fr);
+    gap: 5rem;
+    padding: 6rem clamp(2rem, 4vw, 6rem);
+    min-height: calc(100vh - 100px);
+  }
+
+  .hero-copy h1 {
+    max-width: 1100px;
+    font-size: clamp(4.2rem, 4.8vw, 7.2rem);
+    line-height: 0.95;
+  }
+
+  .hero-copy > p {
+    max-width: 900px;
+    font-size: 1.35rem;
+    line-height: 1.8;
+  }
+
+  .hero-primary {
+    min-height: 64px;
+    padding: 0 2.2rem;
+    font-size: 1.15rem;
+    border-radius: 18px;
+  }
+
+  .play-link {
+    font-size: 1.08rem;
+  }
+
+  .play-link span {
+    width: 52px;
+    height: 52px;
+  }
+
+  .hero-proof {
+    gap: 3.5rem;
+    padding-top: 2rem;
+  }
+
+  .hero-proof strong {
+    font-size: 1.8rem;
+  }
+
+  .hero-proof span {
+    font-size: 0.95rem;
+    max-width: 140px;
+  }
+
+  .hero-lab {
+    width: 100%;
+    max-width: 820px;
+    height: 720px;
+    min-height: 640px;
+    max-height: 780px;
+  }
+
+  .stage-platform {
+    width: 360px;
+    height: 90px;
+  }
+
+  .stage-diagram {
+    width: 220px;
+    padding: 1.2rem;
+  }
+
+  .stage-diagram small {
+    font-size: 0.75rem;
+  }
+
+  .stage-diagram strong {
+    font-size: 1.15rem;
+  }
+
+  .stage-diagram span {
+    font-size: 0.8rem;
+  }
+
+  .stage-callout {
+    padding: 1.1rem 1.4rem;
+  }
+
+  .stage-callout strong {
+    font-size: 1.1rem;
+  }
+
+  .stage-status {
+    padding: 0.85rem 1.2rem;
+    font-size: 0.85rem;
+  }
+
+  .experience-section,
+  .levels-section,
+  .workshop-story,
+  .ai-section,
+  .roles-section {
+    width: min(100%, 2500px);
+    padding: 8rem clamp(2rem, 4vw, 6rem);
+  }
+
+  .section-heading h2 {
+    font-size: 3.2rem;
+  }
+
+  .section-heading p {
+    font-size: 1.25rem;
+    max-width: 850px;
+  }
+
+  .experience-steps {
+    gap: 2rem;
+  }
+
+  .experience-step {
+    padding: 2.5rem;
+  }
+
+  .experience-step h3 {
+    font-size: 1.4rem;
+  }
+
+  .experience-step p {
+    font-size: 1.05rem;
+  }
+
+  .role-grid {
+    gap: 2.2rem;
+  }
+
+  .role-card {
+    padding: 3rem;
+  }
+
+  .role-card h3 {
+    font-size: 1.5rem;
+  }
+
+  .role-card p {
+    font-size: 1.1rem;
+    line-height: 1.7;
+  }
+
+  .final-cta {
+    width: min(100% - 4rem, 2400px);
+    padding: 4.5rem;
+  }
+
+  .final-cta-inner h2 {
+    font-size: 3rem;
+  }
+
+  .final-cta-inner p {
+    font-size: 1.25rem;
+  }
+
+  /* 4K Authenticated Portals & Shell (Student, Teacher, Admin) */
+  .desktop-sidebar {
+    width: 360px;
+    padding: 2rem 1.5rem;
+  }
+
+  .desktop-sidebar nav a {
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 16px;
+  }
+
+  .desktop-sidebar nav a span.grid {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+
+  .desktop-sidebar nav a span.grid svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .app-surface main {
+    max-width: 2600px;
+    padding: 2.5rem 3.5rem;
+  }
+
+  /* Student Dashboard 4K */
+  .student-command-hero {
+    grid-template-columns: minmax(0, 1.4fr) minmax(380px, .6fr);
+    min-height: 480px;
+    padding: 3.5rem;
+    border-radius: 36px;
+  }
+
+  .student-command-hero h2 {
+    font-size: 3.2rem;
+    line-height: 1.1;
+    max-width: 1000px;
+  }
+
+  .student-command-hero p {
+    font-size: 1.2rem;
+    line-height: 1.8;
+    max-width: 900px;
+  }
+
+  .student-primary-action,
+  .student-secondary-action {
+    min-height: 54px;
+    padding: 0.9rem 1.6rem;
+    font-size: 1rem;
+    border-radius: 16px;
+  }
+
+  .metric-card {
+    padding: 1.8rem;
+    border-radius: 24px;
+  }
+
+  .metric-card strong {
+    font-size: 2.5rem;
+  }
+
+  .metric-card small {
+    font-size: 0.9rem;
+  }
+
+  .student-route-panel {
+    padding: 3rem;
+    border-radius: 32px;
+  }
+
+  .student-route-heading h2 {
+    font-size: 2.2rem;
+  }
+
+  .student-level-node {
+    padding: 1.25rem;
+    min-height: 100px;
+    border-radius: 20px;
+  }
+
+  .student-level-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+  }
+
+  .student-level-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .student-level-node strong {
+    font-size: 1.1rem;
+  }
+
+  .student-level-node small {
+    font-size: 0.82rem;
+  }
+
+  .student-level-preview {
+    padding: 2.5rem;
+    border-radius: 28px;
+  }
+
+  .student-level-preview h3 {
+    font-size: 1.8rem;
+  }
+
+  .student-level-preview p {
+    font-size: 1.05rem;
+    line-height: 1.7;
+  }
+
+  .student-mentor-card,
+  .student-side-quest {
+    padding: 3rem;
+    border-radius: 32px;
+  }
+
+  .student-mentor-card h2,
+  .student-side-quest h2 {
+    font-size: 2.2rem;
+  }
+
+  /* OOP Code Module 4K */
+  .oop-main {
+    max-width: 2600px;
+    padding: 3rem 3.5rem;
+  }
+
+  /* Auth Screens 4K */
+  .auth-layout {
+    max-width: 1500px;
+    gap: 6rem;
+  }
+
+  .auth-card {
+    padding: 3.5rem;
+    border-radius: 32px;
+  }
+}
+
