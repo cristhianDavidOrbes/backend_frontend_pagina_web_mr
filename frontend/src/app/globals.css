@@ -4375,21 +4375,21 @@ button, a {
   }
 }
 
-@media (min-width: 2200px) and (min-height: 1200px) {
+@media (min-width: 1800px) and (min-height: 950px) {
   /*
    * Pantallas 4K con escalado del sistema.
-   * Windows suele exponer entre 2200 y 2559 px CSS en un panel 4K; por eso
-   * este umbral no puede comenzar en 2560 px. Mantener el contenido fluido
-   * en este rango evita la portada diminuta rodeada de espacio vacío.
+   * Windows puede exponer apenas 1920 px CSS en un panel 4K cuando usa
+   * escalado de interfaz. El umbral contempla ese caso para evitar una
+   * portada diminuta rodeada de espacio vacío.
    */
   .landing-nav-bar {
     border-bottom-width: 2px;
   }
 
   .landing-nav {
-    width: min(94vw, 2700px);
-    min-height: 108px;
-    padding: 1.25rem clamp(2rem, 4vw, 6rem);
+    width: min(96vw, 3000px);
+    min-height: 124px;
+    padding: 1.5rem clamp(2.5rem, 4vw, 7rem);
   }
 
   .brand-lockup {
@@ -4397,62 +4397,81 @@ button, a {
   }
 
   .brand-mark {
-    width: 52px;
-    height: 52px;
-    font-size: 26px;
-    border-radius: 16px;
+    width: 66px;
+    height: 66px;
+    font-size: 32px;
+    border-radius: 20px;
   }
 
   .brand-lockup strong {
-    font-size: 1.35rem;
+    font-size: 1.75rem;
   }
 
   .brand-lockup small {
-    font-size: 0.72rem;
+    font-size: 0.88rem;
   }
 
   .landing-nav nav {
-    gap: 3rem;
+    gap: clamp(2.5rem, 3vw, 4.5rem);
   }
 
   .nav-anchor {
-    font-size: 1.05rem;
+    font-size: 1.3rem;
+  }
+
+  .landing-session-chip {
+    max-width: 26rem;
+    padding: .8rem 1.15rem;
+    font-size: 1rem;
+  }
+
+  .landing-actions .primary-button,
+  .landing-actions .ghost-button {
+    min-height: 64px;
+    padding-inline: 1.65rem;
+    font-size: 1.08rem;
+    border-radius: 16px;
   }
 
   .landing-hero {
-    width: min(94vw, 2700px);
-    grid-template-columns: minmax(0, 1.18fr) minmax(760px, 1fr);
+    width: min(96vw, 3000px);
+    grid-template-columns: minmax(0, 1.18fr) minmax(700px, 1fr);
     gap: clamp(4rem, 5vw, 7rem);
     padding: clamp(4.5rem, 6vh, 7rem) clamp(2rem, 3vw, 5rem);
-    min-height: calc(100svh - 108px);
+    min-height: calc(100svh - 124px);
+  }
+
+  .landing-badge {
+    padding: .78rem 1.2rem;
+    font-size: 1rem;
   }
 
   .hero-copy h1 {
-    max-width: 1200px;
-    font-size: clamp(5rem, 5.4vw, 8.4rem);
+    max-width: 1380px;
+    font-size: clamp(6rem, 6.2vw, 10rem);
     line-height: 0.95;
   }
 
   .hero-copy > p {
-    max-width: 980px;
-    font-size: 1.45rem;
-    line-height: 1.8;
+    max-width: 1120px;
+    font-size: 1.8rem;
+    line-height: 1.68;
   }
 
   .hero-primary {
-    min-height: 64px;
-    padding: 0 2.2rem;
-    font-size: 1.15rem;
-    border-radius: 18px;
+    min-height: 78px;
+    padding: 0 2.8rem;
+    font-size: 1.35rem;
+    border-radius: 20px;
   }
 
   .play-link {
-    font-size: 1.08rem;
+    font-size: 1.3rem;
   }
 
   .play-link span {
-    width: 52px;
-    height: 52px;
+    width: 64px;
+    height: 64px;
   }
 
   .hero-proof {
@@ -4461,12 +4480,12 @@ button, a {
   }
 
   .hero-proof strong {
-    font-size: 1.8rem;
+    font-size: 2.2rem;
   }
 
   .hero-proof span {
-    font-size: 0.95rem;
-    max-width: 140px;
+    font-size: 1.15rem;
+    max-width: 180px;
   }
 
   .hero-lab {
@@ -4517,17 +4536,17 @@ button, a {
   .workshop-story,
   .ai-section,
   .roles-section {
-    width: min(94vw, 2700px);
-    padding: 8rem clamp(2rem, 4vw, 6rem);
+    width: min(96vw, 3000px);
+    padding: 9rem clamp(2.5rem, 4vw, 7rem);
   }
 
   .section-heading h2 {
-    font-size: 3.2rem;
+    font-size: clamp(4rem, 4.1vw, 6.2rem);
   }
 
   .section-heading p {
-    font-size: 1.25rem;
-    max-width: 850px;
+    font-size: 1.6rem;
+    max-width: 1100px;
   }
 
   .experience-steps {
@@ -4535,15 +4554,43 @@ button, a {
   }
 
   .experience-step {
-    padding: 2.5rem;
+    min-height: 340px;
+    padding: 3rem;
   }
 
   .experience-step h3 {
-    font-size: 1.4rem;
+    font-size: 1.8rem;
   }
 
   .experience-step p {
-    font-size: 1.05rem;
+    font-size: 1.3rem;
+    line-height: 1.7;
+  }
+
+  .experience-step > span,
+  .concept-journey-header,
+  .concept-step > span,
+  .report-head span,
+  .role-card > span {
+    font-size: .9rem;
+  }
+
+  .workshop-copy li,
+  .concept-step p,
+  .report-preview > p,
+  .report-row p,
+  .ai-tags span,
+  .report-preview > small {
+    font-size: 1.12rem;
+  }
+
+  .concept-step h3,
+  .report-preview > h3 {
+    font-size: 1.75rem;
+  }
+
+  .report-head strong {
+    font-size: 2.25rem;
   }
 
   .role-grid {
@@ -4551,29 +4598,46 @@ button, a {
   }
 
   .role-card {
-    padding: 3rem;
+    min-height: 410px;
+    padding: 3.25rem;
   }
 
   .role-card h3 {
-    font-size: 1.5rem;
+    font-size: 1.9rem;
   }
 
   .role-card p {
-    font-size: 1.1rem;
+    font-size: 1.32rem;
     line-height: 1.7;
   }
 
+  .role-card a {
+    font-size: 1.1rem;
+  }
+
   .final-cta {
-    width: min(100% - 4rem, 2400px);
-    padding: 4.5rem;
+    width: min(94vw, 2700px);
+    padding: 5.5rem;
   }
 
   .final-cta-inner h2 {
-    font-size: 3rem;
+    font-size: 4.2rem;
   }
 
   .final-cta-inner p {
+    font-size: 1.55rem;
+  }
+
+  .final-cta .primary-button {
+    min-height: 76px;
+    padding-inline: 2.5rem;
     font-size: 1.25rem;
+  }
+
+  .landing-footer {
+    min-height: 180px;
+    padding: 3rem clamp(2.5rem, 5vw, 8rem);
+    font-size: 1.3rem;
   }
 
   /* 4K Authenticated Portals & Shell (Student, Teacher, Admin) */
@@ -4737,12 +4801,12 @@ button, a {
     font-size: 32px;
   }
 
-  .brand-lockup strong { font-size: 1.7rem; }
-  .brand-lockup small { font-size: .82rem; }
-  .nav-anchor { font-size: 1.25rem; }
-  .landing-session-chip { max-width: 22rem; font-size: .92rem; padding: .7rem 1rem; }
+  .brand-lockup strong { font-size: 2.15rem; }
+  .brand-lockup small { font-size: 1.05rem; }
+  .nav-anchor { font-size: 1.55rem; }
+  .landing-session-chip { max-width: 30rem; font-size: 1.2rem; padding: .9rem 1.25rem; }
   .landing-actions .primary-button,
-  .landing-actions .ghost-button { min-height: 58px; padding-inline: 1.4rem; font-size: 1rem; }
+  .landing-actions .ghost-button { min-height: 72px; padding-inline: 1.8rem; font-size: 1.25rem; }
 
   .landing-hero {
     width: min(92vw, 3440px);
@@ -4752,26 +4816,26 @@ button, a {
     padding: clamp(6rem, 7vh, 9rem) clamp(3rem, 4vw, 8rem);
   }
 
-  .landing-badge { padding: .75rem 1.15rem; font-size: .9rem; }
+  .landing-badge { padding: .9rem 1.4rem; font-size: 1.15rem; }
 
   .hero-copy h1 {
-    max-width: 1500px;
-    font-size: clamp(7rem, 4.7vw, 11rem);
+    max-width: 1740px;
+    font-size: clamp(9rem, 5.5vw, 13rem);
   }
 
   .hero-copy > p {
-    max-width: 1240px;
-    font-size: 1.75rem;
+    max-width: 1440px;
+    font-size: 2.15rem;
     line-height: 1.72;
   }
 
   .hero-actions { gap: 1.7rem; margin-top: 3rem; }
-  .hero-primary { min-height: 76px; padding-inline: 2.8rem; font-size: 1.3rem; }
-  .play-link { font-size: 1.25rem; }
-  .play-link span { width: 62px; height: 62px; }
+  .hero-primary { min-height: 92px; padding-inline: 3.3rem; font-size: 1.6rem; }
+  .play-link { font-size: 1.55rem; }
+  .play-link span { width: 74px; height: 74px; }
   .hero-proof { gap: 4.5rem; margin-top: 3.25rem; padding-top: 2.4rem; }
-  .hero-proof strong { font-size: 2.2rem; }
-  .hero-proof span { max-width: 170px; font-size: 1.08rem; }
+  .hero-proof strong { font-size: 2.7rem; }
+  .hero-proof span { max-width: 210px; font-size: 1.35rem; }
 
   .hero-lab {
     max-width: 1120px;
@@ -4782,14 +4846,14 @@ button, a {
 
   .stage-platform { width: 460px; height: 112px; }
   .stage-diagram { width: 280px; padding: 1.5rem; }
-  .stage-diagram small { font-size: .9rem; }
-  .stage-diagram strong { font-size: 1.4rem; }
-  .stage-diagram span { font-size: 1rem; }
-  .stage-status { padding: 1rem 1.4rem; font-size: 1rem; }
+  .stage-diagram small { font-size: 1.05rem; }
+  .stage-diagram strong { font-size: 1.65rem; }
+  .stage-diagram span { font-size: 1.2rem; }
+  .stage-status { padding: 1.1rem 1.55rem; font-size: 1.2rem; }
   .stage-callout { padding: 1.35rem 1.7rem; }
-  .stage-callout span { font-size: .82rem; }
-  .stage-callout strong { font-size: 1.3rem; }
-  .stage-hint { font-size: .9rem; }
+  .stage-callout span { font-size: 1rem; }
+  .stage-callout strong { font-size: 1.55rem; }
+  .stage-hint { font-size: 1.1rem; }
 
   .experience-section,
   .levels-section,
@@ -4809,15 +4873,20 @@ button, a {
   .section-heading > p:last-child,
   .workshop-copy > p,
   .ai-copy > p,
-  .final-cta p { font-size: 1.35rem; }
+  .final-cta p { font-size: 1.75rem; }
 
   .experience-step { min-height: 340px; padding: 3rem; border-radius: 30px; }
-  .experience-step h3 { font-size: 1.7rem; }
-  .experience-step p { font-size: 1.15rem; }
+  .experience-step h3 { font-size: 2.05rem; }
+  .experience-step p { font-size: 1.45rem; }
   .step-icon { width: 70px; height: 70px; border-radius: 20px; }
 
   .final-cta {
     width: min(88vw, 3280px);
     padding: 6rem;
+  }
+
+  .landing-footer {
+    min-height: 220px;
+    font-size: 1.4rem;
   }
 }
