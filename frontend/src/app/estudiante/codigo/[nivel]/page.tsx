@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowRight,
   Play,
   RotateCcw,
   HelpCircle,
@@ -955,6 +956,17 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               </button>
             </div>
 
+            {completado && nextNivel && (
+              <Link
+                href={`/estudiante/codigo/${nextNivel.id}?lang=${lenguaje}`}
+                className="flex items-center gap-1.5 h-7 sm:h-8 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/30 transition-all hover:scale-105 active:scale-95 animate-pulse"
+                title={`Pasar al siguiente subnivel: ${nextNivel.titulo}`}
+              >
+                <span>Siguiente Nivel</span>
+                <ArrowRight size={13} />
+              </Link>
+            )}
+
             <button
               onClick={ejecutar}
               disabled={ejecutando}
@@ -1049,6 +1061,16 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               </div>
 
               <div className="oop-editor-actions flex items-center gap-2">
+                {completado && nextNivel && (
+                  <Link
+                    href={`/estudiante/codigo/${nextNivel.id}?lang=${lenguaje}`}
+                    className="flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs shadow-sm shadow-emerald-500/30 transition-all hover:scale-105 active:scale-95"
+                    title={`Pasar al siguiente subnivel (${nextNivel.subnivel})`}
+                  >
+                    <span>Siguiente Nivel</span>
+                    <ArrowRight size={12} />
+                  </Link>
+                )}
                 <button
                   className="oop-reset-btn"
                   onClick={limpiarEditor}
@@ -1120,6 +1142,8 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               onVerPista={() => setModalAyudaAbierto(true)}
               onVerSolucion={() => setModalAyudaAbierto(true)}
               mostroPista={mostroPista}
+              nextNivelId={nextNivel?.id}
+              nextNivelSubnivel={nextNivel?.subnivel}
             />
           </div>
         </div>
@@ -1223,7 +1247,15 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
       {/* Celebration overlay */}
       {celebrando && (
         <div className="oop-celebration">
-          <div className="oop-celebration-card">
+          <div className="oop-celebration-card relative">
+            <button
+              type="button"
+              onClick={() => setCelebrando(false)}
+              className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+              aria-label="Cerrar ventana"
+            >
+              <X size={18} />
+            </button>
             <p className="text-5xl">🎉</p>
             <h2 className="oop-celebration-title">¡Subnivel Superado!</h2>
             <p className="oop-celebration-pts">
@@ -1246,12 +1278,20 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                 </p>
               </div>
             ) : null}
-            {nextNivel && (
+            {nextNivel ? (
               <Link
                 href={`/estudiante/codigo/${nextNivel.id}?lang=${lenguaje}`}
-                className="oop-next-btn"
+                className="oop-next-btn flex items-center justify-center gap-2"
               >
-                Siguiente: Subnivel {nextNivel.subnivel} →
+                <span>Siguiente: Subnivel {nextNivel.subnivel}</span>
+                <ArrowRight size={16} />
+              </Link>
+            ) : (
+              <Link
+                href="/estudiante/codigo"
+                className="oop-next-btn flex items-center justify-center gap-2"
+              >
+                <span>🏆 Ver Todos los Niveles</span>
               </Link>
             )}
           </div>

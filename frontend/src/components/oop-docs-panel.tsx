@@ -1,7 +1,8 @@
 "use client";
 
 import type { MiniNivel, LenguajeOOP } from "@/lib/oop-niveles";
-import { BookOpen, Sparkles } from "lucide-react";
+import { BookOpen, Sparkles, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 type Props = {
   nivel: MiniNivel;
@@ -12,6 +13,8 @@ type Props = {
   onVerPista: () => void;
   onVerSolucion: () => void;
   mostroPista: boolean;
+  nextNivelId?: number;
+  nextNivelSubnivel?: string;
 };
 
 function CodeBlock({ code }: { code: string }) {
@@ -61,6 +64,8 @@ export function OopDocsPanel({
   onVerPista,
   onVerSolucion,
   mostroPista,
+  nextNivelId,
+  nextNivelSubnivel,
 }: Props) {
   const ejemploCodigo =
     lenguaje === "python" ? nivel.docs.ejemploPython : nivel.docs.ejemploJava;
@@ -205,11 +210,22 @@ export function OopDocsPanel({
           </div>
         )}
 
-        {/* Completed badge */}
+        {/* Completed badge & Next Level Button */}
         {completado && (
-          <div className="oop-completed-badge">
-            <span>🎉</span>
-            <span>¡Subnivel completado con éxito!</span>
+          <div className="oop-completed-badge flex-col gap-2 p-3">
+            <div className="flex items-center gap-2 font-bold text-emerald-300">
+              <span className="text-lg">🎉</span>
+              <span>¡Subnivel completado con éxito!</span>
+            </div>
+            {nextNivelId && (
+              <Link
+                href={`/estudiante/codigo/${nextNivelId}?lang=${lenguaje}`}
+                className="flex items-center justify-center gap-2 w-full mt-2 py-2 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/30 transition-all hover:scale-[1.02] active:scale-95 text-center"
+              >
+                <span>Avanzar al Siguiente Subnivel ({nextNivelSubnivel})</span>
+                <ArrowRight size={14} />
+              </Link>
+            )}
           </div>
         )}
       </div>
