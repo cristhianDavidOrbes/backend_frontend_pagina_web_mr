@@ -147,9 +147,23 @@ export function OopDocsPanel({
         {/* Divider */}
         <hr className="oop-divider" />
 
-        {/* Practice */}
-        <div className="oop-section">
-          <h3 className="oop-section-title">🎯 Tu práctica</h3>
+        {/* ══ PRÁCTICA OBLIGATORIA ══ */}
+        <div className="oop-practica-section">
+          <div className="oop-practica-header">
+            <div className="oop-practica-title">
+              <span>🎯</span>
+              <span>Tu práctica</span>
+            </div>
+            <span className="oop-practica-required-badge">⚠ Obligatoria</span>
+          </div>
+
+          {/* Aviso destacado */}
+          <div className="oop-practica-notice">
+            <span className="oop-practica-notice-icon">📌</span>
+            <span>Debes completar este reto en el editor para avanzar al siguiente nivel.</span>
+          </div>
+
+          {/* Enunciado */}
           <div className="oop-practica-box">
             <MarkdownRenderer text={nivel.practica.enunciado} />
           </div>

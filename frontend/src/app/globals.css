@@ -3373,13 +3373,92 @@ button, a {
 }
 
 .oop-practica-box {
-  background: rgba(50,230,161,.05);
-  border: 1px solid rgba(50,230,161,.18);
-  border-radius: 10px;
-  padding: .875rem;
+  background: rgba(251, 146, 60, 0.06);
+  border: 1.5px solid rgba(251, 146, 60, 0.35);
+  border-radius: 12px;
+  padding: 1rem;
   font-size: .82rem;
-  color: #c9e8e1;
+  color: #e2c99a;
   line-height: 1.6;
+  position: relative;
+}
+
+/* Línea naranja izquierda */
+.oop-practica-box::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #fb923c, #f59e0b);
+  border-radius: 12px 0 0 12px;
+}
+
+/* Badge obligatorio */
+.oop-practica-required-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(251, 146, 60, 0.15);
+  border: 1px solid rgba(251, 146, 60, 0.4);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fb923c;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* Contenedor especial de la sección práctica */
+.oop-practica-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 14px;
+  border: 2px solid rgba(251, 146, 60, 0.25);
+  background: rgba(251, 146, 60, 0.03);
+  padding: 0.875rem;
+}
+
+/* Encabezado de la sección */
+.oop-practica-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.oop-practica-title {
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: #fbbf60;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Aviso de que es obligatorio */
+.oop-practica-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(251, 146, 60, 0.1);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #fb923c;
+}
+
+.oop-practica-notice-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .oop-expected-output {
