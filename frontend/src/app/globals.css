@@ -5491,3 +5491,804 @@ button, a {
 
   .final-cta { width: 84vw; }
 }
+
+/* -------------------------------------------------------------------------- */
+/* AlgoLab mission director                                                   */
+/* -------------------------------------------------------------------------- */
+
+.workshop-story-copy-only {
+  display: block;
+  width: min(100%, 1180px);
+}
+
+.workshop-story-copy-only .workshop-copy {
+  max-width: 980px;
+  margin-inline: auto;
+}
+
+.mission-director {
+  --mission-accent: #2ed6a1;
+  --mission-accent-soft: rgba(46, 214, 161, .14);
+  --mission-progress: 16.66%;
+  position: relative;
+  isolation: isolate;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--mission-accent) 30%, rgba(148, 163, 184, .16));
+  border-radius: 30px;
+  padding: clamp(1.2rem, 2.2vw, 2.25rem);
+  color: #e8f1f2;
+  background:
+    radial-gradient(circle at 82% 35%, var(--mission-accent-soft), transparent 31%),
+    radial-gradient(circle at 9% 92%, rgba(46, 214, 161, .08), transparent 28%),
+    linear-gradient(145deg, rgba(8, 19, 22, .98), rgba(5, 12, 18, .99));
+  box-shadow:
+    0 32px 100px rgba(0, 0, 0, .44),
+    inset 0 1px rgba(255, 255, 255, .045);
+  outline: none;
+  transition: border-color .45s ease, box-shadow .45s ease;
+}
+
+.mission-director:focus-visible {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--mission-accent) 58%, transparent),
+    0 32px 100px rgba(0, 0, 0, .44);
+}
+
+.mission-director-grid,
+.mission-holodeck-grid {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(129, 237, 218, .038) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(129, 237, 218, .038) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, #000, transparent 92%);
+}
+
+.mission-director-scan {
+  position: absolute;
+  z-index: -1;
+  top: -14%;
+  left: 0;
+  width: 100%;
+  height: 16%;
+  pointer-events: none;
+  opacity: .17;
+  background: linear-gradient(to bottom, transparent, var(--mission-accent), transparent);
+  filter: blur(12px);
+  animation: mission-console-scan 7s linear infinite;
+}
+
+@keyframes mission-console-scan {
+  to { transform: translateY(760%); }
+}
+
+.mission-corner {
+  position: absolute;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  opacity: .72;
+  border-color: var(--mission-accent);
+}
+
+.mission-corner-nw { top: 12px; left: 12px; border-top: 2px solid; border-left: 2px solid; }
+.mission-corner-ne { top: 12px; right: 12px; border-top: 2px solid; border-right: 2px solid; }
+.mission-corner-sw { bottom: 12px; left: 12px; border-bottom: 2px solid; border-left: 2px solid; }
+.mission-corner-se { right: 12px; bottom: 12px; border-right: 2px solid; border-bottom: 2px solid; }
+
+.mission-director-header {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(145, 175, 181, .14);
+}
+
+.mission-director-identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: .9rem;
+}
+
+.mission-director .levels-carousel-number {
+  display: grid;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--mission-accent) 55%, transparent);
+  border-radius: 15px 4px 15px 4px;
+  color: var(--mission-accent);
+  background: var(--mission-accent-soft);
+  box-shadow: inset 0 0 22px color-mix(in srgb, var(--mission-accent) 10%, transparent);
+  font: 760 .9rem var(--font-geist-mono);
+  letter-spacing: .08em;
+}
+
+.mission-director .levels-carousel-title {
+  min-width: 0;
+}
+
+.mission-director .levels-carousel-title > span {
+  display: block;
+  overflow: hidden;
+  color: #7c9299;
+  font: 650 .62rem var(--font-geist-mono);
+  letter-spacing: .16em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mission-director .levels-carousel-title h3 {
+  margin-top: .24rem;
+  color: #f4f8f8;
+  font-size: clamp(1.15rem, 1.6vw, 1.65rem);
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+
+.mission-director-arrows {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: .5rem;
+}
+
+.mission-director-arrows button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgba(167, 194, 199, .17);
+  border-radius: 13px;
+  color: #b6c5c9;
+  background: rgba(255, 255, 255, .035);
+  transition: transform .2s ease, border-color .2s ease, color .2s ease, background .2s ease;
+}
+
+.mission-director-arrows button:hover,
+.mission-director-arrows button:focus-visible {
+  border-color: color-mix(in srgb, var(--mission-accent) 55%, transparent);
+  color: var(--mission-accent);
+  background: var(--mission-accent-soft);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.mission-route {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: .55rem;
+  margin-top: 1.1rem;
+  padding: .45rem 0 .25rem;
+}
+
+.mission-route-track {
+  position: absolute;
+  z-index: -1;
+  top: 27px;
+  right: calc(100% / 12);
+  left: calc(100% / 12);
+  height: 1px;
+  overflow: hidden;
+  background: rgba(124, 150, 157, .2);
+}
+
+.mission-route-track i {
+  display: block;
+  width: var(--mission-progress);
+  height: 100%;
+  background: linear-gradient(90deg, #2ed6a1, var(--mission-accent));
+  box-shadow: 0 0 12px var(--mission-accent);
+  transition: width .5s cubic-bezier(.22, 1, .36, 1);
+}
+
+.mission-route-node {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .58rem;
+  border: 1px solid transparent;
+  border-radius: 15px 4px 15px 4px;
+  padding: .5rem .58rem;
+  color: #71838a;
+  background: rgba(5, 14, 17, .84);
+  text-align: left;
+  transition: transform .25s ease, color .25s ease, border-color .25s ease, background .25s ease, box-shadow .25s ease;
+}
+
+.mission-route-node:hover,
+.mission-route-node:focus-visible {
+  border-color: color-mix(in srgb, var(--node-accent) 34%, transparent);
+  color: #dce7e8;
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.mission-route-node.is-active {
+  border-color: color-mix(in srgb, var(--node-accent) 58%, transparent);
+  color: #effafa;
+  background: color-mix(in srgb, var(--node-accent) 12%, rgba(5, 14, 17, .94));
+  box-shadow: 0 10px 34px color-mix(in srgb, var(--node-accent) 15%, transparent);
+  transform: translateY(-4px);
+}
+
+.mission-route-node-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(146, 171, 177, .16);
+  border-radius: 50%;
+  color: inherit;
+  background: #071114;
+}
+
+.mission-route-node.is-active .mission-route-node-icon {
+  border-color: var(--node-accent);
+  color: var(--node-accent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--node-accent) 30%, transparent);
+}
+
+.mission-route-node-copy {
+  display: grid;
+  min-width: 0;
+  gap: .08rem;
+}
+
+.mission-route-node-copy small {
+  font: 650 .52rem var(--font-geist-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.mission-route-node-copy strong {
+  overflow: hidden;
+  font-size: .68rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-director-content {
+  position: relative;
+  z-index: 3;
+  min-height: 0;
+  margin-top: 1.2rem;
+}
+
+.mission-director-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, .95fr);
+  align-items: stretch;
+  gap: clamp(1rem, 2.5vw, 2.25rem);
+}
+
+.mission-dossier {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1rem;
+  padding: clamp(.4rem, 1vw, 1rem) 0;
+}
+
+.mission-dossier-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  color: #73888e;
+  font: 620 .56rem var(--font-geist-mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.mission-dossier-eyebrow i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--mission-accent);
+  box-shadow: 0 0 12px var(--mission-accent);
+}
+
+.mission-concept-chip {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: .52rem;
+  border: 1px solid color-mix(in srgb, var(--mission-accent) 27%, transparent);
+  border-radius: 999px;
+  padding: .45rem .75rem;
+  color: #8ba0a5;
+  background: color-mix(in srgb, var(--mission-accent) 7%, rgba(4, 12, 15, .8));
+  font-size: .7rem;
+}
+
+.mission-concept-chip svg,
+.mission-concept-chip strong {
+  color: var(--mission-accent);
+}
+
+.mission-concept-chip strong {
+  font-weight: 680;
+}
+
+.mission-director .levels-carousel-object {
+  max-width: 22ch;
+  color: #f4f8f8;
+  font-size: clamp(1.7rem, 3vw, 3.1rem);
+  font-weight: 720;
+  line-height: 1.04;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+
+.mission-director .levels-carousel-summary {
+  max-width: 66ch;
+  color: #a8b8bc;
+  font-size: clamp(.88rem, 1.15vw, 1.05rem);
+  line-height: 1.68;
+}
+
+.mission-dossier-briefs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.mission-brief {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(143, 170, 176, .14);
+  border-radius: 17px 5px 17px 5px;
+  padding: .95rem;
+  background: rgba(2, 9, 12, .55);
+}
+
+.mission-brief::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 30%;
+  height: 2px;
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--mission-accent));
+}
+
+.mission-brief > div {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  color: var(--mission-accent);
+  font: 680 .58rem var(--font-geist-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.mission-brief > p {
+  margin-top: .58rem;
+  color: #92a5aa;
+  font-size: .72rem;
+  line-height: 1.55;
+}
+
+.mission-dossier-footer {
+  display: grid;
+  grid-template-columns: auto minmax(100px, 1fr) auto;
+  align-items: center;
+  gap: .75rem;
+  margin-top: auto;
+  padding-top: .5rem;
+  color: #6f858b;
+  font: 620 .57rem var(--font-geist-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.mission-dossier-footer > span {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+.mission-dossier-footer > span i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2ed6a1;
+  box-shadow: 0 0 10px #2ed6a1;
+}
+
+.mission-dossier-footer strong {
+  color: var(--mission-accent);
+}
+
+.mission-dossier-progress {
+  height: 2px;
+  overflow: hidden;
+  background: rgba(125, 153, 158, .18);
+}
+
+.mission-dossier-progress i {
+  display: block;
+  width: var(--mission-progress);
+  height: 100%;
+  background: var(--mission-accent);
+  box-shadow: 0 0 10px var(--mission-accent);
+  transition: width .5s ease;
+}
+
+.mission-holodeck {
+  position: relative;
+  display: flex;
+  min-height: 390px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--mission-accent) 22%, rgba(147, 174, 180, .12));
+  border-radius: 24px 7px 24px 7px;
+  padding: clamp(1rem, 2vw, 2rem);
+  background:
+    radial-gradient(circle at 50% 58%, var(--mission-accent-soft), transparent 37%),
+    linear-gradient(180deg, rgba(9, 21, 27, .75), rgba(3, 8, 14, .94));
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, .32);
+}
+
+.mission-holodeck-head {
+  position: absolute;
+  z-index: 4;
+  top: 1rem;
+  right: 1rem;
+  left: 1rem;
+  display: flex;
+  justify-content: space-between;
+  color: #71878d;
+  font: 620 .53rem var(--font-geist-mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.mission-holodeck-grid {
+  z-index: 0;
+  opacity: .72;
+  mask-image: radial-gradient(circle, #000 18%, transparent 72%);
+  background-size: 25px 25px;
+}
+
+.mission-holodeck-orbit {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--mission-accent) 32%, transparent);
+  border-radius: 50%;
+  transform: rotateX(66deg) rotateZ(-8deg);
+  box-shadow: inset 0 0 25px color-mix(in srgb, var(--mission-accent) 5%, transparent);
+}
+
+.mission-holodeck-orbit::after {
+  position: absolute;
+  top: 50%;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  content: "";
+  background: var(--mission-accent);
+  box-shadow: 0 0 12px var(--mission-accent);
+}
+
+.orbit-one { width: 66%; aspect-ratio: 1; }
+.orbit-two { width: 92%; aspect-ratio: 1; opacity: .42; transform: rotateX(68deg) rotateZ(17deg); }
+
+.mission-holodeck-platform {
+  position: absolute;
+  z-index: 1;
+  bottom: 13%;
+  width: 58%;
+  height: 13%;
+  border: 1px solid color-mix(in srgb, var(--mission-accent) 50%, transparent);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--mission-accent-soft), transparent 68%);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--mission-accent) 18%, transparent);
+  transform: perspective(220px) rotateX(62deg);
+}
+
+.mission-holodeck-object {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+}
+
+.mission-holodeck-image {
+  width: min(72%, 310px);
+  min-height: 220px;
+}
+
+.mission-holodeck-image-asset {
+  width: auto;
+  max-width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  filter: drop-shadow(0 22px 30px rgba(0, 0, 0, .56)) drop-shadow(0 0 18px var(--mission-accent-soft));
+}
+
+.mission-holodeck-icon > div {
+  display: grid;
+  width: 142px;
+  height: 142px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--mission-accent) 52%, transparent);
+  border-radius: 34px 9px 34px 9px;
+  color: var(--mission-accent);
+  background: color-mix(in srgb, var(--mission-accent) 10%, rgba(3, 10, 15, .9));
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, .46),
+    inset 0 0 35px color-mix(in srgb, var(--mission-accent) 12%, transparent),
+    0 0 34px color-mix(in srgb, var(--mission-accent) 14%, transparent);
+}
+
+.mission-holodeck-status {
+  position: absolute;
+  z-index: 5;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: .12rem .45rem;
+  border: 1px solid rgba(146, 172, 178, .18);
+  border-radius: 12px 3px 12px 3px;
+  padding: .55rem .7rem;
+  color: #c1cdd0;
+  background: rgba(3, 10, 14, .78);
+  backdrop-filter: blur(10px);
+}
+
+.mission-holodeck-status > span {
+  grid-row: 1 / span 2;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mission-accent);
+  box-shadow: 0 0 10px var(--mission-accent);
+}
+
+.mission-holodeck-status strong {
+  font: 650 .56rem var(--font-geist-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.mission-holodeck-status small {
+  color: #6d8288;
+  font: .5rem var(--font-geist-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.mission-holodeck-coordinate {
+  position: absolute;
+  z-index: 4;
+  color: color-mix(in srgb, var(--mission-accent) 62%, #577078);
+  font: .48rem var(--font-geist-mono);
+  letter-spacing: .12em;
+}
+
+.coordinate-x { bottom: 1rem; left: 1rem; }
+.coordinate-y { top: 3rem; right: 1rem; writing-mode: vertical-rl; }
+
+.mission-director-footer {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-top: 1rem;
+  padding-top: .9rem;
+  border-top: 1px solid rgba(145, 175, 181, .1);
+  color: #657a80;
+  font: 620 .52rem var(--font-geist-mono);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.mission-director-footer strong {
+  color: var(--mission-accent);
+}
+
+@media (max-width: 1180px) {
+  .mission-route-node-copy strong { display: none; }
+  .mission-route-node { justify-content: center; }
+  .mission-director-slide { grid-template-columns: minmax(0, 1fr) minmax(320px, .82fr); }
+  .mission-dossier-briefs { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 860px) {
+  .mission-director { padding: 1rem; border-radius: 22px; }
+  .mission-corner { width: 18px; height: 18px; }
+  .mission-director-header { align-items: flex-start; }
+  .mission-director .levels-carousel-title > span { max-width: 55vw; }
+  .mission-route {
+    display: flex;
+    gap: .55rem;
+    margin-inline: -.25rem;
+    overflow-x: auto;
+    padding: .55rem .25rem .8rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .mission-route::-webkit-scrollbar { display: none; }
+  .mission-route-track { display: none; }
+  .mission-route-node {
+    flex: 0 0 112px;
+    justify-content: flex-start;
+    scroll-snap-align: center;
+  }
+  .mission-route-node-copy strong { display: block; font-size: .6rem; }
+  .mission-director-slide {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 1rem;
+  }
+  .mission-holodeck { min-height: 310px; }
+  .mission-dossier { padding-inline: .25rem; }
+  .mission-dossier-briefs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .mission-director-header { gap: .65rem; }
+  .mission-director .levels-carousel-number { width: 42px; height: 42px; }
+  .mission-director .levels-carousel-title > span {
+    max-width: 48vw;
+    font-size: .48rem;
+  }
+  .mission-director .levels-carousel-title h3 { font-size: 1rem; }
+  .mission-director-arrows button { width: 38px; height: 38px; border-radius: 11px; }
+  .mission-director-arrows button svg { width: 18px; height: 18px; }
+  .mission-route-node { flex-basis: 106px; }
+  .mission-holodeck { min-height: 280px; border-radius: 18px 6px 18px 6px; }
+  .mission-holodeck-head { font-size: .43rem; }
+  .mission-holodeck-image-asset { max-height: 190px; }
+  .mission-holodeck-icon > div { width: 112px; height: 112px; border-radius: 26px 7px 26px 7px; }
+  .mission-holodeck-icon svg { width: 58px; height: 58px; }
+  .mission-dossier-eyebrow span:last-child { display: none; }
+  .mission-director .levels-carousel-object { font-size: 1.65rem; }
+  .mission-dossier-briefs { grid-template-columns: 1fr; }
+  .mission-dossier-footer { grid-template-columns: auto 1fr; }
+  .mission-dossier-footer > strong { display: none; }
+  .mission-director-footer span:nth-child(2) { display: none; }
+}
+
+@media (min-width: 1800px) {
+  .mission-director.levels-carousel-shell {
+    width: min(94vw, 2100px);
+    min-height: 0;
+    padding: clamp(1.6rem, 1.75vw, 2.55rem) !important;
+    border-radius: 34px 9px 34px 9px !important;
+  }
+  .mission-director .mission-director-content.levels-carousel-content {
+    min-height: 0 !important;
+    height: auto !important;
+    margin-top: clamp(1.25rem, 1.4vw, 2rem) !important;
+  }
+  .mission-director .mission-director-slide.levels-carousel-slide {
+    grid-template-columns: minmax(0, 1.06fr) minmax(460px, .94fr) !important;
+    gap: clamp(1.5rem, 2.4vw, 3.4rem) !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+  .mission-director .mission-route-node {
+    min-height: 0;
+    padding: clamp(.7rem, .75vw, 1.05rem) !important;
+    border-radius: 18px 5px 18px 5px !important;
+  }
+  .mission-director .mission-brief.levels-carousel-detail {
+    padding: clamp(1rem, 1vw, 1.4rem) !important;
+  }
+  .mission-director .mission-holodeck.levels-carousel-stage {
+    min-height: clamp(410px, 25vw, 560px) !important;
+    height: auto !important;
+    padding: clamp(1.4rem, 2vw, 2.8rem) !important;
+  }
+  .mission-director .mission-holodeck-image {
+    width: min(74%, 420px);
+    min-height: 300px;
+  }
+  .mission-director .mission-holodeck-image-asset {
+    max-height: 390px !important;
+  }
+  .mission-director .mission-holodeck-icon > div {
+    width: clamp(160px, 10vw, 220px);
+    height: clamp(160px, 10vw, 220px);
+  }
+  .mission-director .mission-holodeck-icon svg {
+    width: clamp(74px, 4.7vw, 104px);
+    height: clamp(74px, 4.7vw, 104px);
+  }
+  .workshop-story-copy-only {
+    width: min(92vw, 2100px);
+  }
+  .workshop-story-copy-only .workshop-copy {
+    max-width: min(76%, 1500px);
+  }
+  .mission-director .mission-route-node-copy strong { font-size: .82rem; }
+  .mission-director .mission-route-node-copy small { font-size: .62rem; }
+  .mission-director .mission-dossier-eyebrow,
+  .mission-director .mission-director-footer { font-size: .7rem; }
+  .mission-director .mission-brief > p { font-size: .95rem; }
+  .mission-director .mission-brief > div { font-size: .72rem; }
+}
+
+@media (min-width: 3200px) {
+  .mission-director.levels-carousel-shell {
+    width: min(90vw, 3000px);
+    min-height: 0;
+    padding: clamp(2.25rem, 1.5vw, 3.5rem) !important;
+  }
+  .mission-director .mission-director-content.levels-carousel-content {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+  .mission-director .mission-director-slide.levels-carousel-slide {
+    grid-template-columns: minmax(0, 1.04fr) minmax(680px, .96fr) !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+  .mission-director .mission-holodeck.levels-carousel-stage {
+    min-height: clamp(560px, 22vw, 760px) !important;
+    height: auto !important;
+  }
+  .mission-director .mission-holodeck-image {
+    width: min(76%, 560px);
+    min-height: 400px;
+  }
+  .mission-director .mission-holodeck-image-asset {
+    max-height: 520px !important;
+  }
+  .mission-director .mission-holodeck-icon > div {
+    width: clamp(220px, 8vw, 300px);
+    height: clamp(220px, 8vw, 300px);
+  }
+  .mission-director .mission-holodeck-icon svg {
+    width: clamp(105px, 4vw, 145px);
+    height: clamp(105px, 4vw, 145px);
+  }
+  .workshop-story-copy-only {
+    width: min(90vw, 3000px);
+  }
+  .workshop-story-copy-only .workshop-copy {
+    max-width: min(76%, 2200px);
+  }
+  .mission-director .mission-route-node-copy strong { font-size: 1rem; }
+  .mission-director .mission-route-node-copy small { font-size: .75rem; }
+  .mission-director .mission-dossier-eyebrow,
+  .mission-director .mission-director-footer { font-size: .85rem; }
+  .mission-director .mission-holodeck-head { font-size: .78rem; }
+  .mission-director .mission-holodeck-status strong { font-size: .82rem; }
+  .mission-director .mission-holodeck-status small { font-size: .7rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mission-director-scan { display: none; }
+  .mission-route-track i,
+  .mission-route-node,
+  .mission-dossier-progress i { transition-duration: .01ms; }
+}

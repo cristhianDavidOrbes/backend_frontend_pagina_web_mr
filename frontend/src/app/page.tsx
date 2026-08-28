@@ -59,11 +59,6 @@ const LevelsCarousel = dynamic(
   { ssr: false, loading: () => <LandingModuleFallback label="Cargando misiones" /> },
 );
 
-const WorkshopSimulator = dynamic(
-  () => import("@/components/workshop-simulator").then((module) => module.WorkshopSimulator),
-  { ssr: false, loading: () => <LandingModuleFallback label="Cargando experiencia" /> },
-);
-
 const pasos = [
   {
     numero: "01",
@@ -251,13 +246,7 @@ export default function Home() {
       </section>
 
       {/* Physical action to visible learning journey */}
-      <section className="workshop-story" id="taller">
-        <Reveal className="w-full" direction="left">
-          <LandingFeatureBoundary fallbackLabel="La experiencia estará disponible al ingresar">
-            <WorkshopSimulator />
-          </LandingFeatureBoundary>
-        </Reveal>
-
+      <section className="workshop-story workshop-story-copy-only" id="taller">
         <Reveal className="workshop-copy" direction="right">
           <p className="section-kicker">Aprendizaje que puedes tocar</p>
           <h2>Cada acción física revela una idea de POO.</h2>

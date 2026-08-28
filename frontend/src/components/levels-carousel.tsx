@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -132,6 +132,9 @@ export function LevelsCarousel() {
 
   const activeLevel = NIVELES[activeIndex];
   const IconComponent = activeLevel.icon;
+  const routeProgress = NIVELES.length > 1
+    ? (activeIndex / (NIVELES.length - 1)) * 100
+    : 0;
 
   useEffect(() => {
     if (!isAutoPlay) return;
@@ -155,46 +158,56 @@ export function LevelsCarousel() {
 
   return (
     <div
-      className="levels-carousel-shell relative rounded-3xl border border-white/10 bg-slate-950/60 p-5 backdrop-blur-2xl sm:p-8"
+      aria-label="Director de misiones de AlgoLab"
+      aria-roledescription="carrusel"
+      className="levels-carousel-shell mission-director"
       onMouseEnter={() => setIsAutoPlay(false)}
       onMouseLeave={() => setIsAutoPlay(true)}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          handlePrev();
+        }
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          handleNext();
+        }
+      }}
+      role="region"
+      style={{
+        "--mission-accent": activeLevel.accentHex,
+        "--mission-accent-soft": `${activeLevel.accentHex}24`,
+        "--mission-progress": `${routeProgress}%`,
+      } as CSSProperties}
+      tabIndex={0}
     >
-      {/* Ambient background glow */}
-      <div
-        className="pointer-events-none absolute -inset-px rounded-3xl opacity-30 blur-2xl transition-all duration-700"
-        style={{
-          background: `radial-gradient(circle at 60% 40%, ${activeLevel.accentHex}44, transparent 70%)`,
-        }}
-      />
+      <div aria-hidden="true" className="mission-director-grid" />
+      <div aria-hidden="true" className="mission-director-scan" />
+      <span aria-hidden="true" className="mission-corner mission-corner-nw" />
+      <span aria-hidden="true" className="mission-corner mission-corner-ne" />
+      <span aria-hidden="true" className="mission-corner mission-corner-sw" />
+      <span aria-hidden="true" className="mission-corner mission-corner-se" />
 
-      {/* Header controls and level selector tabs */}
-      <div className="levels-carousel-header relative z-10 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
-        <div className="flex items-center gap-3">
+      <header className="levels-carousel-header mission-director-header">
+        <div className="mission-director-identity">
           <span
-            className="levels-carousel-number grid h-10 w-10 place-items-center rounded-xl border text-sm font-bold font-mono"
-            style={{
-              borderColor: `${activeLevel.accentHex}55`,
-              backgroundColor: `${activeLevel.accentHex}18`,
-              color: activeLevel.accentHex,
-            }}
+            className="levels-carousel-number"
           >
             {activeLevel.numero}
           </span>
           <div className="levels-carousel-title">
-            <span className="text-[11px] font-semibold uppercase tracking-[.18em] text-slate-400">
-              Ruta Interactiva POO
+            <span>
+              Director de misiones // Laboratorio POO
             </span>
-            <h3 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+            <h3 aria-live="polite">
               {activeLevel.titulo}
             </h3>
           </div>
         </div>
 
-        {/* Prev / Next buttons */}
-        <div className="levels-carousel-arrows flex items-center gap-2">
+        <div className="levels-carousel-arrows mission-director-arrows">
           <button
             aria-label="Nivel anterior"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-300 transition hover:border-emerald-300/30 hover:bg-emerald-300/10 hover:text-emerald-200 active:scale-95"
             onClick={handlePrev}
             type="button"
           >
@@ -202,162 +215,164 @@ export function LevelsCarousel() {
           </button>
           <button
             aria-label="Siguiente nivel"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-300 transition hover:border-emerald-300/30 hover:bg-emerald-300/10 hover:text-emerald-200 active:scale-95"
             onClick={handleNext}
             type="button"
           >
             <ChevronRight size={20} />
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Quick Level Pills Tab Bar */}
-      <div className="levels-carousel-tabs relative z-10 mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+      <nav aria-label="Ruta de niveles POO" className="levels-carousel-tabs mission-route">
+        <div aria-hidden="true" className="mission-route-track">
+          <i />
+        </div>
         {NIVELES.map((lvl, index) => {
           const isActive = index === activeIndex;
           const LvlIcon = lvl.icon;
           return (
             <button
-              className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition duration-200 ${
-                isActive
-                  ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-100 shadow-[0_0_20px_rgba(46,214,161,.15)]"
-                  : "border-white/5 bg-white/[.02] text-slate-400 hover:border-white/15 hover:bg-white/[.05] hover:text-slate-200"
-              }`}
+              aria-current={isActive ? "step" : undefined}
+              aria-label={`Nivel ${lvl.numero}: ${lvl.titulo}`}
+              className={`mission-route-node ${isActive ? "is-active" : ""}`}
               key={lvl.numero}
               onClick={() => {
                 setIsAutoPlay(false);
                 setActiveIndex(index);
               }}
+              style={{ "--node-accent": lvl.accentHex } as CSSProperties}
               type="button"
             >
-              <LvlIcon size={14} style={{ color: isActive ? lvl.accentHex : undefined }} />
-              <span>Nivel {lvl.numero}</span>
+              <span className="mission-route-node-icon">
+                <LvlIcon aria-hidden="true" size={18} />
+              </span>
+              <span className="mission-route-node-copy">
+                <small>Nivel {lvl.numero}</small>
+                <strong>{lvl.titulo}</strong>
+              </span>
             </button>
           );
         })}
-      </div>
+      </nav>
 
-      {/* Animated Slide Content */}
-      <div className="levels-carousel-content relative z-10 mt-6 min-h-[380px]">
+      <div className="levels-carousel-content mission-director-content">
         <AnimatePresence mode="wait">
           <motion.div
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="levels-carousel-slide grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-center"
-            exit={{ opacity: 0, y: -15, scale: 0.98 }}
-            initial={{ opacity: 0, y: 15, scale: 0.98 }}
+            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+            className="levels-carousel-slide mission-director-slide"
+            exit={{ opacity: 0, x: -28, filter: "blur(7px)" }}
+            initial={{ opacity: 0, x: 28, filter: "blur(7px)" }}
             key={activeLevel.numero}
-            transition={{ duration: 0.35, ease: "easeOut" }}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Left Column: Pedagogical Details & VR Mission */}
-            <div className="levels-carousel-copy space-y-4">
-              <div className="levels-carousel-concept inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.03] px-3 py-1 text-xs text-slate-300">
-                <BrainCircuit size={14} style={{ color: activeLevel.accentHex }} />
-                <span>Concepto clave:</span>
-                <strong className="text-white">{activeLevel.concepto}</strong>
+            <article className="levels-carousel-copy mission-dossier">
+              <div className="mission-dossier-eyebrow">
+                <span>Expediente {activeLevel.numero}</span>
+                <i />
+                <span>Objeto de aprendizaje detectado</span>
               </div>
 
-              <h4 className="levels-carousel-object text-2xl font-bold text-slate-100 sm:text-3xl">
+              <div className="levels-carousel-concept mission-concept-chip">
+                <BrainCircuit aria-hidden="true" size={16} />
+                <span>Concepto núcleo</span>
+                <strong>{activeLevel.concepto}</strong>
+              </div>
+
+              <h4 className="levels-carousel-object">
                 {activeLevel.objeto}
               </h4>
 
-              <p className="levels-carousel-summary text-sm leading-7 text-slate-300 sm:text-base">
+              <p className="levels-carousel-summary">
                 {activeLevel.texto}
               </p>
 
-              <div className="levels-carousel-detail rounded-2xl border border-white/10 bg-black/25 p-4">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  <Gamepad2 size={15} style={{ color: activeLevel.accentHex }} />
-                  Misión en Realidad Mixta
-                </div>
-                <p className="mt-2 text-xs leading-5 text-slate-300">
-                  {activeLevel.misionVR}
-                </p>
+              <div className="mission-dossier-briefs">
+                <section className="levels-carousel-detail mission-brief mission-brief-action">
+                  <div>
+                    <Gamepad2 aria-hidden="true" size={17} />
+                    Acción física
+                  </div>
+                  <p>{activeLevel.misionVR}</p>
+                </section>
+
+                <section className="levels-carousel-detail mission-brief mission-brief-learning">
+                  <div>
+                    <Sparkles aria-hidden="true" size={17} />
+                    Evidencia de aprendizaje
+                  </div>
+                  <p>{activeLevel.detalles}</p>
+                </section>
               </div>
 
-              <div className="levels-carousel-detail rounded-2xl border border-white/10 bg-gradient-to-r from-white/[.02] to-transparent p-4">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  <Sparkles size={15} className="text-emerald-300" />
-                  Impacto en Aprendizaje
+              <footer className="mission-dossier-footer">
+                <span>
+                  <i /> Sistema preparado
+                </span>
+                <div className="mission-dossier-progress" aria-hidden="true">
+                  <i />
                 </div>
-                <p className="mt-1 text-xs leading-5 text-slate-400">
-                  {activeLevel.detalles}
-                </p>
+                <strong>{activeIndex + 1} / {NIVELES.length}</strong>
+              </footer>
+            </article>
+
+            <div className="levels-carousel-stage mission-holodeck">
+              <div className="mission-holodeck-head">
+                <span>Cámara de objeto // RM</span>
+                <span>Sector {activeLevel.numero}</span>
               </div>
-            </div>
-
-            {/* Right Column: Visual Stage / Hologram representation */}
-            <div className="levels-carousel-stage relative flex min-h-[300px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/60 to-slate-950/80 p-6 shadow-2xl">
-              {/* Scanline and Grid effect */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.07)_1px,transparent_1px)] [background-size:24px_24px]"
-              />
-
-              <div
-                className="pointer-events-none absolute h-52 w-52 rounded-full opacity-30 blur-3xl"
-                style={{ backgroundColor: activeLevel.accentHex }}
-              />
+              <div aria-hidden="true" className="mission-holodeck-grid" />
+              <div aria-hidden="true" className="mission-holodeck-orbit orbit-one" />
+              <div aria-hidden="true" className="mission-holodeck-orbit orbit-two" />
+              <div aria-hidden="true" className="mission-holodeck-platform" />
 
               {activeLevel.image ? (
-                <div className="relative z-10 flex items-center justify-center p-4">
+                <motion.div
+                  animate={{ opacity: 1, scale: 1, y: [0, -5, 0] }}
+                  className="mission-holodeck-object mission-holodeck-image"
+                  initial={{ opacity: 0, scale: 0.86 }}
+                  transition={{ opacity: { duration: 0.35 }, scale: { duration: 0.4 }, y: { duration: 4.8, repeat: Infinity, ease: "easeInOut" } }}
+                >
                   <Image
                     alt={`Representación del nivel ${activeLevel.titulo}`}
-                    className="max-h-56 w-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,.7)] transition-transform duration-500 hover:scale-105"
+                    className="mission-holodeck-image-asset"
                     height={240}
                     src={activeLevel.image}
                     width={240}
                   />
-                </div>
+                </motion.div>
               ) : (
-                <div className="relative z-10 grid place-items-center p-8">
-                  <div
-                    className="grid h-32 w-32 place-items-center rounded-3xl border shadow-[0_0_60px_rgba(0,0,0,.5)]"
-                    style={{
-                      borderColor: `${activeLevel.accentHex}44`,
-                      backgroundColor: `${activeLevel.accentHex}12`,
-                    }}
-                  >
+                <motion.div
+                  animate={{ opacity: 1, rotateY: 0, scale: 1 }}
+                  className="mission-holodeck-object mission-holodeck-icon"
+                  initial={{ opacity: 0, rotateY: -55, scale: 0.8 }}
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <div>
                     <IconComponent
                       size={68}
-                      style={{ color: activeLevel.accentHex }}
                       strokeWidth={1.4}
                     />
                   </div>
-                </div>
+                </motion.div>
               )}
 
-              {/* Status footer pill */}
-              <div className="levels-carousel-status relative z-10 mt-auto flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/80 px-3.5 py-1.5 font-mono text-[11px] text-slate-300 backdrop-blur-md">
-                <span
-                  className="h-2 w-2 animate-pulse rounded-full"
-                  style={{ backgroundColor: activeLevel.accentHex }}
-                />
-                <span>ESCENARIO VIRTUAL // 3D LISTO</span>
+              <div className="levels-carousel-status mission-holodeck-status">
+                <span />
+                <strong>Objeto sincronizado</strong>
+                <small>3D // listo</small>
               </div>
+              <span aria-hidden="true" className="mission-holodeck-coordinate coordinate-x">X 02.14</span>
+              <span aria-hidden="true" className="mission-holodeck-coordinate coordinate-y">Y 01.08</span>
             </div>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Progress Dots Indicator */}
-      <div className="levels-carousel-dots relative z-10 mt-6 flex items-center justify-center gap-2">
-        {NIVELES.map((lvl, index) => (
-          <button
-            aria-label={`Ir al nivel ${lvl.numero}`}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              index === activeIndex
-                ? "w-8 bg-emerald-400 shadow-[0_0_12px_#34d399]"
-                : "w-2 bg-white/20 hover:bg-white/40"
-            }`}
-            key={lvl.numero}
-            onClick={() => {
-              setIsAutoPlay(false);
-              setActiveIndex(index);
-            }}
-            type="button"
-          />
-        ))}
-      </div>
+      <footer className="levels-carousel-dots mission-director-footer">
+        <span>Ruta conceptual POO</span>
+        <span>Seis misiones conectadas</span>
+        <strong>Nodo {activeLevel.numero} activo</strong>
+      </footer>
     </div>
   );
 }
