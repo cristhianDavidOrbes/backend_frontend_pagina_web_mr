@@ -13,12 +13,12 @@ const MARQUEE_ITEMS = [
 
 export function SignalMarquee() {
   return (
-    <div className="relative z-10 w-full overflow-hidden border-y border-emerald-400/20 bg-slate-950/70 py-3.5 backdrop-blur-md">
-      <div className="flex w-max animate-marquee gap-8">
+    <div className="signal-marquee relative z-10 w-full overflow-hidden border-y border-emerald-400/20 bg-slate-950/70 py-3.5 backdrop-blur-md">
+      <div className="signal-marquee-track flex w-max animate-marquee gap-8">
         {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS, ...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, index) => {
           const Icon = item.icon;
           return (
-            <div className="flex items-center gap-3 whitespace-nowrap font-mono text-xs font-semibold tracking-[.18em] text-slate-300 transition duration-300 hover:text-emerald-300" key={index}>
+            <div className="signal-marquee-item flex items-center gap-3 whitespace-nowrap font-mono text-xs font-semibold tracking-[.18em] text-slate-300 transition duration-300 hover:text-emerald-300" key={index}>
               <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-400/10 text-emerald-300">
                 <Icon size={13} />
               </span>

@@ -4981,6 +4981,11 @@ button, a {
 
 @media (min-width: 3200px) and (min-height: 1600px) {
   /* 4K nativo o navegador con poco escalado: aprovechar el lienzo completo. */
+  html {
+    /* En 4K todos los controles, no solo los títulos, deben conservar legibilidad. */
+    font-size: 20px;
+  }
+
   .landing-nav {
     width: min(92vw, 3440px);
     min-height: 132px;
@@ -5159,4 +5164,330 @@ button, a {
     min-height: 220px;
     font-size: 1.4rem;
   }
+
+  .signal-marquee {
+    padding-block: 1.35rem !important;
+  }
+
+  .signal-marquee-track {
+    gap: 3rem !important;
+  }
+
+  .signal-marquee-item {
+    gap: .9rem !important;
+    font-size: 1rem !important;
+  }
+
+  .signal-marquee-item > span:first-child {
+    width: 2.4rem !important;
+    height: 2.4rem !important;
+    border-radius: .65rem !important;
+  }
+
+  .signal-marquee-item svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+/*
+ * Escala ultra ancha (5K, 6K, 8K y 10K).
+ * La tipografía raíz crece de forma fluida y los contenedores dejan de estar
+ * limitados a 3440 px. Así botones, iconos, tarjetas, navegación y pie de
+ * página mantienen una proporción física cómoda en monitores de alta densidad.
+ */
+@media (min-width: 4800px) {
+  html {
+    font-size: clamp(20px, min(.42vw, 1.1vh), 42px);
+  }
+
+  .landing-nav,
+  .landing-hero,
+  .experience-section,
+  .levels-section,
+  .workshop-story,
+  .ai-section,
+  .roles-section {
+    width: 92vw;
+    max-width: none;
+  }
+
+  .landing-nav {
+    min-height: 7.5rem;
+    padding-inline: clamp(4rem, 5vw, 14rem);
+  }
+
+  .brand-mark {
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 1.25rem;
+    font-size: 2rem;
+  }
+
+  .brand-lockup strong { font-size: 1.8rem; }
+  .brand-lockup small { font-size: .9rem; }
+  .nav-anchor { font-size: 1.25rem; }
+  .landing-session-chip { font-size: 1rem; }
+
+  .landing-actions .primary-button,
+  .landing-actions .ghost-button {
+    min-height: 4rem;
+    padding-inline: 1.7rem;
+    font-size: 1.05rem;
+    border-radius: 1rem;
+  }
+
+  .landing-hero {
+    min-height: calc(100svh - 7.5rem);
+    grid-template-columns: minmax(0, 1.12fr) minmax(34rem, .88fr);
+    gap: clamp(5rem, 6vw, 16rem);
+    padding: clamp(5rem, 7vh, 12rem) clamp(3rem, 4vw, 12rem);
+  }
+
+  .hero-copy h1 {
+    max-width: 13ch;
+    font-size: clamp(8.5rem, 5.4vw, 16rem);
+  }
+
+  .hero-copy > p {
+    max-width: 45ch;
+    font-size: 1.75rem;
+  }
+
+  .hero-lab {
+    max-width: 45rem;
+    height: 43rem;
+    min-height: 39rem;
+    max-height: 48rem;
+  }
+
+  .stage-platform { width: 20rem; height: 5rem; }
+  .stage-diagram { width: 14rem; padding: 1.25rem; }
+  .stage-status,
+  .stage-callout { font-size: 1rem; }
+
+  .experience-section,
+  .levels-section,
+  .workshop-story,
+  .ai-section,
+  .roles-section {
+    padding: clamp(8rem, 9vh, 16rem) clamp(3rem, 4vw, 12rem);
+  }
+
+  .section-heading {
+    max-width: 52rem;
+  }
+
+  .section-heading h2,
+  .workshop-copy h2,
+  .ai-copy h2,
+  .final-cta h2 {
+    font-size: clamp(4.5rem, 3.5vw, 10rem);
+  }
+
+  .section-heading > p:last-child,
+  .workshop-copy > p,
+  .ai-copy > p,
+  .final-cta p {
+    font-size: 1.45rem;
+    line-height: 1.7;
+  }
+
+  .section-kicker {
+    font-size: 1rem;
+  }
+
+  .experience-step {
+    min-height: 19rem;
+    padding: 2.5rem;
+    border-radius: 1.8rem;
+  }
+
+  .experience-step h3 { font-size: 1.65rem; }
+  .experience-step p { font-size: 1.15rem; }
+  .step-icon { width: 4rem; height: 4rem; border-radius: 1.1rem; }
+  .step-icon svg { width: 1.65rem; height: 1.65rem; }
+
+  .levels-carousel-shell {
+    min-height: 52rem;
+    padding: 3.6rem !important;
+    border-radius: 2.4rem !important;
+  }
+
+  .levels-carousel-number {
+    width: 4.4rem !important;
+    height: 4.4rem !important;
+    font-size: 1.35rem !important;
+  }
+
+  .levels-carousel-title > span { font-size: 1rem !important; }
+  .levels-carousel-title h3 { font-size: 2.25rem !important; }
+
+  .levels-carousel-arrows button {
+    width: 3.8rem !important;
+    height: 3.8rem !important;
+  }
+
+  .levels-carousel-tabs button {
+    min-height: 3.3rem;
+    padding: .8rem 1.2rem !important;
+    font-size: 1rem !important;
+  }
+
+  .levels-carousel-content {
+    min-height: 36rem !important;
+  }
+
+  .levels-carousel-slide {
+    grid-template-columns: minmax(0, 1.08fr) minmax(34rem, .92fr) !important;
+    gap: 4rem !important;
+  }
+
+  .levels-carousel-concept { font-size: 1rem !important; }
+  .levels-carousel-object { font-size: 3rem !important; }
+  .levels-carousel-summary { font-size: 1.35rem !important; }
+  .levels-carousel-detail > div { font-size: .95rem !important; }
+  .levels-carousel-detail > p { font-size: 1.1rem !important; }
+
+  .levels-carousel-stage {
+    min-height: 34rem !important;
+    padding: 2.75rem !important;
+  }
+
+  .levels-carousel-stage img { max-height: 24rem !important; }
+  .levels-carousel-stage > .relative.z-10.grid > div {
+    width: 13rem !important;
+    height: 13rem !important;
+  }
+  .levels-carousel-stage > .relative.z-10.grid svg {
+    width: 7rem;
+    height: 7rem;
+  }
+  .levels-carousel-status { font-size: .9rem !important; }
+
+  .workshop-story {
+    grid-template-columns: minmax(44rem, 1.08fr) minmax(34rem, .92fr);
+    gap: 5rem;
+  }
+
+  .concept-journey {
+    min-height: 37rem;
+    padding: 3rem;
+    border-radius: 2rem;
+  }
+
+  .concept-step { min-height: 13rem; padding: 1.5rem; }
+  .concept-step strong { font-size: 1.15rem; }
+  .concept-step p,
+  .workshop-copy li { font-size: 1rem; }
+
+  .ai-section,
+  .roles-section {
+    gap: 4rem;
+  }
+
+  .report-preview,
+  .role-card {
+    padding: 2.6rem;
+    border-radius: 2rem;
+  }
+
+  .report-preview > h3,
+  .role-card h3 { font-size: 1.65rem; }
+  .report-preview > p,
+  .report-row p,
+  .role-card p { font-size: 1.05rem; }
+
+  .role-card { min-height: 24rem; }
+  .role-card a { font-size: 1rem; }
+
+  .final-cta {
+    width: 88vw;
+    max-width: none;
+    padding: 5rem;
+    border-radius: 2.5rem;
+  }
+
+  .final-cta .primary-button {
+    min-height: 4.5rem;
+    padding-inline: 2rem;
+    font-size: 1.15rem;
+  }
+
+  .landing-footer {
+    min-height: 11rem;
+    padding: 2.5rem 5vw;
+    font-size: 1.1rem;
+  }
+
+  .signal-marquee {
+    padding-block: 1.2rem !important;
+  }
+
+  .signal-marquee-track { gap: 2.5rem !important; }
+  .signal-marquee-item {
+    gap: .8rem !important;
+    font-size: .95rem !important;
+  }
+  .signal-marquee-item > span:first-child {
+    width: 2.2rem !important;
+    height: 2.2rem !important;
+  }
+
+  /* Los portales y el taller de código también deben ocupar el lienzo ultra ancho. */
+  .desktop-sidebar {
+    width: 20rem;
+    padding: 2rem 1.25rem;
+  }
+
+  .app-surface main,
+  .oop-main {
+    width: 100%;
+    max-width: none;
+    padding: 3rem 4rem;
+  }
+
+  .auth-layout {
+    width: min(90vw, 90rem);
+    max-width: none;
+  }
+}
+
+@media (min-width: 6400px) {
+  .landing-nav,
+  .landing-hero,
+  .experience-section,
+  .levels-section,
+  .workshop-story,
+  .ai-section,
+  .roles-section {
+    width: 90vw;
+  }
+
+  .final-cta { width: 86vw; }
+}
+
+@media (min-width: 9000px) {
+  html { font-size: 42px; }
+
+  .landing-nav,
+  .landing-hero,
+  .experience-section,
+  .levels-section,
+  .workshop-story,
+  .ai-section,
+  .roles-section {
+    width: 88vw;
+  }
+
+  .landing-hero,
+  .experience-section,
+  .levels-section,
+  .workshop-story,
+  .ai-section,
+  .roles-section {
+    padding-inline: 5vw;
+  }
+
+  .final-cta { width: 84vw; }
 }
