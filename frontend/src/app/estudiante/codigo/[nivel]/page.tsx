@@ -869,12 +869,6 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     ...glosarioDocumentacionEditor.map((item) => item.termino),
   ].join("\n");
   const editorModificado = codigo.trim() !== codigoBaseActual.trim();
-  const ejecutoAlgunaVez = ejecucionesSesion > 0 || intentos > 0;
-  const pasosMision = [
-    { etiqueta: "Lee la guía", completo: true },
-    { etiqueta: "Prueba tu código", completo: ejecutoAlgunaVez || completado },
-    { etiqueta: "Completa el reto", completo: completado },
-  ];
   const claseVistaMovil =
     mobileVista === "code"
       ? styles.mobileCode
@@ -1121,16 +1115,14 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
         {/* Right: Docs + Practice */}
         <div className={`oop-right-panel ${styles.docsWithHud}`} id="oop-docs-view">
-          <div className={styles.missionHud} aria-label="Progreso de la misión">
-            {pasosMision.map((paso, index) => (
-              <div
-                key={paso.etiqueta}
-                className={`${styles.missionStep} ${paso.completo ? styles.missionStepComplete : ""}`}
-              >
-                <span aria-hidden="true">{paso.completo ? "✓" : index + 1}</span>
-                <span>{paso.etiqueta}</span>
-              </div>
-            ))}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.07] bg-black/40">
+            <div className="flex items-center gap-2">
+              <BookOpen size={14} className="text-emerald-400" />
+              <span className="text-xs font-bold text-slate-200">Documentación</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-emerald-300 font-mono font-bold">Subnivel {nivel.subnivel}</span>
+            </div>
           </div>
           <div className={styles.docsBody}>
             <OopDocsPanel
