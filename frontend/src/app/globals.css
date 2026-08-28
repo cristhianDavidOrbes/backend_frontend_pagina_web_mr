@@ -3603,6 +3603,17 @@ button, a {
   gap: .75rem;
 }
 
+.sidebar-nav-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-nav-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .desktop-sidebar-collapsed nav a {
   justify-content: center;
   min-height: 3.25rem;
