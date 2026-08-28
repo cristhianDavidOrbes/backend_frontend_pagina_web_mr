@@ -732,6 +732,30 @@ export function diagnosticarErrorRuntime(
     };
   }
 
+  // ─── ERRORES DE COLECCIONES Y ESTRUCTURAS DE DATOS AVANZADAS ───
+  if (/does not support item assignment/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Colecciones e Índices",
+      resumen: "Tipo inmutable (no admite reasignación)",
+      detalle: "Las tuplas ('tuple') y cadenas en Python son inmutables; no puedes cambiar sus elementos una vez creados.",
+      solucion: "Usa una lista '[]' en lugar de una tupla '()' si necesitas modificar sus valores.",
+    };
+  }
+
+  if (/unhashable type:\s*['"]?(\w+)['"]?/i.test(mensaje)) {
+    const unhashableMatch = mensaje.match(/unhashable type:\s*['"]?(\w+)['"]?/i);
+    const tipo = unhashableMatch ? unhashableMatch[1] : "mutable";
+    return {
+      linea,
+      categoria: "Colecciones e Índices",
+      resumen: `Tipo no admisible '${tipo}' como clave de diccionario o elemento de conjunto`,
+      detalle: `Los elementos de un conjunto ('set') y las claves de un diccionario deben ser inmutables. No puedes usar '${tipo}'.`,
+      solucion: `Convierte la '${tipo}' a una 'tuple' inmutable o usa cadenas/enteros como clave.`,
+      simboloAfectado: tipo,
+    };
+  }
+
   // ─── ERRORES DE TIPO Y ARGUMENTOS ───
   if (/TypeError|incompatible types|cannot be converted/i.test(mensaje)) {
     const missingArgs = mensaje.match(/missing (\d+) required positional argument(?:\(s\))?:?\s*(.*)/i);
@@ -827,6 +851,99 @@ export function diagnosticarErrorRuntime(
       resumen: "Incompatibilidad de tipos de datos",
       detalle: "Se intentó realizar una operación entre tipos de datos que no son compatibles.",
       solucion: "Revisa los tipos de tus variables y realiza conversiones explícitas.",
+    };
+  }
+
+  if (/dictionary changed size during iteration|ConcurrentModificationException/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Colecciones e Índices",
+      resumen: "Modificación de colección durante la iteración",
+      detalle: "No puedes agregar o eliminar elementos de una lista o diccionario mientras lo estás recorriendo con un bucle for.",
+      solucion: "Itera sobre una copia de la colección (ej: 'for k in list(diccionario.keys()):') o usa una lista auxiliar.",
+    };
+  }
+
+  if (/UnsupportedOperationException/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Colecciones e Índices",
+      resumen: "Operación no soportada en colección inmutable",
+      detalle: "Intentaste modificar (agregar o eliminar) una lista o conjunto creado como inmutable (ej: List.of(...)).",
+      solucion: "Usa 'new ArrayList<>(...)' para crear una colección modificable.",
+    };
+  }
+
+  if (/NegativeArraySizeException/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Colecciones e Índices",
+      resumen: "Tamaño de arreglo negativo",
+      detalle: "No se puede inicializar un arreglo con una longitud negativa.",
+      solucion: "Verifica que el valor de la longitud del arreglo sea mayor o igual a 0.",
+    };
+  }
+
+  if (/ClassCastException/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Orientación a Objetos",
+      resumen: "Conversión de tipos incompatible (ClassCastException)",
+      detalle: "Intentaste convertir (castear) un objeto a una clase que no es su tipo real ni una superclase compatible.",
+      solucion: "Usa el operador 'instanceof' para comprobar el tipo antes de realizar el casting.",
+    };
+  }
+
+  if (/non-static (?:variable|method).*cannot be referenced from a static context/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Orientación a Objetos",
+      resumen: "Acceso a miembro de instancia desde contexto estático",
+      detalle: "Un método 'static' (como 'main') pertenece a la clase y no puede acceder directamente a variables o métodos 'this' sin una instancia.",
+      solucion: "Crea un objeto con 'new MiClase()' o declara el miembro como 'static'.",
+    };
+  }
+
+  if (/cannot assign a value to final variable/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Variables y Nombres",
+      resumen: "Reasignación de constante 'final'",
+      detalle: "Una variable declarada con 'final' en Java no puede cambiar de valor después de su inicialización.",
+      solucion: "Elimina la palabra clave 'final' si necesitas modificar el valor de la variable.",
+    };
+  }
+
+  if (/ModuleNotFoundError|No module named/i.test(mensaje)) {
+    const modMatch = mensaje.match(/(?:No module named|ModuleNotFoundError:)\s*['"]?([^'"\n]+)['"]?/i);
+    const mod = modMatch ? modMatch[1] : "librería";
+    return {
+      linea,
+      categoria: "Librerías e Importaciones",
+      resumen: `Módulo o librería no encontrada: '${mod}'`,
+      detalle: `El entorno no encuentra el módulo '${mod}' solicitado en la instrucción de importación.`,
+      solucion: `Verifica que el nombre del módulo esté bien escrito o usa solo librerías estándar de Python.`,
+      simboloAfectado: mod,
+    };
+  }
+
+  if (/math domain error/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Aritmética y Matemáticas",
+      resumen: "Error de dominio matemático",
+      detalle: "Intentaste realizar una operación matemática fuera de su dominio válido (como raíz cuadrada de un número negativo o logaritmo de cero).",
+      solucion: "Asegúrate de que los valores numéricos cumplan las restricciones matemáticas antes de llamar la función.",
+    };
+  }
+
+  if (/OverflowError|math range error/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Aritmética y Matemáticas",
+      resumen: "Desbordamiento numérico (OverflowError)",
+      detalle: "El resultado del cálculo matemático excede el rango máximo soportado por los números en coma flotante.",
+      solucion: "Ajusta las operaciones o usa valores más pequeños para evitar el desbordamiento.",
     };
   }
 
