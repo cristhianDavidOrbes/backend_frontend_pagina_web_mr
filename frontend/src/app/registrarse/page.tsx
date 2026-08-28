@@ -466,7 +466,7 @@ export default function RegistrarsePage() {
             <strong>{paso === "datos" ? ".crearPerfil();" : ".verificarIdentidad();"}</strong>
             <small>
               {paso === "datos"
-                ? "// correo institucional · contraseña"
+                ? "// gmail o institucional · contraseña"
                 : "// verificación segura"}
             </small>
           </div>
@@ -523,7 +523,7 @@ export default function RegistrarsePage() {
                       id="re"
                       icon={<Mail size={18} />}
                       type="email"
-                      placeholder="Correo institucional"
+                      placeholder="ejemplo@gmail.com o institucional"
                       value={correo}
                       onChange={(v) => {
                         setCorreo(v);
@@ -535,7 +535,7 @@ export default function RegistrarsePage() {
                       hasError={Boolean(errCorreo)}
                     />
                     <small className={errCorreo ? css.fieldError : css.fieldHelp}>
-                      {errCorreo || "Ingresa el correo institucional asignado por tu universidad."}
+                      {errCorreo || "Puedes registrarte con Gmail, correo institucional o personal."}
                     </small>
                   </div>
                   <div>

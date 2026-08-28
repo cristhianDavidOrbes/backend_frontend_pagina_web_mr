@@ -493,7 +493,7 @@ export default function IniciarSesionPage() {
                 <span className="section-kicker">Portal Seguro</span>
                 <h1 className="mt-2 text-2xl font-extrabold text-white">Iniciar Sesión</h1>
                 <p className="mt-1.5 text-xs text-slate-400">
-                  Accede con tu cuenta institucional de la Universidad Cooperativa de Colombia.
+                  Accede con tu cuenta de Google (Gmail), correo institucional o personal.
                 </p>
               </div>
 
@@ -522,7 +522,7 @@ export default function IniciarSesionPage() {
                       type="email"
                       value={correo}
                       onChange={(e) => setCorreo(e.target.value)}
-                      placeholder="Correo electrónico"
+                      placeholder="ejemplo@gmail.com o institucional"
                       className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
                       required
                       autoFocus

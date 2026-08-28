@@ -84,7 +84,7 @@ public class Autenticacion2faControlador {
 
         String correo = CorreoInstitucional.normalizar(request.getCorreo());
         if (!CorreoInstitucional.esValido(correo)) {
-            return ResponseEntity.badRequest().body(Login2faRespuestaDTO.error("Solo se permite el correo institucional " + CorreoInstitucional.DOMINIO));
+            return ResponseEntity.badRequest().body(Login2faRespuestaDTO.error("El correo electrónico no es válido"));
         }
 
         Login2faRespuestaDTO resultado = twoFactorService.procesarLogin(correo, request.getContrasena());

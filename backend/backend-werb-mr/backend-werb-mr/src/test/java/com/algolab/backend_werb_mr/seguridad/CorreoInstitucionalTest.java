@@ -14,10 +14,11 @@ class CorreoInstitucionalTest {
     }
 
     @Test
-    void aceptaSoloCorreosInstitucionalesValidos() {
+    void aceptaCorreosValidosInstitucionalesYComerciales() {
         assertTrue(CorreoInstitucional.esValido("ana.maria@campusucc.edu.co"));
-        assertFalse(CorreoInstitucional.esValido("ana@gmail.com"));
-        assertFalse(CorreoInstitucional.esValido("usuario@hotmail.com"));
+        assertTrue(CorreoInstitucional.esValido("ana@gmail.com"));
+        assertTrue(CorreoInstitucional.esValido("usuario@hotmail.com"));
+        assertTrue(CorreoInstitucional.esValido("estudiante.123@outlook.com"));
         assertFalse(CorreoInstitucional.esValido("correo_invalido_sin_arroba"));
         assertFalse(CorreoInstitucional.esValido("ana@otro.com@campusucc.edu.co"));
         assertFalse(CorreoInstitucional.esValido("ana maria@campusucc.edu.co"));

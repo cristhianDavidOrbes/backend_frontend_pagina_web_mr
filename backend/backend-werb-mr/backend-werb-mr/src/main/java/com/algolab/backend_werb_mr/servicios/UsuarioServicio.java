@@ -31,8 +31,7 @@ public class UsuarioServicio implements IUsuarioServicio {
     public Usuario registrar(Usuario usuario) {
         String correo = CorreoInstitucional.normalizar(usuario.getCorreo());
         if (!CorreoInstitucional.esValido(correo)) {
-            throw new IllegalArgumentException(
-                    "Solo se permiten cuentas con correo institucional " + CorreoInstitucional.DOMINIO);
+            throw new IllegalArgumentException("El correo electrónico no es válido");
         }
         usuario.setCorreo(correo);
         String celular = NumeroCelular.normalizar(usuario.getCelular());
@@ -79,8 +78,7 @@ public class UsuarioServicio implements IUsuarioServicio {
         if (usuario.getCorreo() != null) {
             String correo = CorreoInstitucional.normalizar(usuario.getCorreo());
             if (!CorreoInstitucional.esValido(correo)) {
-                throw new IllegalArgumentException(
-                        "Solo se permiten cuentas con correo institucional " + CorreoInstitucional.DOMINIO);
+                throw new IllegalArgumentException("El correo electrónico no es válido");
             }
             usuario.setCorreo(correo);
         }

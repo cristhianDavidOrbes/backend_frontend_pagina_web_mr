@@ -66,12 +66,11 @@ public class UsuarioControlador {
         String contrasena = request.getContrasena();
 
         if (correo == null || contrasena == null || contrasena.isBlank()) {
-            return errorSegundoFactor(HttpStatus.BAD_REQUEST, "Debe enviar correo institucional y contrasena");
+            return errorSegundoFactor(HttpStatus.BAD_REQUEST, "Debe enviar correo y contrasena");
         }
 
         if (!CorreoInstitucional.esValido(correo)) {
-            return errorSegundoFactor(HttpStatus.BAD_REQUEST,
-                    "Solo se permite el correo institucional " + CorreoInstitucional.DOMINIO);
+            return errorSegundoFactor(HttpStatus.BAD_REQUEST, "El correo electrónico no es válido");
         }
 
         Usuario usuarioEncontrado = usuarioServicio.iniciarSesion(correo, contrasena).orElse(null);
@@ -159,7 +158,7 @@ public class UsuarioControlador {
         if (!CorreoInstitucional.esValido(correo)) {
             return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
                     false,
-                    "Solo se permiten cuentas con correo institucional " + CorreoInstitucional.DOMINIO,
+                    "El correo electrónico no es válido",
                     null,
                     null));
         }
@@ -398,7 +397,7 @@ public class UsuarioControlador {
 
         if (!CorreoInstitucional.esValido(correo)) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "mensaje", "Solo se permiten cuentas con correo institucional " + CorreoInstitucional.DOMINIO));
+                    "mensaje", "El correo electrónico no es válido"));
         }
 
 
