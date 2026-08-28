@@ -252,7 +252,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
   }
 
   const navContent = (
-    <div className="flex h-full min-h-full flex-col justify-between">
+    <div className="sidebar-nav-content flex min-h-0 flex-1 flex-col justify-between overflow-y-auto scrollbar-none">
       <div>
         <Link
           className="group flex items-center gap-3 rounded-2xl p-2 transition hover:bg-white/[.035]"
@@ -322,9 +322,9 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
       </div>
 
       {/* User card at bottom */}
-      <div className="pt-4">
-        <div className="rounded-[1.25rem] border border-white/10 bg-white/[.035] p-3 backdrop-blur-md">
-          <div className="flex min-w-0 items-center gap-3">
+      <div className="sidebar-user-section pt-4">
+        <div className="sidebar-user-card rounded-[1.25rem] border border-white/10 bg-white/[.035] p-3 backdrop-blur-md">
+          <div className="sidebar-user-row flex min-w-0 items-center gap-3">
             {usuario ? (
               <AvatarDisplay
                 className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-[.85rem] border border-white/15 text-sm font-extrabold text-white shadow-lg ring-1 ring-emerald-400/20 [&>img]:object-cover"
@@ -343,7 +343,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
             </div>
           </div>
           <button
-            className="mt-2.5 flex w-full items-center justify-between rounded-xl border border-white/5 bg-black/20 px-3 py-2 text-[11px] font-medium text-slate-400 transition hover:border-rose-400/25 hover:bg-rose-500/10 hover:text-rose-200 active:scale-95"
+            className="sidebar-logout mt-2.5 flex w-full items-center justify-between rounded-xl border border-white/5 bg-black/20 px-3 py-2 text-[11px] font-medium text-slate-400 transition hover:border-rose-400/25 hover:bg-rose-500/10 hover:text-rose-200 active:scale-95"
             onClick={salir}
             type="button"
           >
@@ -430,7 +430,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
                   <X size={18} />
                 </button>
               </div>
-              <div className="mt-4 flex-1">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col">
                 {navContent}
               </div>
             </motion.aside>
@@ -440,9 +440,9 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
 
       {/* Desktop & Tablet 100% FIXED Left Sidebar (>= md screens) */}
       <aside
-        className={`desktop-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-white/10 bg-[#05100e]/98 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-2xl transition-[width,padding] duration-300 scrollbar-none lg:flex ${
+        className={`desktop-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col overflow-hidden border-r border-white/10 bg-[#05100e]/98 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-2xl transition-[width,padding] duration-300 lg:flex ${
           desktopCollapsed
-            ? "desktop-sidebar-collapsed w-[84px] p-3"
+            ? "desktop-sidebar-collapsed w-[96px] p-3"
             : "w-[260px] p-5 xl:w-[285px] 2xl:w-[320px] min-[2560px]:w-[360px]"
         }`}
       >
@@ -467,7 +467,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
       <div
         className={`min-h-screen w-full transition-[padding] duration-300 ${
           desktopCollapsed
-            ? "lg:pl-[84px]"
+            ? "lg:pl-[96px]"
             : "lg:pl-[260px] xl:pl-[285px] 2xl:pl-[320px] min-[2560px]:pl-[360px]"
         }`}
       >

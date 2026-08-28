@@ -295,8 +295,10 @@ export default function CodigoPage() {
           <div className="oop-konami-code" aria-label="Código Konami">
             <strong>↑ ↑ ↓ ↓ ← ← → → B A</strong>
             <small>
-              Como <b>invitado</b>: úsalo después de ver o saltar el tutorial, fuera de cualquier nivel, para
-              desbloquear la ruta. En el <b>nivel 3</b>: introdúcelo durante la práctica y observa al robot.
+              Como <b>invitado</b>: después de ver o saltar el tutorial y estando fuera de cualquier nivel,
+              introdúcelo para desbloquear todos los niveles. Este desbloqueo es exclusivo del modo invitado.
+              En el <b>tema del nivel 3</b>, la secuencia activa la sorpresa del robot y funciona tanto como
+              invitado como con una sesión iniciada.
             </small>
           </div>
         </section>

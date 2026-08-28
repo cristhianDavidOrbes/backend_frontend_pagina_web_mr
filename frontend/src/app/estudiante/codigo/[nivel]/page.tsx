@@ -1196,9 +1196,10 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                 <span className="oop-konami-crown">🏆 RECOMPENSA SECRETA</span>
                 <strong>↑ ↑ ↓ ↓ ← ← → → B A</strong>
                 <p>
-                  Úsalo como <b>invitado</b>, después de ver o saltar el tutorial y estando fuera de un nivel,
-                  para desbloquear la ruta. En el <b>nivel 3</b>, introdúcelo durante la práctica para descubrir
-                  una reacción especial del robot.
+                  Como <b>invitado</b>, úsalo después de ver o saltar el tutorial y estando fuera de cualquier
+                  nivel para desbloquear todos los niveles; ese desbloqueo es exclusivo del modo invitado. En
+                  el <b>tema del nivel 3</b>, la secuencia activa la sorpresa del robot y funciona tanto como
+                  invitado como con una sesión iniciada.
                 </p>
               </div>
             ) : null}
