@@ -4549,6 +4549,199 @@ button, a {
     max-width: 1100px;
   }
 
+  /* El carrusel debe crecer por dentro, no convertirse en una tarjeta vacía. */
+  .levels-section .section-heading {
+    max-width: 1320px;
+    margin-bottom: 4rem;
+  }
+
+  .levels-carousel-shell {
+    min-height: 760px;
+    padding: 3.25rem !important;
+    border-radius: 38px !important;
+  }
+
+  .levels-carousel-header {
+    gap: 2rem;
+    padding-bottom: 2rem !important;
+  }
+
+  .levels-carousel-number {
+    width: 64px !important;
+    height: 64px !important;
+    border-radius: 18px !important;
+    font-size: 1.25rem !important;
+  }
+
+  .levels-carousel-title > span {
+    font-size: .95rem !important;
+  }
+
+  .levels-carousel-title h3 {
+    margin-top: .2rem;
+    font-size: 2rem !important;
+  }
+
+  .levels-carousel-arrows button {
+    width: 58px !important;
+    height: 58px !important;
+    border-radius: 16px !important;
+  }
+
+  .levels-carousel-arrows svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .levels-carousel-tabs {
+    gap: .85rem !important;
+    margin-top: 1.5rem !important;
+  }
+
+  .levels-carousel-tabs button {
+    gap: .65rem !important;
+    min-height: 48px;
+    padding: .75rem 1.15rem !important;
+    border-radius: 14px !important;
+    font-size: 1rem !important;
+  }
+
+  .levels-carousel-tabs svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .levels-carousel-content {
+    min-height: 510px !important;
+    margin-top: 2.25rem !important;
+  }
+
+  .levels-carousel-slide {
+    grid-template-columns: minmax(0, 1.08fr) minmax(560px, .92fr) !important;
+    gap: 3.5rem !important;
+  }
+
+  .levels-carousel-copy {
+    gap: 1.35rem;
+  }
+
+  .levels-carousel-concept {
+    gap: .7rem !important;
+    padding: .55rem 1rem !important;
+    font-size: 1rem !important;
+  }
+
+  .levels-carousel-concept svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .levels-carousel-object {
+    font-size: 2.75rem !important;
+    line-height: 1.12;
+  }
+
+  .levels-carousel-summary {
+    max-width: 1100px;
+    font-size: 1.3rem !important;
+    line-height: 1.7 !important;
+  }
+
+  .levels-carousel-detail {
+    padding: 1.35rem 1.5rem !important;
+    border-radius: 20px !important;
+  }
+
+  .levels-carousel-detail > div {
+    font-size: .95rem !important;
+  }
+
+  .levels-carousel-detail > p {
+    margin-top: .65rem !important;
+    font-size: 1.08rem !important;
+    line-height: 1.65 !important;
+  }
+
+  .levels-carousel-stage {
+    min-height: 490px !important;
+    padding: 2.5rem !important;
+    border-radius: 28px !important;
+  }
+
+  .levels-carousel-stage img {
+    max-height: 350px !important;
+    width: auto !important;
+  }
+
+  .levels-carousel-stage > .relative.z-10.grid > div {
+    width: 190px !important;
+    height: 190px !important;
+    border-radius: 36px !important;
+  }
+
+  .levels-carousel-stage > .relative.z-10.grid svg {
+    width: 100px;
+    height: 100px;
+  }
+
+  .levels-carousel-status {
+    padding: .7rem 1.1rem !important;
+    font-size: .9rem !important;
+  }
+
+  .levels-carousel-dots {
+    gap: .75rem !important;
+    margin-top: 2.25rem !important;
+  }
+
+  .levels-carousel-dots button {
+    height: 10px !important;
+  }
+
+  .workshop-story {
+    grid-template-columns: minmax(720px, 1.08fr) minmax(560px, .92fr);
+  }
+
+  .concept-journey {
+    min-height: 560px;
+    padding: 3rem;
+    border-radius: 36px;
+  }
+
+  .concept-journey-title strong {
+    font-size: 2.15rem;
+  }
+
+  .concept-step {
+    min-height: 210px;
+    padding: 1.65rem;
+  }
+
+  .concept-step strong {
+    font-size: 1.15rem;
+  }
+
+  .concept-result,
+  .concept-tabs button {
+    font-size: 1rem;
+  }
+
+  .concept-tabs button span {
+    font-size: .95rem;
+  }
+
+  .concept-tabs button small {
+    font-size: .72rem;
+  }
+
+  .workshop-copy > p {
+    font-size: 1.35rem;
+  }
+
+  .workshop-copy li {
+    font-size: 1.15rem;
+  }
+
   .experience-steps {
     gap: 2rem;
   }
@@ -4879,6 +5072,83 @@ button, a {
   .experience-step h3 { font-size: 2.05rem; }
   .experience-step p { font-size: 1.45rem; }
   .step-icon { width: 70px; height: 70px; border-radius: 20px; }
+
+  .levels-section .section-heading {
+    max-width: 1500px;
+    margin-bottom: 5rem;
+  }
+
+  .levels-carousel-shell {
+    min-height: 1040px;
+    padding: 4.5rem !important;
+    border-radius: 46px !important;
+  }
+
+  .levels-carousel-number {
+    width: 82px !important;
+    height: 82px !important;
+    font-size: 1.65rem !important;
+  }
+
+  .levels-carousel-title > span { font-size: 1.2rem !important; }
+  .levels-carousel-title h3 { font-size: 2.75rem !important; }
+
+  .levels-carousel-arrows button {
+    width: 72px !important;
+    height: 72px !important;
+  }
+
+  .levels-carousel-tabs button {
+    min-height: 62px;
+    padding: 1rem 1.45rem !important;
+    font-size: 1.25rem !important;
+  }
+
+  .levels-carousel-content {
+    min-height: 720px !important;
+    margin-top: 3rem !important;
+  }
+
+  .levels-carousel-slide {
+    grid-template-columns: minmax(0, 1.08fr) minmax(780px, .92fr) !important;
+    gap: 5rem !important;
+  }
+
+  .levels-carousel-concept { font-size: 1.3rem !important; }
+  .levels-carousel-object { font-size: 3.8rem !important; }
+  .levels-carousel-summary { font-size: 1.7rem !important; }
+  .levels-carousel-detail { padding: 1.8rem 2rem !important; }
+  .levels-carousel-detail > div { font-size: 1.2rem !important; }
+  .levels-carousel-detail > p { font-size: 1.4rem !important; }
+
+  .levels-carousel-stage {
+    min-height: 680px !important;
+    padding: 3.25rem !important;
+  }
+
+  .levels-carousel-stage img { max-height: 470px !important; }
+  .levels-carousel-stage > .relative.z-10.grid > div {
+    width: 260px !important;
+    height: 260px !important;
+  }
+  .levels-carousel-stage > .relative.z-10.grid svg {
+    width: 138px;
+    height: 138px;
+  }
+  .levels-carousel-status { font-size: 1.18rem !important; }
+
+  .workshop-story {
+    grid-template-columns: minmax(1040px, 1.08fr) minmax(760px, .92fr);
+  }
+
+  .concept-journey {
+    min-height: 760px;
+    padding: 4rem;
+  }
+
+  .concept-step { min-height: 285px; }
+  .concept-step strong { font-size: 1.45rem; }
+  .concept-result { font-size: 1.25rem; }
 
   .final-cta {
     width: min(88vw, 3280px);

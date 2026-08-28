@@ -155,7 +155,7 @@ export function LevelsCarousel() {
 
   return (
     <div
-      className="relative rounded-3xl border border-white/10 bg-slate-950/60 p-5 backdrop-blur-2xl sm:p-8"
+      className="levels-carousel-shell relative rounded-3xl border border-white/10 bg-slate-950/60 p-5 backdrop-blur-2xl sm:p-8"
       onMouseEnter={() => setIsAutoPlay(false)}
       onMouseLeave={() => setIsAutoPlay(true)}
     >
@@ -168,10 +168,10 @@ export function LevelsCarousel() {
       />
 
       {/* Header controls and level selector tabs */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
+      <div className="levels-carousel-header relative z-10 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div className="flex items-center gap-3">
           <span
-            className="grid h-10 w-10 place-items-center rounded-xl border text-sm font-bold font-mono"
+            className="levels-carousel-number grid h-10 w-10 place-items-center rounded-xl border text-sm font-bold font-mono"
             style={{
               borderColor: `${activeLevel.accentHex}55`,
               backgroundColor: `${activeLevel.accentHex}18`,
@@ -180,7 +180,7 @@ export function LevelsCarousel() {
           >
             {activeLevel.numero}
           </span>
-          <div>
+          <div className="levels-carousel-title">
             <span className="text-[11px] font-semibold uppercase tracking-[.18em] text-slate-400">
               Ruta Interactiva POO
             </span>
@@ -191,7 +191,7 @@ export function LevelsCarousel() {
         </div>
 
         {/* Prev / Next buttons */}
-        <div className="flex items-center gap-2">
+        <div className="levels-carousel-arrows flex items-center gap-2">
           <button
             aria-label="Nivel anterior"
             className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-300 transition hover:border-emerald-300/30 hover:bg-emerald-300/10 hover:text-emerald-200 active:scale-95"
@@ -212,7 +212,7 @@ export function LevelsCarousel() {
       </div>
 
       {/* Quick Level Pills Tab Bar */}
-      <div className="relative z-10 mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+      <div className="levels-carousel-tabs relative z-10 mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
         {NIVELES.map((lvl, index) => {
           const isActive = index === activeIndex;
           const LvlIcon = lvl.icon;
@@ -238,33 +238,33 @@ export function LevelsCarousel() {
       </div>
 
       {/* Animated Slide Content */}
-      <div className="relative z-10 mt-6 min-h-[380px]">
+      <div className="levels-carousel-content relative z-10 mt-6 min-h-[380px]">
         <AnimatePresence mode="wait">
           <motion.div
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-center"
+            className="levels-carousel-slide grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-center"
             exit={{ opacity: 0, y: -15, scale: 0.98 }}
             initial={{ opacity: 0, y: 15, scale: 0.98 }}
             key={activeLevel.numero}
             transition={{ duration: 0.35, ease: "easeOut" }}
           >
             {/* Left Column: Pedagogical Details & VR Mission */}
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.03] px-3 py-1 text-xs text-slate-300">
+            <div className="levels-carousel-copy space-y-4">
+              <div className="levels-carousel-concept inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.03] px-3 py-1 text-xs text-slate-300">
                 <BrainCircuit size={14} style={{ color: activeLevel.accentHex }} />
                 <span>Concepto clave:</span>
                 <strong className="text-white">{activeLevel.concepto}</strong>
               </div>
 
-              <h4 className="text-2xl font-bold text-slate-100 sm:text-3xl">
+              <h4 className="levels-carousel-object text-2xl font-bold text-slate-100 sm:text-3xl">
                 {activeLevel.objeto}
               </h4>
 
-              <p className="text-sm leading-7 text-slate-300 sm:text-base">
+              <p className="levels-carousel-summary text-sm leading-7 text-slate-300 sm:text-base">
                 {activeLevel.texto}
               </p>
 
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+              <div className="levels-carousel-detail rounded-2xl border border-white/10 bg-black/25 p-4">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   <Gamepad2 size={15} style={{ color: activeLevel.accentHex }} />
                   Misión en Realidad Mixta
@@ -274,7 +274,7 @@ export function LevelsCarousel() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-white/[.02] to-transparent p-4">
+              <div className="levels-carousel-detail rounded-2xl border border-white/10 bg-gradient-to-r from-white/[.02] to-transparent p-4">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   <Sparkles size={15} className="text-emerald-300" />
                   Impacto en Aprendizaje
@@ -286,7 +286,7 @@ export function LevelsCarousel() {
             </div>
 
             {/* Right Column: Visual Stage / Hologram representation */}
-            <div className="relative flex min-h-[300px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/60 to-slate-950/80 p-6 shadow-2xl">
+            <div className="levels-carousel-stage relative flex min-h-[300px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/60 to-slate-950/80 p-6 shadow-2xl">
               {/* Scanline and Grid effect */}
               <div
                 aria-hidden="true"
@@ -327,7 +327,7 @@ export function LevelsCarousel() {
               )}
 
               {/* Status footer pill */}
-              <div className="relative z-10 mt-auto flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/80 px-3.5 py-1.5 font-mono text-[11px] text-slate-300 backdrop-blur-md">
+              <div className="levels-carousel-status relative z-10 mt-auto flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/80 px-3.5 py-1.5 font-mono text-[11px] text-slate-300 backdrop-blur-md">
                 <span
                   className="h-2 w-2 animate-pulse rounded-full"
                   style={{ backgroundColor: activeLevel.accentHex }}
@@ -340,7 +340,7 @@ export function LevelsCarousel() {
       </div>
 
       {/* Progress Dots Indicator */}
-      <div className="relative z-10 mt-6 flex items-center justify-center gap-2">
+      <div className="levels-carousel-dots relative z-10 mt-6 flex items-center justify-center gap-2">
         {NIVELES.map((lvl, index) => (
           <button
             aria-label={`Ir al nivel ${lvl.numero}`}
