@@ -235,20 +235,47 @@
 
     const primitives = "String|int|double|float|long|short|byte|boolean|char";
 
-    // 1. Transform class field declarations directly inside class bodies
-    // Example: `String nombre = "Michi";` -> `nombre = "Michi";`
-    // Example: `private int edad = 5;` -> `edad = 5;`
-    // Example: `static String especie = "Felino";` -> `static especie = "Felino";`
-    // Example: `String color;` -> `color;`
-    const classFieldRegex = new RegExp(
-      `^([ \\t]{2,})(?:(?:public|private|protected|final)\\s+)*(static\\s+)?(?:${primitives}|[A-Z]\\w*)(?:\\[\\])*\\s+(\\w+)(\\s*=\\s*[^;\\n]+)?\\s*;`,
-      "gm",
+    // Transform declarations depth-aware:
+    // depth === 1 (direct child of class): CLASS FIELD (`nombre = "Michi";`, `static count = 0;`)
+    // depth >= 2 (inside method/constructor): LOCAL VARIABLE (`let Michi = new Gato(...)`, `let total = 0;`)
+    const lineasTranspilar = code.split("\n");
+    let nivelLlaves = 0;
+    const lineasProcesadas = [];
+
+    const fieldPattern = new RegExp(
+      `^([ \\t]*)(?:(?:public|private|protected|final)\\s+)*(static\\s+)?(?:${primitives}|[A-Z]\\w*)(?:\\[\\])*\\s+(\\w+)(\\s*=\\s*[^;\\n]+)?\\s*;`,
     );
-    code = code.replace(classFieldRegex, (match, indent, staticKw, fieldName, initVal) => {
-      const staticPrefix = staticKw ? "static " : "";
-      const initializer = initVal ? initVal : "";
-      return `${indent}${staticPrefix}${fieldName}${initializer};`;
-    });
+
+    for (let idx = 0; idx < lineasTranspilar.length; idx += 1) {
+      let lineaActual = lineasTranspilar[idx];
+      const matchField = lineaActual.match(fieldPattern);
+
+      if (matchField && !/\b(?:return|break|continue|throw)\b/.test(lineaActual)) {
+        const indent = matchField[1];
+        const staticKw = matchField[2] ? "static " : "";
+        const fieldName = matchField[3];
+        let initVal = matchField[4] ? matchField[4] : "";
+
+        // Convertir inicializadores de arreglos Java `{ a, b }` a arreglos JS `[ a, b ]`
+        if (/^\s*=\s*\{/.test(initVal) && /\}\s*$/.test(initVal)) {
+          initVal = initVal.replace(/^(\s*=\s*)\{([\s\S]*)\}\s*$/, "$1[$2]");
+        }
+
+        if (nivelLlaves === 1) {
+          lineaActual = `${indent}${staticKw}${fieldName}${initVal};`;
+        } else if (nivelLlaves >= 2) {
+          lineaActual = `${indent}let ${fieldName}${initVal};`;
+        }
+      }
+
+      for (let c = 0; c < lineaActual.length; c += 1) {
+        if (lineaActual[c] === "{") nivelLlaves += 1;
+        else if (lineaActual[c] === "}") nivelLlaves = Math.max(0, nivelLlaves - 1);
+      }
+
+      lineasProcesadas.push(lineaActual);
+    }
+    code = lineasProcesadas.join("\n");
 
     // Java permite llamar métodos de la misma clase sin escribir `this.`.
     // JavaScript no resuelve esos nombres dentro de otro método, por lo que
@@ -303,13 +330,6 @@
     code = code.replace(
       new RegExp(`\\b(${primitives})\\s+(\\w+)\\s*=(?!=)`, "g"),
       "let $2 =",
-    );
-    code = code.replace(
-      new RegExp(
-        `^([ \\t]*)(?:(?:public|private|protected|static|final)\\s+)*(?:${primitives}|[A-Z]\\w*)(?:\\[\\])?\\s+(\\w+)\\s*;`,
-        "gm",
-      ),
-      "$1let $2;",
     );
 
     code = code.replace(/System\.out\.println\(/g, "__println(");

@@ -310,7 +310,7 @@ export function analizarCodigoPrevio(
       if (!linea || linea.startsWith("/*") || linea.startsWith("*")) continue;
 
       const esSentencia =
-        /^(?:(?:return|break|continue|throw)\b.+|(?:final\s+)?(?:String|int|double|float|long|short|byte|boolean|char|Object|[A-Z]\w*)(?:\[\])*\s+\w+.+|(?:this\.)?\w+(?:\.\w+)*\s*(?:=|\+=|-=|\*=|\/=|\+\+|--).+|System\.out\.(?:print|println)\s*\(.+\)|\w+\s*\(.+\))$/.test(
+        /^(?:(?:return|break|continue|throw)\b.*|(?:final\s+)?(?:String|int|double|float|long|short|byte|boolean|char|Object|[A-Z]\w*)(?:\[\])*\s+\w+.*|(?:this\.)?\w+(?:\.\w+)*\s*(?:=|\+=|-=|\*=|\/=|\+\+|--).*|System\.out\.(?:print|println)\s*\(.*\)|\w+\s*\(.*\))$/.test(
           linea,
         );
 
