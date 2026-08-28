@@ -8,6 +8,8 @@ public class ActualizarReporteIaRequest {
     private List<String> fortalezas;
     private List<String> aspectosMejora;
     private List<String> recomendaciones;
+    private List<String> evidencias;
+    private String proximoEjercicio;
     private Integer puntajeBase;
     private Integer tiempoRestanteBase;
     private Integer intentosBase;
@@ -23,6 +25,10 @@ public class ActualizarReporteIaRequest {
     public void setAspectosMejora(List<String> aspectosMejora) { this.aspectosMejora = aspectosMejora; }
     public List<String> getRecomendaciones() { return recomendaciones; }
     public void setRecomendaciones(List<String> recomendaciones) { this.recomendaciones = recomendaciones; }
+    public List<String> getEvidencias() { return evidencias; }
+    public void setEvidencias(List<String> evidencias) { this.evidencias = evidencias; }
+    public String getProximoEjercicio() { return proximoEjercicio; }
+    public void setProximoEjercicio(String proximoEjercicio) { this.proximoEjercicio = proximoEjercicio; }
     public Integer getPuntajeBase() { return puntajeBase; }
     public void setPuntajeBase(Integer puntajeBase) { this.puntajeBase = puntajeBase; }
     public Integer getTiempoRestanteBase() { return tiempoRestanteBase; }

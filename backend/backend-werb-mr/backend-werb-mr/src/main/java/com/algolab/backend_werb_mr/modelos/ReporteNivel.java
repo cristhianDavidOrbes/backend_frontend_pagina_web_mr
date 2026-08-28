@@ -61,6 +61,12 @@ public class ReporteNivel {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String recomendaciones;
 
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String evidencias;
+
+    @Column(nullable = false, length = 1000)
+    private String proximoEjercicio;
+
     @Column(nullable = false)
     private Boolean generadoPorIa = false;
 
@@ -81,6 +87,8 @@ public class ReporteNivel {
         if (fortalezas == null) fortalezas = "";
         if (aspectosMejora == null) aspectosMejora = "";
         if (recomendaciones == null) recomendaciones = "";
+        if (evidencias == null) evidencias = "";
+        if (proximoEjercicio == null) proximoEjercicio = "";
     }
 
     public Long getId() { return id; }
@@ -109,6 +117,10 @@ public class ReporteNivel {
     public void setAspectosMejora(String aspectosMejora) { this.aspectosMejora = aspectosMejora; }
     public String getRecomendaciones() { return recomendaciones; }
     public void setRecomendaciones(String recomendaciones) { this.recomendaciones = recomendaciones; }
+    public String getEvidencias() { return evidencias; }
+    public void setEvidencias(String evidencias) { this.evidencias = evidencias; }
+    public String getProximoEjercicio() { return proximoEjercicio; }
+    public void setProximoEjercicio(String proximoEjercicio) { this.proximoEjercicio = proximoEjercicio; }
     public Boolean getGeneradoPorIa() { return generadoPorIa; }
     public void setGeneradoPorIa(Boolean generadoPorIa) { this.generadoPorIa = generadoPorIa; }
     public LocalDateTime getFechaGeneracion() { return fechaGeneracion; }

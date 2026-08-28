@@ -2,7 +2,6 @@ package com.algolab.backend_werb_mr.servicios;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -18,18 +17,13 @@ import com.algolab.backend_werb_mr.repositorio.IReporteNivelRepositorio;
 
 @Service
 public class ReporteNivelServicio {
-    private static final Map<Integer, Integer> PUNTAJE_MAXIMO_POR_NIVEL = Map.of(
-            1, 80,
-            2, 240,
-            3, 100,
-            4, 255,
-            5, 300,
-            6, 300);
-
     private final IReporteNivelRepositorio repositorio;
+    private final ConfiguracionTutorNivelServicio configuracionTutor;
 
-    public ReporteNivelServicio(IReporteNivelRepositorio repositorio) {
+    public ReporteNivelServicio(IReporteNivelRepositorio repositorio,
+            ConfiguracionTutorNivelServicio configuracionTutor) {
         this.repositorio = repositorio;
+        this.configuracionTutor = configuracionTutor;
     }
 
     @Transactional
@@ -38,7 +32,8 @@ public class ReporteNivelServicio {
 
         int puntaje = Math.max(0, progreso.getPuntaje());
         int intentos = Math.max(1, progreso.getIntentos());
-        int puntajeMaximo = PUNTAJE_MAXIMO_POR_NIVEL.getOrDefault(progreso.getNivel(), 100);
+        var config = configuracionTutor.buscarModelo(progreso.getNivel());
+        int puntajeMaximo = config == null ? 100 : config.getPuntajeMaximo();
         int dominio = Math.max(0, Math.min(100,
                 Math.round((puntaje * 100f) / Math.max(1, puntajeMaximo))));
         boolean completado = Boolean.TRUE.equals(progreso.getCompletado());
@@ -66,6 +61,8 @@ public class ReporteNivelServicio {
         reporte.setFortalezas(String.join("\n", fortalezasBase(completado, dominio, intentos)));
         reporte.setAspectosMejora(String.join("\n", mejorasBase(completado, dominio, intentos)));
         reporte.setRecomendaciones(String.join("\n", recomendacionesBase(progreso.getNivel(), dominio)));
+        reporte.setEvidencias(String.join("\n", evidenciasBase(puntaje, puntajeMaximo, tiempoRestante, intentos, completado)));
+        reporte.setProximoEjercicio(config == null ? proximoEjercicioBase(progreso.getNivel()) : config.getProximoEjercicio());
         reporte.setGeneradoPorIa(false);
         reporte.setFechaGeneracion(LocalDateTime.now());
         return ReporteNivelDTO.desdeModelo(repositorio.save(reporte));
@@ -87,6 +84,8 @@ public class ReporteNivelServicio {
         // de deficiencias. No se conserva una debilidad genérica del reporte base.
         if (request.getAspectosMejora() != null) reporte.setAspectosMejora(unir(request.getAspectosMejora()));
         if (listaValida(request.getRecomendaciones())) reporte.setRecomendaciones(unir(request.getRecomendaciones()));
+        if (listaValida(request.getEvidencias())) reporte.setEvidencias(unir(request.getEvidencias()));
+        if (textoValido(request.getProximoEjercicio())) reporte.setProximoEjercicio(limitar(request.getProximoEjercicio(), 1000));
         reporte.setGeneradoPorIa(true);
         reporte.setFechaGeneracion(LocalDateTime.now());
         return ReporteNivelDTO.desdeModelo(repositorio.save(reporte));
@@ -187,5 +186,18 @@ public class ReporteNivelServicio {
         String concepto = tituloNivel(nivel).toLowerCase();
         if (dominio >= 85) return List.of("Explica " + concepto + " con un ejemplo propio", "Intenta el siguiente nivel sin ayudas");
         return List.of("Repite el tema de " + concepto, "Describe en voz alta por qué cada acción es correcta", "Vuelve a intentar el reto buscando menos errores");
+    }
+
+    private static List<String> evidenciasBase(int puntaje, int maximo, int tiempo, int intentos, boolean completado) {
+        return List.of(
+                completado ? "Completó la práctica" : "La práctica quedó incompleta",
+                "Obtuvo " + puntaje + " de " + maximo + " puntos",
+                "Realizó " + intentos + (intentos == 1 ? " intento" : " intentos"),
+                "Terminó con " + tiempo + " segundos disponibles");
+    }
+
+    private static String proximoEjercicioBase(int nivel) {
+        return "Resuelve una situación nueva de " + tituloNivel(nivel).toLowerCase()
+                + " y explica qué evidencia demuestra que tu decisión es correcta.";
     }
 }

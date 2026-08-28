@@ -21,6 +21,8 @@ public class ReporteNivelDTO {
     private List<String> fortalezas;
     private List<String> aspectosMejora;
     private List<String> recomendaciones;
+    private List<String> evidencias;
+    private String proximoEjercicio;
     private Boolean generadoPorIa;
     private LocalDateTime fechaGeneracion;
 
@@ -40,6 +42,8 @@ public class ReporteNivelDTO {
         dto.fortalezas = separar(reporte.getFortalezas());
         dto.aspectosMejora = separar(reporte.getAspectosMejora());
         dto.recomendaciones = separar(reporte.getRecomendaciones());
+        dto.evidencias = separar(reporte.getEvidencias());
+        dto.proximoEjercicio = reporte.getProximoEjercicio();
         dto.generadoPorIa = reporte.getGeneradoPorIa();
         dto.fechaGeneracion = reporte.getFechaGeneracion();
         return dto;
@@ -65,6 +69,8 @@ public class ReporteNivelDTO {
     public List<String> getFortalezas() { return fortalezas; }
     public List<String> getAspectosMejora() { return aspectosMejora; }
     public List<String> getRecomendaciones() { return recomendaciones; }
+    public List<String> getEvidencias() { return evidencias; }
+    public String getProximoEjercicio() { return proximoEjercicio; }
     public Boolean getGeneradoPorIa() { return generadoPorIa; }
     public LocalDateTime getFechaGeneracion() { return fechaGeneracion; }
 }

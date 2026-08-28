@@ -62,6 +62,7 @@ const roleConfig: Record<UsuarioSesion["rol"], RoleConfig> = {
       { href: "/administrador", label: "Centro de control", icon: "route", exact: true },
       { href: "/administrador/usuarios", label: "Usuarios", icon: "students" },
       { href: "/administrador/niveles", label: "Niveles", icon: "levels" },
+      { href: "/administrador/tutor-ia", label: "Tutor IA", icon: "spark" },
       { href: "/administrador/perfil", label: "Mi perfil", icon: "profile" },
       { href: "/", label: "Explorar AlgoLab", icon: "world", exact: true },
     ],

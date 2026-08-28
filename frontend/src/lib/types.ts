@@ -41,6 +41,8 @@ export type ReporteNivel = {
   fortalezas: string[];
   aspectosMejora: string[];
   recomendaciones: string[];
+  evidencias: string[];
+  proximoEjercicio: string;
   generadoPorIa: boolean;
   fechaGeneracion: string;
 };

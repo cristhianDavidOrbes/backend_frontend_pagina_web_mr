@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,12 @@ import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.repositorio.IReporteNivelRepositorio;
 
 class ReporteNivelServicioTest {
+    private static ReporteNivelServicio crearServicio(IReporteNivelRepositorio repositorio) {
+        ConfiguracionTutorNivelServicio configuracion = mock(ConfiguracionTutorNivelServicio.class);
+        when(configuracion.buscarModelo(anyInt())).thenReturn(null);
+        return new ReporteNivelServicio(repositorio, configuracion);
+    }
+
     @Test
     void creaReporteBaseYPermiteEnriquecerloConIaSinInventarElNivel() {
         IReporteNivelRepositorio repositorio = mock(IReporteNivelRepositorio.class);
@@ -46,7 +53,7 @@ class ReporteNivelServicioTest {
         progreso.setTiempoRestante(54);
         progreso.setIntentos(2);
 
-        ReporteNivelServicio servicio = new ReporteNivelServicio(repositorio);
+        ReporteNivelServicio servicio = crearServicio(repositorio);
         ReporteNivelDTO base = servicio.sincronizarDesdeProgreso(usuario, progreso);
 
         assertEquals("Encapsulamiento", base.getTituloNivel());
@@ -102,7 +109,7 @@ class ReporteNivelServicioTest {
         progreso.setTiempoRestante(90);
         progreso.setIntentos(1);
 
-        ReporteNivelServicio servicio = new ReporteNivelServicio(repositorio);
+        ReporteNivelServicio servicio = crearServicio(repositorio);
         ReporteNivelDTO base = servicio.sincronizarDesdeProgreso(usuario, progreso);
         assertTrue(base.getAspectosMejora().isEmpty());
 
@@ -141,7 +148,7 @@ class ReporteNivelServicioTest {
         anterior.setIntentosBase(1);
         anterior.setCompletadoBase(true);
 
-        ReporteNivelServicio servicio = new ReporteNivelServicio(repositorio);
+        ReporteNivelServicio servicio = crearServicio(repositorio);
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> servicio.actualizarConIa(usuario, 4, anterior));
 

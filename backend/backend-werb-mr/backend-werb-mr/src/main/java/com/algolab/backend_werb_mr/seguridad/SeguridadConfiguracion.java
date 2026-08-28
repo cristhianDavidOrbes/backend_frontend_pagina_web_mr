@@ -46,6 +46,8 @@ public class SeguridadConfiguracion {
                         .requestMatchers(HttpMethod.GET, "/api/niveles", "/api/niveles/**").authenticated()
                         .requestMatchers("/api/niveles/**").hasAnyRole("DOCENTE", "ADMINISTRADOR")
                         .requestMatchers("/api/descripciones-niveles/**").hasAnyRole("DOCENTE", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/configuracion-tutor/niveles/*").authenticated()
+                        .requestMatchers("/api/configuracion-tutor/**").hasRole("ADMINISTRADOR")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFiltro, UsernamePasswordAuthenticationFilter.class)
                 .build();

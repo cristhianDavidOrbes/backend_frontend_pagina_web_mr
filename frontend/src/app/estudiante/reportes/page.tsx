@@ -62,14 +62,25 @@ export default function EstudianteReportesPage() {
               <p className="mt-4 text-sm text-slate-300 leading-relaxed">{reporte.resumen}</p>
               
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <Insight label="Lo que destacas" items={reporte.fortalezas} tone="positive" />
-                <Insight label="Para mejorar" items={reporte.aspectosMejora} tone="growth" />
+                <Insight label="Lo que comprendiste" items={reporte.fortalezas} tone="positive" />
+                <Insight label="Lo que necesitas reforzar" items={reporte.aspectosMejora} tone="growth" />
+              </div>
+
+              <div className="mt-4">
+                <Insight label="Evidencia observada" items={reporte.evidencias ?? []} tone="positive" />
               </div>
               
               {reporte.recomendaciones.length > 0 && (
                 <div className="recommendation mt-5">
                   <span>Próximo paso</span>
                   <p>{reporte.recomendaciones[0]}</p>
+                </div>
+              )}
+
+              {reporte.proximoEjercicio && (
+                <div className="recommendation mt-3">
+                  <span>Próximo ejercicio sugerido</span>
+                  <p>{reporte.proximoEjercicio}</p>
                 </div>
               )}
             </article>
