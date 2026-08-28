@@ -169,10 +169,19 @@ export function OopDocsPanel({
           </div>
         </div>
 
-        {/* Expected output */}
-        <div className="oop-section">
-          <h3 className="oop-section-title">✅ Ejemplo de salida esperada</h3>
-          <p className="text-xs text-emerald-400/80 mb-2">💡 Puedes personalizar valores y nombres de variables mientras cumplas los conceptos pedidos.</p>
+        {/* ══ SALIDA ESPERADA ══ */}
+        <div className="oop-expected-output-section">
+          <div className="oop-expected-output-header">
+            <div className="oop-expected-output-title">
+              <span>✅</span>
+              <span>Salida esperada</span>
+            </div>
+            <span className="oop-expected-output-badge">📋 Referencia</span>
+          </div>
+          <div className="oop-expected-output-hint">
+            <span>💡</span>
+            <span>Puedes personalizar valores y nombres mientras cumplas los conceptos pedidos.</span>
+          </div>
           <pre className="oop-expected-output overflow-x-auto">{nivel.practica.salidaEsperada}</pre>
         </div>
 
