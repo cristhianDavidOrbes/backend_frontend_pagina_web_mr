@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Sparkles,
   User,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,6 +35,7 @@ import {
 
 type Paso = "datos" | "codigo" | "bienvenida";
 type Tono = "error" | "aviso" | "exito";
+type DocumentoLegal = "terminos" | "datos";
 
 const LEGAL_VERSION = "2026-08-26";
 
@@ -229,6 +231,7 @@ export default function RegistrarsePage() {
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [aceptaDatos, setAceptaDatos] = useState(false);
   const [consentimientoTocado, setConsentimientoTocado] = useState(false);
+  const [documentoLegal, setDocumentoLegal] = useState<DocumentoLegal | null>(null);
   const dir = 1;
 
   const [enviando, setEnviando] = useState(false);
@@ -287,6 +290,23 @@ export default function RegistrarsePage() {
         : "/estudiante"
     );
   }, [hydrated, existingToken, usuario, router]);
+
+  useEffect(() => {
+    if (!documentoLegal) return;
+
+    const overflowAnterior = document.body.style.overflow;
+    const cerrarConEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDocumentoLegal(null);
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", cerrarConEscape);
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      window.removeEventListener("keydown", cerrarConEscape);
+    };
+  }, [documentoLegal]);
 
   async function registrar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -574,9 +594,13 @@ export default function RegistrarsePage() {
                       />
                       <div>
                         <label htmlFor="acepta-terminos">Acepto los Términos y Condiciones.</label>
-                        <Link href="/terminos-y-condiciones" target="_blank" rel="noopener noreferrer">
+                        <button
+                          type="button"
+                          className={css.consentLink}
+                          onClick={() => setDocumentoLegal("terminos")}
+                        >
                           Leer documento completo
-                        </Link>
+                        </button>
                       </div>
                     </div>
                     <div className={css.consentRow}>
@@ -595,9 +619,13 @@ export default function RegistrarsePage() {
                         <label htmlFor="acepta-datos">
                           Autorizo el tratamiento de mis datos personales para operar AlgoLab.
                         </label>
-                        <Link href="/tratamiento-de-datos" target="_blank" rel="noopener noreferrer">
+                        <button
+                          type="button"
+                          className={css.consentLink}
+                          onClick={() => setDocumentoLegal("datos")}
+                        >
                           Consultar política de datos
-                        </Link>
+                        </button>
                       </div>
                     </div>
                     <small id="consent-help">
@@ -643,6 +671,70 @@ export default function RegistrarsePage() {
           </AnimatePresence>
         </motion.div>
       </section>
+
+      <AnimatePresence>
+        {documentoLegal && (
+          <motion.div
+            className={css.legalModalBackdrop}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setDocumentoLegal(null);
+            }}
+          >
+            <motion.section
+              className={css.legalModal}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="registro-documento-legal"
+              initial={rm ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={rm ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              <header className={css.legalModalHeader}>
+                <div>
+                  <span>Documento legal de AlgoLab</span>
+                  <h2 id="registro-documento-legal">
+                    {documentoLegal === "terminos"
+                      ? "Términos y Condiciones"
+                      : "Tratamiento de Datos Personales"}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  className={css.legalModalClose}
+                  onClick={() => setDocumentoLegal(null)}
+                  aria-label="Cerrar documento y volver al registro"
+                  autoFocus
+                >
+                  <X size={22} aria-hidden />
+                </button>
+              </header>
+              <iframe
+                className={css.legalModalFrame}
+                src={
+                  documentoLegal === "terminos"
+                    ? "/terminos-y-condiciones?embedded=1"
+                    : "/tratamiento-de-datos?embedded=1"
+                }
+                title={
+                  documentoLegal === "terminos"
+                    ? "Términos y Condiciones de AlgoLab"
+                    : "Tratamiento de Datos Personales de AlgoLab"
+                }
+              />
+              <footer className={css.legalModalFooter}>
+                <p>Tu formulario permanece intacto mientras consultas este documento.</p>
+                <button type="button" onClick={() => setDocumentoLegal(null)}>
+                  Volver al registro
+                </button>
+              </footer>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

@@ -2,9 +2,15 @@ import { DatabaseZap } from "lucide-react";
 
 import { LegalDocument } from "@/components/legal-document";
 
-export default function TratamientoDeDatosPage() {
+export default async function TratamientoDeDatosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ embedded?: string }>;
+}) {
+  const { embedded } = await searchParams;
   return (
     <LegalDocument
+      embedded={embedded === "1"}
       title="Tratamiento de Datos Personales"
       eyebrow="Autorización informada"
       icon={DatabaseZap}

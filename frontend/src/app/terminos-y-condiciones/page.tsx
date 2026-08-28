@@ -2,9 +2,15 @@ import { FileCheck2 } from "lucide-react";
 
 import { LegalDocument } from "@/components/legal-document";
 
-export default function TerminosYCondicionesPage() {
+export default async function TerminosYCondicionesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ embedded?: string }>;
+}) {
+  const { embedded } = await searchParams;
   return (
     <LegalDocument
+      embedded={embedded === "1"}
       title="Términos y Condiciones"
       eyebrow="Uso responsable de la plataforma"
       icon={FileCheck2}
