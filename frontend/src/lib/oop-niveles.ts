@@ -127,7 +127,7 @@ print(f"{nombre} tiene {edad} años y pesa {peso} kg")`,
     },
     practica: {
       enunciado:
-        "Crea tres variables: `nombre` con el valor `\"Ana\"`, `edad` con `20`, y `lenguaje` con `\"Python\"` (o `\"Java\"` en Java). Luego imprime exactamente:\n\n`Hola, soy Ana, tengo 20 años y aprendo Python`\n\n*(o aprendo Java según el lenguaje)*",
+        "Crea al menos tres variables (por ejemplo: `nombre`, `edad` y `lenguaje`), asígnales valores e imprime un texto que incluya tus tres variables.\n\n**Ejemplo de salida:**\n`Hola, soy Ana, tengo 20 años y aprendo Python` *(o Java)*",
       salidaEsperada: "Hola, soy Ana, tengo 20 años y aprendo Python",
     },
     codigoBasePython: `# Escribe tu código Python aquí\n`,

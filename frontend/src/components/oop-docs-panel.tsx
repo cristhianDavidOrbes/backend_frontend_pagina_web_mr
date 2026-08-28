@@ -152,7 +152,8 @@ export function OopDocsPanel({
 
         {/* Expected output */}
         <div className="oop-section">
-          <h3 className="oop-section-title">✅ Salida esperada</h3>
+          <h3 className="oop-section-title">✅ Ejemplo de salida esperada</h3>
+          <p className="text-xs text-emerald-400/80 mb-2">💡 Puedes personalizar valores y nombres de variables mientras cumplas los conceptos pedidos.</p>
           <pre className="oop-expected-output overflow-x-auto">{nivel.practica.salidaEsperada}</pre>
         </div>
 

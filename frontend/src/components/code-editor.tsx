@@ -236,6 +236,11 @@ function tokenizeCode(code: string, language: "python" | "java"): SyntaxToken[] 
   let index = 0;
   let expectDeclaration: "function" | "class" | null = null;
 
+  // Bracket stack stores: { char, tokenIndex, depth }
+  const bracketStack: { char: string; tokenIndex: number; depth: number }[] = [];
+  const openingBrackets: Record<string, boolean> = { "(": true, "[": true, "{": true };
+  const closingBrackets: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
+
   while (index < code.length) {
     const rest = code.slice(index);
     const whitespace = rest.match(/^\s+/)?.[0];
@@ -290,13 +295,40 @@ function tokenizeCode(code: string, language: "python" | "java"): SyntaxToken[] 
     }
 
     const char = code[index];
-    const type = char === "{" || char === "}" ? "brace-curly"
-      : char === "(" || char === ")" ? "brace-round"
-        : char === "[" || char === "]" ? "brace-square"
-          : /[+\-*/%=!<>:&|.?]/.test(char) ? "operator" : "plain";
+    if (openingBrackets[char]) {
+      const depth = bracketStack.length % 4;
+      const tokenIndex = tokens.length;
+      tokens.push({ value: char, type: `bracket-depth-${depth}` });
+      bracketStack.push({ char, tokenIndex, depth });
+      index += 1;
+      continue;
+    }
+
+    if (closingBrackets[char]) {
+      const expectedOpening = closingBrackets[char];
+      if (bracketStack.length > 0 && bracketStack[bracketStack.length - 1].char === expectedOpening) {
+        const matchingOpen = bracketStack.pop()!;
+        tokens.push({ value: char, type: `bracket-depth-${matchingOpen.depth}` });
+      } else {
+        // Llave/paréntesis huérfano sin apertura previa
+        tokens.push({ value: char, type: "bracket-error" });
+      }
+      index += 1;
+      continue;
+    }
+
+    const type = /[+\-*/%=!<>:&|.?]/.test(char) ? "operator" : "plain";
     tokens.push({ value: char, type });
     index += 1;
   }
+
+  // Cualquier llave/paréntesis de apertura que quedó en la pila sin cerrarse se marca en rojo
+  for (const unclosed of bracketStack) {
+    if (tokens[unclosed.tokenIndex]) {
+      tokens[unclosed.tokenIndex].type = "bracket-error";
+    }
+  }
+
   return tokens;
 }
 

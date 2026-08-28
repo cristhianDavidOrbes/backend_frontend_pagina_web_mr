@@ -233,6 +233,23 @@
       return `${indent}${name}(${stripParamTypes(params)}) {`;
     });
 
+    const primitives = "String|int|double|float|long|short|byte|boolean|char";
+
+    // 1. Transform class field declarations directly inside class bodies
+    // Example: `String nombre = "Michi";` -> `nombre = "Michi";`
+    // Example: `private int edad = 5;` -> `edad = 5;`
+    // Example: `static String especie = "Felino";` -> `static especie = "Felino";`
+    // Example: `String color;` -> `color;`
+    const classFieldRegex = new RegExp(
+      `^([ \\t]{2,})(?:(?:public|private|protected|final)\\s+)*(static\\s+)?(?:${primitives}|[A-Z]\\w*)(?:\\[\\])*\\s+(\\w+)(\\s*=\\s*[^;\\n]+)?\\s*;`,
+      "gm",
+    );
+    code = code.replace(classFieldRegex, (match, indent, staticKw, fieldName, initVal) => {
+      const staticPrefix = staticKw ? "static " : "";
+      const initializer = initVal ? initVal : "";
+      return `${indent}${staticPrefix}${fieldName}${initializer};`;
+    });
+
     // Java permite llamar métodos de la misma clase sin escribir `this.`.
     // JavaScript no resuelve esos nombres dentro de otro método, por lo que
     // agregamos la referencia únicamente en las invocaciones (no declaraciones).
@@ -265,7 +282,6 @@
       );
     }
 
-    const primitives = "String|int|double|float|long|short|byte|boolean|char";
     code = code.replace(
       new RegExp(
         `\\b(?:[A-Z]\\w*|${primitives})(?:\\[\\])+\\s+(\\w+)\\s*=\\s*\\{([^{}\\n]+)\\}\\s*;`,
@@ -293,7 +309,7 @@
         `^([ \\t]*)(?:(?:public|private|protected|static|final)\\s+)*(?:${primitives}|[A-Z]\\w*)(?:\\[\\])?\\s+(\\w+)\\s*;`,
         "gm",
       ),
-      "$1$2;",
+      "$1let $2;",
     );
 
     code = code.replace(/System\.out\.println\(/g, "__println(");
@@ -362,7 +378,7 @@
         "__print",
         ...globalsBloqueados,
         `"use strict";${jsCode}
-${hasMain ? "new Main().main([]);" : ""}
+${hasMain ? "if (typeof Main !== 'undefined') { if (typeof Main.main === 'function') { Main.main([]); } else if (typeof new Main().main === 'function') { new Main().main([]); } }" : ""}
 //# sourceURL=algolab-estudiante.java`,
       );
       ejecutar(println, print, ...globalsBloqueados.map(() => undefined));

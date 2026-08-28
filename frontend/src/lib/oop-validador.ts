@@ -27,54 +27,48 @@ export function validarEstructuraCodigo(
 
   switch (nivelId) {
     case 1: {
-      // Nivel 1: Variables y Tipos
+      // Nivel 1: Variables y Tipos (Libertad de nombres y valores)
       if (lenguaje === "python") {
-        const tieneNombre = /\b(nombre|name)\s*=\s*["'][^"']+["']/i.test(code);
-        const tieneEdad = /\b(edad|age)\s*=\s*\d+/i.test(code);
-        const tieneLenguaje = /\b(lenguaje|language|lang)\s*=\s*["'][^"']+["']/i.test(code);
+        const asignaciones = [...code.matchAll(/(?:^|\n)\s*([a-zA-Z_]\w*)\s*=\s*[^=\n]+/g)];
+        const tienePrint = /print\s*\(/i.test(code);
 
-        if (!tieneNombre || !tieneEdad || !tieneLenguaje) {
+        if (asignaciones.length < 3) {
           return {
             valido: false,
             mensaje:
-              "⚠️ Debes declarar y asignar las 3 variables requeridas: 'nombre = ...', 'edad = ...' y 'lenguaje = ...' antes de imprimirlas.",
+              "⚠️ Debes declarar y asignar al menos 3 variables (por ejemplo: nombre, edad y lenguaje).",
           };
         }
 
-        // Verificar que el print use las variables y no sea solo texto fijo
-        const printUsaVariables =
-          /print\s*\(\s*f["'].*?\{(nombre|edad|lenguaje)\}/i.test(code) ||
-          /print\s*\([^)]*(nombre|edad|lenguaje)[^)]*\)/i.test(code);
-
-        if (!printUsaVariables) {
+        if (!tienePrint) {
           return {
             valido: false,
             mensaje:
-              "⚠️ Debes usar las variables 'nombre', 'edad' y 'lenguaje' dentro de la función print (por ejemplo con f-strings: f\"Hola, soy {nombre}...\").",
+              "⚠️ Debes imprimir el resultado usando la función print() incluyendo tus variables.",
           };
         }
       } else {
         // Java
-        const tieneNombre = /String\s+(nombre|name)\s*=\s*["'][^"']+["']/i.test(code);
-        const tieneEdad = /int\s+(edad|age)\s*=\s*\d+/i.test(code);
-        const tieneLenguaje = /String\s+(lenguaje|language|lang)\s*=\s*["'][^"']+["']/i.test(code);
+        const declaraciones = [
+          ...code.matchAll(
+            /\b(?:String|int|double|float|long|short|byte|boolean|char|[A-Z]\w*)\s+([a-zA-Z_]\w*)\s*=\s*[^;\n]+;/g,
+          ),
+        ];
+        const tienePrint = /System\.out\.(?:println|print)\s*\(/i.test(code);
 
-        if (!tieneNombre || !tieneEdad || !tieneLenguaje) {
+        if (declaraciones.length < 3) {
           return {
             valido: false,
             mensaje:
-              "⚠️ Debes declarar las 3 variables con sus tipos: 'String nombre = ...;', 'int edad = ...;' y 'String lenguaje = ...;'.",
+              "⚠️ Debes declarar al menos 3 variables con sus tipos de datos (por ejemplo: String nombre = ...;, int edad = ...;, String lenguaje = ...;).",
           };
         }
 
-        const printUsaVariables =
-          /System\.out\.println\([^)]*(nombre|edad|lenguaje)[^)]*\)/i.test(code);
-
-        if (!printUsaVariables) {
+        if (!tienePrint) {
           return {
             valido: false,
             mensaje:
-              "⚠️ Debes usar las variables 'nombre', 'edad' y 'lenguaje' dentro de System.out.println concatenándolas con +.",
+              "⚠️ Debes imprimir tus variables en consola usando System.out.println().",
           };
         }
       }

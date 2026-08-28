@@ -189,16 +189,58 @@ function salidaCoincide(
   obtenida: string,
   esperada: string,
   lenguaje: LenguajeOOP,
+  nivelId?: number,
 ): boolean {
   if (esperada.includes("{") && esperada.includes("}")) return true;
   const norm1 = normalizarSalida(obtenida);
-  // El primer ejercicio comparte enunciado para ambos lenguajes, pero la
-  // salida debe nombrar el lenguaje que el estudiante está ejecutando.
   const esperadaPorLenguaje = lenguaje === "java"
     ? esperada.replace(/\bPython\b/g, "Java")
     : esperada;
   const norm2 = normalizarSalida(esperadaPorLenguaje);
-  return norm1 === norm2;
+
+  // 1. Coincidencia exacta o coincidencia insensible a espacios múltiples y mayúsculas
+  if (norm1 === norm2) return true;
+  if (norm1.toLowerCase().replace(/\s+/g, " ") === norm2.toLowerCase().replace(/\s+/g, " ")) return true;
+
+  if (!norm1) return false;
+
+  // 2. Validación pedagógica flexible por nivel
+  switch (nivelId) {
+    case 1: {
+      // Nivel 1: Variables y Tipos. Valida que haya impreso algo significativo con longitud mínima.
+      return norm1.length >= 4;
+    }
+    case 2: {
+      // Nivel 2: Funciones (Cálculo del área 6 * 4 = 24).
+      return /\b24\b/.test(norm1);
+    }
+    case 3: {
+      // Nivel 3: Clases y Objetos (Gato).
+      return /(michi|gato|naranja|cat|orange|soy)/i.test(norm1);
+    }
+    case 4: {
+      // Nivel 4: Encapsulamiento (Nota inválida y nota 90).
+      return /(inv[aá]lida|error|90)/i.test(norm1);
+    }
+    case 5: {
+      // Nivel 5: Herencia (Vehículo / Moto / Yamaha / caballito).
+      return /(yamaha|arrancando|caballito|moto|veh[ií]culo)/i.test(norm1);
+    }
+    case 6: {
+      // Nivel 6: Abstracción (Perímetro del cuadrado: 20).
+      return /\b20\b/i.test(norm1) || /per[ií]metro/i.test(norm1);
+    }
+    case 7: {
+      // Nivel 7: Polimorfismo (Instrumentos: Guitarra / Piano).
+      return /(guitarra|piano|tach[aá]n|plonk|sonido|instrumento)/i.test(norm1);
+    }
+    case 8: {
+      // Nivel 8: Desafío Final (Publicación / Libro / Revista).
+      return /(libro|revista|principito|tech|publicaci[oó]n)/i.test(norm1);
+    }
+    default:
+      return norm1.length > 0;
+  }
 }
 
 type PageParams = { nivel: string };
@@ -572,6 +614,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           resultado.salida,
           nivel.practica.salidaEsperada,
           lenguaje,
+          nivelId,
         );
         const validacion = validarEstructuraCodigo(nivelId, codigo, lenguaje);
 

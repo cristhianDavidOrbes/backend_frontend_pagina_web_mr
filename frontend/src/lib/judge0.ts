@@ -88,10 +88,30 @@ export function explicarErrorEnEspanol(
   const linea = numeroDeLinea(mensaje, lenguaje);
   const ultimaLinea = mensaje.split("\n").map((parte) => parte.trim()).filter(Boolean).at(-1) ?? mensaje;
 
-  if (/IndentationError|unexpected indent|expected an indented block/i.test(mensaje)) {
-    return `${linea}Error de sangría: revisa los espacios al inicio de la línea y alinea el bloque con su estructura.`;
+  if (/IndentationError|unexpected indent|expected an indented block|unindent does not match/i.test(mensaje)) {
+    const bloqueEsperado = mensaje.match(/expected an indented block (?:after ['"]?([^'":\n]+)['"]?|at line (\d+))/i);
+    if (bloqueEsperado) {
+      const contexto = bloqueEsperado[1] ? ` dentro de “${bloqueEsperado[1]}”` : "";
+      return `${linea}Error de sangría (indentación): falta indentar el bloque de código${contexto}. Agrega espacios o sangría al contenido.`;
+    }
+    if (/unindent does not match any outer indentation level/i.test(mensaje)) {
+      return `${linea}Error de sangría: esta línea no coincide con el nivel de indentación de ninguna clase, método o bloque exterior.`;
+    }
+    return `${linea}Error de sangría: revisa los espacios al inicio de la línea y alinea el bloque correctamente con su clase, función o estructura.`;
   }
-  if (/SyntaxError|invalid syntax|unexpected (?:token|identifier)|';' expected|illegal start/i.test(mensaje)) {
+
+  // Errores con mensaje explícito ya preparado por el worker (ej: delimitadores, punto y coma)
+  const errorExplicito = mensaje.match(/SyntaxError:\s*(falta cerrar [^;\n]+|falta el punto y coma [^;\n]+|cadena de texto sin [^;\n]+|comentario de bloque [^;\n]+)/i);
+  if (errorExplicito) {
+    return `${linea}Error de sintaxis: ${errorExplicito[1]}.`;
+  }
+
+  const tokenInesperado = mensaje.match(/Unexpected (?:token|identifier)\s*['"]?([^'"\n]+)['"]?/i);
+  if (tokenInesperado) {
+    return `${linea}Error de sintaxis: elemento o símbolo inesperado “${tokenInesperado[1]}”. Revisa la escritura y separadores cerca de esa línea.`;
+  }
+
+  if (/SyntaxError|invalid syntax|';' expected|illegal start/i.test(mensaje)) {
     return `${linea}Error de sintaxis: revisa paréntesis, llaves, comillas, dos puntos y separadores cerca de esa línea.`;
   }
 
