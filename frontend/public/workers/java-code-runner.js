@@ -40,12 +40,158 @@
       .join(", ");
   };
 
+  const crearErrorJava = (linea, mensaje) => ({
+    stdout: "",
+    error: `__ALGOLAB_USER_LINE__:${linea}\n${mensaje}`,
+    tiempoMs: 0,
+  });
+
+  // JavaScript es más permisivo que Java. Esta validación previa conserva las
+  // líneas del editor y evita aceptar como válidos varios errores habituales.
+  const validarJavaBasico = (javaCode) => {
+    const aperturas = { "(": ")", "[": "]", "{": "}" };
+    const cierres = new Set(Object.values(aperturas));
+    const pila = [];
+    let linea = 1;
+    let estado = "normal";
+    let lineaInicio = 1;
+    let escapado = false;
+    let codigoLimpio = "";
+
+    for (let i = 0; i < javaCode.length; i += 1) {
+      const actual = javaCode[i];
+      const siguiente = javaCode[i + 1];
+      if (actual === "\n") {
+        if (estado === "cadena" || estado === "caracter") {
+          return crearErrorJava(lineaInicio, "SyntaxError: cadena de texto sin comilla de cierre");
+        }
+        if (estado === "comentarioLinea") estado = "normal";
+        codigoLimpio += "\n";
+        linea += 1;
+        escapado = false;
+        continue;
+      }
+      if (estado === "comentarioLinea") {
+        codigoLimpio += " ";
+        continue;
+      }
+      if (estado === "comentarioBloque") {
+        if (actual === "*" && siguiente === "/") {
+          codigoLimpio += "  ";
+          i += 1;
+          estado = "normal";
+        } else codigoLimpio += " ";
+        continue;
+      }
+      if (estado === "cadena" || estado === "caracter") {
+        codigoLimpio += " ";
+        const cierre = estado === "cadena" ? '"' : "'";
+        if (!escapado && actual === cierre) estado = "normal";
+        escapado = !escapado && actual === "\\";
+        if (actual !== "\\") escapado = false;
+        continue;
+      }
+      if (actual === "/" && siguiente === "/") {
+        codigoLimpio += "  ";
+        i += 1;
+        estado = "comentarioLinea";
+        continue;
+      }
+      if (actual === "/" && siguiente === "*") {
+        codigoLimpio += "  ";
+        i += 1;
+        estado = "comentarioBloque";
+        lineaInicio = linea;
+        continue;
+      }
+      if (actual === '"' || actual === "'") {
+        codigoLimpio += " ";
+        estado = actual === '"' ? "cadena" : "caracter";
+        lineaInicio = linea;
+        escapado = false;
+        continue;
+      }
+
+      codigoLimpio += actual;
+      if (aperturas[actual]) pila.push({ caracter: actual, linea });
+      else if (cierres.has(actual)) {
+        const apertura = pila.pop();
+        if (!apertura || aperturas[apertura.caracter] !== actual) {
+          return crearErrorJava(
+            apertura?.linea ?? linea,
+            `SyntaxError: falta cerrar “${apertura ? aperturas[apertura.caracter] : "un delimitador"}” antes de “${actual}”`,
+          );
+        }
+      }
+    }
+
+    if (estado === "cadena" || estado === "caracter") {
+      return crearErrorJava(lineaInicio, "SyntaxError: cadena de texto sin comilla de cierre");
+    }
+    if (estado === "comentarioBloque") {
+      return crearErrorJava(lineaInicio, "SyntaxError: comentario de bloque sin cierre */");
+    }
+    if (pila.length) {
+      const apertura = pila.at(-1);
+      return crearErrorJava(apertura.linea, `SyntaxError: falta cerrar “${aperturas[apertura.caracter]}”`);
+    }
+
+    const lineas = codigoLimpio.split("\n");
+    for (let indice = 0; indice < lineas.length; indice += 1) {
+      const contenido = lineas[indice].trim();
+      if (/\/\s*[+-]?0+(?![\d.])/.test(contenido)) {
+        return crearErrorJava(indice + 1, "ArithmeticException: / by zero");
+      }
+      const pareceSentencia = /^(?:return\b.+|break|continue|throw\b.+|(?:final\s+)?(?:String|int|double|float|long|short|byte|boolean|char|Object|[A-Z]\w*)(?:\[\])?\s+\w+.+|(?:this\.)?\w+(?:\.\w+)*\s*(?:=|\+=|-=|\*=|\/=|\+\+|--).+|(?:System\.out\.(?:print|println)|\w+(?:\.\w+)*)\s*\(.*\))$/.test(contenido);
+      if (pareceSentencia && !/[{}]/.test(contenido) && !contenido.endsWith(";")) {
+        return crearErrorJava(indice + 1, "SyntaxError: falta el punto y coma ; al final de la instrucción");
+      }
+    }
+
+    const firmas = new Map();
+    const regexFirma = /(?:public\s+|private\s+|protected\s+|static\s+|final\s+|synchronized\s+|abstract\s+)*(?:void|String|int|double|float|long|short|byte|boolean|char|Object|[A-Z]\w*)(?:\[\])?\s+(\w+)\s*\(([^()]*)\)\s*\{/g;
+    let firma;
+    while ((firma = regexFirma.exec(codigoLimpio)) !== null) {
+      if (firma[1] === "main") continue;
+      const cantidad = firma[2].trim() ? firma[2].split(",").length : 0;
+      const permitidas = firmas.get(firma[1]) ?? new Set();
+      permitidas.add(cantidad);
+      firmas.set(firma[1], permitidas);
+    }
+    for (const [nombre, permitidas] of firmas) {
+      const llamadas = new RegExp(`\\b${nombre}\\s*\\(([^()]*)\\)`, "g");
+      let llamada;
+      while ((llamada = llamadas.exec(codigoLimpio)) !== null) {
+        const despues = codigoLimpio.slice(llamada.index + llamada[0].length).trimStart();
+        if (despues.startsWith("{")) continue;
+        const recibidas = llamada[1].trim() ? llamada[1].split(",").length : 0;
+        if (!permitidas.has(recibidas)) {
+          const numeroLinea = codigoLimpio.slice(0, llamada.index).split("\n").length;
+          return crearErrorJava(
+            numeroLinea,
+            `IllegalArgumentException: el método “${nombre}” espera ${[...permitidas].join(" o ")} argumento(s), pero recibió ${recibidas}`,
+          );
+        }
+      }
+    }
+    return null;
+  };
+
   const transpileJavaToJS = (javaCode) => {
     let code = javaCode;
+    const nombresDeMetodos = new Set();
+    const detectorMetodos = /(?:public\s+|private\s+|protected\s+|static\s+|final\s+|synchronized\s+|abstract\s+)*(?:void|String|int|double|float|long|short|byte|boolean|char|Object|[A-Z]\w*)(?:\[\])?\s+(\w+)\s*\(/g;
+    let metodoDetectado;
+    while ((metodoDetectado = detectorMetodos.exec(javaCode)) !== null) {
+      if (metodoDetectado[1] !== "main") nombresDeMetodos.add(metodoDetectado[1]);
+    }
 
     code = code.replace(/\/\/[^\n]*/g, "");
-    code = code.replace(/\/\*[\s\S]*?\*\//g, "");
-    code = code.replace(/^\s*(package|import)\s+[^;]+;\s*\n?/gm, "");
+    // Conservar los saltos de línea mantiene alineados editor y runtime.
+    code = code.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
+      comment.replace(/[^\n]/g, " "),
+    );
+    code = code.replace(/^\s*(package|import)\s+[^;]+;[^\n]*(?=\n|$)/gm, "");
     code = code.replace(/^\s*@\w+[^\n]*\n/gm, "\n");
 
     const classNames = getClassNames(code);
@@ -71,7 +217,7 @@
       code = code.replace(
         constructorRegex,
         (_match, before, indent, params) =>
-          `${before}\n${indent}constructor(${stripParamTypes(params)}) {`,
+          `${before}${indent}constructor(${stripParamTypes(params)}) {`,
       );
     }
 
@@ -87,6 +233,20 @@
       return `${indent}${name}(${stripParamTypes(params)}) {`;
     });
 
+    // Java permite llamar métodos de la misma clase sin escribir `this.`.
+    // JavaScript no resuelve esos nombres dentro de otro método, por lo que
+    // agregamos la referencia únicamente en las invocaciones (no declaraciones).
+    for (const nombre of nombresDeMetodos) {
+      const llamada = new RegExp(
+        `(^|[^\\w.])(${nombre}\\s*\\([^)]*\\))(\\s*\\{)?`,
+        "gm",
+      );
+      code = code.replace(llamada, (match, prefijo, expresion, abreBloque) => {
+        if (abreBloque) return match;
+        return `${prefijo}this.${expresion}`;
+      });
+    }
+
     for (const [child] of hierarchy) {
       const superRegex = new RegExp(
         `(constructor\\([^)]*\\)\\s*\\{\\s*\\n)([ \\t]*)(?!super\\()`,
@@ -99,7 +259,8 @@
       code = code.replace(classSectionRegex, (section) =>
         section.replace(superRegex, (match, constructorOpen, indent) => {
           if (section.indexOf(`${constructorOpen}${indent}super(`) > -1) return match;
-          return `${constructorOpen}${indent}super();\n${indent}`;
+          // Insertarlo en la misma línea evita desplazar errores posteriores.
+          return `${constructorOpen}${indent}super(); `;
         }),
       );
     }
@@ -150,6 +311,11 @@
 
   const executeJavaCode = (javaSource) => {
     const inicio = Date.now();
+    const errorBasico = validarJavaBasico(javaSource);
+    if (errorBasico) {
+      errorBasico.tiempoMs = Date.now() - inicio;
+      return errorBasico;
+    }
     let jsCode;
     try {
       jsCode = transpileJavaToJS(javaSource);
@@ -171,23 +337,35 @@
       partialLine += javaToString(value);
     };
     const hasMain = /class\s+Main\b/.test(jsCode);
+    const globalsBloqueados = [
+      "window", "document", "self", "globalThis", "fetch", "XMLHttpRequest",
+      "WebSocket", "localStorage", "sessionStorage", "indexedDB", "caches",
+      "navigator", "location", "postMessage", "importScripts", "Worker",
+      "SharedWorker", "BroadcastChannel", "alert", "confirm", "prompt",
+    ];
+
+    const lineaDelEstudiante = (error) => {
+      const stack = error && typeof error === "object" && "stack" in error
+        ? String(error.stack ?? "")
+        : "";
+      const marca = stack.match(/algolab-estudiante\.java:(\d+):\d+/i)
+        ?? stack.match(/<anonymous>:(\d+):\d+/i);
+      if (!marca) return null;
+      // Function() añade dos líneas internas antes del cuerpo proporcionado.
+      const linea = Number.parseInt(marca[1], 10) - 2;
+      return Number.isFinite(linea) && linea > 0 ? linea : null;
+    };
 
     try {
       const ejecutar = new FuncionConfiable(
         "__println",
         "__print",
-        `"use strict";
-         const window = undefined, document = undefined, self = undefined,
-               globalThis = undefined, fetch = undefined, XMLHttpRequest = undefined,
-               WebSocket = undefined, localStorage = undefined, sessionStorage = undefined,
-               indexedDB = undefined, caches = undefined, navigator = undefined,
-               location = undefined, postMessage = undefined, importScripts = undefined,
-               Worker = undefined, SharedWorker = undefined, BroadcastChannel = undefined,
-               alert = undefined, confirm = undefined, prompt = undefined;
-         ${jsCode}
-         ${hasMain ? "new Main().main([]);" : ""}`,
+        ...globalsBloqueados,
+        `"use strict";${jsCode}
+${hasMain ? "new Main().main([]);" : ""}
+//# sourceURL=algolab-estudiante.java`,
       );
-      ejecutar(println, print);
+      ejecutar(println, print, ...globalsBloqueados.map(() => undefined));
       if (partialLine) outputLines.push(partialLine);
       return {
         stdout: outputLines.join("\n"),
@@ -195,17 +373,14 @@
         tiempoMs: Date.now() - inicio,
       };
     } catch (error) {
-      const raw = error instanceof Error ? error.message : String(error);
-      const friendly = raw
-        .replace(/^ReferenceError:\s*/, "Variable no definida: ")
-        .replace(/^TypeError:\s*/, "Error de tipo: ")
-        .replace(/^SyntaxError:\s*/, "Error de sintaxis: ")
-        .replace(/is not defined/, "no está definida (¿olvidaste declarar la variable o usar this.?)")
-        .replace(
-          /Cannot read properties of undefined/,
-          "No se puede acceder a una propiedad de un valor nulo",
-        );
-      return { stdout: "", error: friendly, tiempoMs: Date.now() - inicio };
+      const linea = lineaDelEstudiante(error);
+      const rawOriginal = error && typeof error === "object" && "message" in error
+        ? `${"name" in error ? error.name : "Error"}: ${error.message}`
+        : String(error);
+      const raw = `${linea ? `__ALGOLAB_USER_LINE__:${linea}\n` : ""}${rawOriginal}`;
+      // La traducción se realiza en judge0.ts para que Python y Java utilicen
+      // el mismo catálogo de mensajes y la misma línea del editor.
+      return { stdout: "", error: raw, tiempoMs: Date.now() - inicio };
     }
   };
 

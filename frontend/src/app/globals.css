@@ -2918,6 +2918,14 @@ button, a {
   height: 1.6rem;
 }
 
+.code-line-num-error {
+  color: #ff8f9f;
+  background: rgba(255, 76, 105, .16);
+  border-right: 2px solid #ff4c69;
+  font-weight: 800;
+  text-shadow: 0 0 12px rgba(255, 76, 105, .65);
+}
+
 .code-editor-area {
   position: relative;
   flex: 1;

@@ -1,6 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState, type KeyboardEvent, type ChangeEvent, type UIEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ChangeEvent,
+  type UIEvent,
+} from "react";
 
 export type ModoEditor = "normal" | "dificil";
 
@@ -11,6 +19,9 @@ type Props = {
   disabled?: boolean;
   modo?: ModoEditor;
   onModoChange?: (modo: ModoEditor) => void;
+  lineaError?: number | null;
+  /** Código y términos que el estudiante ya puede ver en la guía del subnivel. */
+  fuenteDocumentacion?: string;
 };
 
 const FONT_MONO = "var(--font-geist-mono, 'Courier New', monospace)";
@@ -49,12 +60,17 @@ const PYTHON_SUGGESTIONS: CodeSuggestion[] = [
   { label: "while condición:", detail: "Repetir mientras", insert: "while condicion:\n  pass", cursorOffset: 6, aliases: ["while", "mientras"], kind: "estructura" },
   { label: "for elemento in colección:", detail: "Recorrer valores", insert: "for elemento in coleccion:\n  pass", cursorOffset: 4, aliases: ["for", "para"], kind: "estructura" },
   { label: "def función():", detail: "Nueva función", insert: "def funcion():\n  pass", cursorOffset: 4, aliases: ["def", "funcion"], kind: "estructura" },
+  { label: "def __init__(self):", detail: "Constructor de la clase", insert: "def __init__(self):\n  ", cursorOffset: 22, aliases: ["init", "__init__", "constructor"], kind: "metodo" },
   { label: "class Clase:", detail: "Nueva clase", insert: "class Clase:\n  pass", cursorOffset: 6, aliases: ["class", "clase"], kind: "estructura" },
   { label: "try / except", detail: "Controlar errores", insert: "try:\n  pass\nexcept Exception:\n  pass", cursorOffset: 7, aliases: ["try", "except"], kind: "estructura" },
   { label: "print()", detail: "Mostrar un resultado", insert: "print()", cursorOffset: 6, kind: "funcion" },
   { label: "input()", detail: "Leer un valor", insert: "input()", cursorOffset: 6, kind: "funcion" },
   { label: "len()", detail: "Obtener longitud", insert: "len()", cursorOffset: 4, kind: "funcion" },
   { label: "range()", detail: "Crear un rango", insert: "range()", cursorOffset: 6, kind: "funcion" },
+  { label: "super().__init__()", detail: "Inicializar la clase padre", insert: "super().__init__()", cursorOffset: 18, aliases: ["super", "init", "herencia"], kind: "metodo" },
+  { label: "isinstance()", detail: "Comprobar el tipo de un objeto", insert: "isinstance()", cursorOffset: 11, kind: "funcion" },
+  { label: "enumerate()", detail: "Recorrer con índice", insert: "enumerate()", cursorOffset: 10, kind: "funcion" },
+  { label: "@property", detail: "Propiedad controlada", insert: "@property\ndef propiedad(self):\n  return self._propiedad", cursorOffset: 23, aliases: ["property", "propiedad"], kind: "estructura" },
   { label: "return", detail: "Devolver un valor", insert: "return ", cursorOffset: 7, kind: "palabra" },
   { label: "True", detail: "Valor verdadero", insert: "True", cursorOffset: 4, kind: "palabra" },
   { label: "False", detail: "Valor falso", insert: "False", cursorOffset: 5, kind: "palabra" },
@@ -75,13 +91,18 @@ const JAVA_SUGGESTIONS: CodeSuggestion[] = [
   { label: "for (...) ", detail: "Bucle contado", insert: "for (int i = 0; i < limite; i++) {\n  \n}", cursorOffset: 9, aliases: ["for", "para"], kind: "estructura" },
   { label: "class Clase", detail: "Nueva clase", insert: "class Clase {\n  \n}", cursorOffset: 6, kind: "estructura" },
   { label: "public método", detail: "Nuevo método", insert: "public void metodo() {\n  \n}", cursorOffset: 12, aliases: ["metodo", "method"], kind: "estructura" },
+  { label: "constructor", detail: "Constructor de la clase", insert: "NombreClase() {\n  \n}", cursorOffset: 11, aliases: ["constructor"], kind: "metodo" },
   { label: "public", detail: "Acceso público", insert: "public ", cursorOffset: 7, kind: "palabra" },
   { label: "private", detail: "Acceso privado", insert: "private ", cursorOffset: 8, kind: "palabra" },
+  { label: "protected", detail: "Acceso protegido", insert: "protected ", cursorOffset: 10, kind: "palabra" },
   { label: "public static void main", detail: "Método principal", insert: "public static void main(String[] args) {\n  \n}", cursorOffset: 42, aliases: ["main"], kind: "estructura" },
   { label: "return", detail: "Devolver un valor", insert: "return ", cursorOffset: 7, kind: "palabra" },
   { label: "String", detail: "Tipo de texto", insert: "String ", cursorOffset: 7, kind: "tipo" },
   { label: "int", detail: "Tipo entero", insert: "int ", cursorOffset: 4, kind: "tipo" },
   { label: "double", detail: "Tipo decimal", insert: "double ", cursorOffset: 7, kind: "tipo" },
+  { label: "new", detail: "Crear un objeto", insert: "new ", cursorOffset: 4, kind: "palabra" },
+  { label: "this", detail: "Objeto actual", insert: "this.", cursorOffset: 5, kind: "palabra" },
+  { label: "super", detail: "Clase padre", insert: "super.", cursorOffset: 6, kind: "palabra" },
 ];
 
 const PYTHON_KEYWORDS = new Set([
@@ -285,6 +306,8 @@ export function CodeEditor({
   lenguaje,
   disabled,
   modo = "normal",
+  lineaError,
+  fuenteDocumentacion = "",
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -293,6 +316,27 @@ export function CodeEditor({
   const lineCount = Math.max(codigo.split("\n").length, 1);
   const highlightedTokens = useMemo(() => tokenizeCode(codigo, lenguaje), [codigo, lenguaje]);
   const discoveredSuggestions = useMemo(() => dynamicSuggestions(codigo, lenguaje), [codigo, lenguaje]);
+  const documentationSuggestions = useMemo(
+    () => dynamicSuggestions(fuenteDocumentacion, lenguaje).map((item) => ({
+      ...item,
+      detail: item.detail
+        .replace("de tu código", "de la guía")
+        .replace("definida en tu código", "documentada en este reto"),
+    })),
+    [fuenteDocumentacion, lenguaje],
+  );
+
+  useEffect(() => {
+    if (!lineaError || !textareaRef.current) return;
+    const lineHeight = Number.parseFloat(
+      window.getComputedStyle(textareaRef.current).lineHeight,
+    );
+    if (!Number.isFinite(lineHeight)) return;
+    const scrollTop = Math.max(0, (lineaError - 2) * lineHeight);
+    textareaRef.current.scrollTop = scrollTop;
+    if (highlightRef.current) highlightRef.current.scrollTop = scrollTop;
+    if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = scrollTop;
+  }, [lineaError]);
 
   function refreshSuggestions(value: string, cursor: number) {
     if (modo !== "normal") {
@@ -307,7 +351,11 @@ export function CodeEditor({
     }
 
     const normalized = token.toLowerCase();
-    const source = [...discoveredSuggestions, ...(lenguaje === "python" ? PYTHON_SUGGESTIONS : JAVA_SUGGESTIONS)];
+    const source = [
+      ...discoveredSuggestions,
+      ...documentationSuggestions,
+      ...(lenguaje === "python" ? PYTHON_SUGGESTIONS : JAVA_SUGGESTIONS),
+    ];
     const unique = new Map<string, CodeSuggestion>();
     source.filter((item) =>
       [item.label, ...(item.aliases ?? [])].some((term) => term.toLowerCase().startsWith(normalized)),
@@ -584,7 +632,11 @@ export function CodeEditor({
         {/* Line numbers */}
         <div ref={lineNumbersRef} className="code-line-numbers" aria-hidden="true">
           {Array.from({ length: lineCount }, (_, i) => (
-            <div key={i} className="code-line-num">
+            <div
+              key={i}
+              className={`code-line-num ${lineaError === i + 1 ? "code-line-num-error" : ""}`}
+              aria-label={lineaError === i + 1 ? `Error en la línea ${i + 1}` : undefined}
+            >
               {i + 1}
             </div>
           ))}

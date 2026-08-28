@@ -19,7 +19,12 @@ import {
 } from "lucide-react";
 import { OOP_NIVELES, type LenguajeOOP } from "@/lib/oop-niveles";
 import { validarEstructuraCodigo } from "@/lib/oop-validador";
-import { ejecutarCodigo, preCargaPyodide, type ResultadoEjecucion } from "@/lib/judge0";
+import {
+  ejecutarCodigo,
+  obtenerLineaError,
+  preCargaPyodide,
+  type ResultadoEjecucion,
+} from "@/lib/judge0";
 import { CodeEditor, type ModoEditor } from "@/components/code-editor";
 import { CodeTerminal, type TerminalLine } from "@/components/code-terminal";
 import { OopDocsPanel } from "@/components/oop-docs-panel";
@@ -180,10 +185,19 @@ function normalizarSalida(texto: string): string {
   return texto.trim().replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
-function salidaCoincide(obtenida: string, esperada: string): boolean {
+function salidaCoincide(
+  obtenida: string,
+  esperada: string,
+  lenguaje: LenguajeOOP,
+): boolean {
   if (esperada.includes("{") && esperada.includes("}")) return true;
   const norm1 = normalizarSalida(obtenida);
-  const norm2 = normalizarSalida(esperada);
+  // El primer ejercicio comparte enunciado para ambos lenguajes, pero la
+  // salida debe nombrar el lenguaje que el estudiante está ejecutando.
+  const esperadaPorLenguaje = lenguaje === "java"
+    ? esperada.replace(/\bPython\b/g, "Java")
+    : esperada;
+  const norm2 = normalizarSalida(esperadaPorLenguaje);
   return norm1 === norm2;
 }
 
@@ -217,6 +231,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
   const codigo = codigos[lenguaje];
 
   function handleCodigoChange(nuevoTexto: string) {
+    setLineaError(null);
     setCodigos((prev) => {
       const next = { ...prev, [lenguaje]: nuevoTexto };
       guardarBorrador(usuario?.id, nivelId, lenguaje, nuevoTexto);
@@ -235,6 +250,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [ejecutando, setEjecutando] = useState(false);
   const [tiempoMs, setTiempoMs] = useState<number | null>(null);
+  const [lineaError, setLineaError] = useState<number | null>(null);
 
   // Progreso
   const [progreso, setProgreso] = useState<OopProgreso>(() => cargarProgresoLocal());
@@ -511,6 +527,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     if (!nivel || ejecutando) return;
 
     setEjecutando(true);
+    setLineaError(null);
     setEjecucionesSesion((total) => total + 1);
     setMobileVista("terminal");
     setTerminalLines([
@@ -536,6 +553,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
     let resolvioEnEsteIntento = false;
 
     if (resultado.error) {
+      setLineaError(obtenerLineaError(resultado.error, lenguaje));
       lines.push({ type: "error", text: resultado.error });
       if (!completado) {
         lines.push({
@@ -550,7 +568,11 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
       lines.push({ type: "output", text: resultado.salida });
 
       if (!completado) {
-        const coincide = salidaCoincide(resultado.salida, nivel.practica.salidaEsperada);
+        const coincide = salidaCoincide(
+          resultado.salida,
+          nivel.practica.salidaEsperada,
+          lenguaje,
+        );
         const validacion = validarEstructuraCodigo(nivelId, codigo, lenguaje);
 
         if (coincide && validacion.valido) {
@@ -794,6 +816,14 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
   );
   const codigoBaseActual =
     lenguaje === "python" ? nivel.codigoBasePython : nivel.codigoBaseJava;
+  const ejemploDocumentacionEditor =
+    lenguaje === "python" ? nivel.docs.ejemploPython : nivel.docs.ejemploJava;
+  const glosarioDocumentacionEditor =
+    lenguaje === "python" ? nivel.docs.glosarioPython : nivel.docs.glosarioJava;
+  const fuenteDocumentacionEditor = [
+    ejemploDocumentacionEditor,
+    ...glosarioDocumentacionEditor.map((item) => item.termino),
+  ].join("\n");
   const editorModificado = codigo.trim() !== codigoBaseActual.trim();
   const ejecutoAlgunaVez = ejecucionesSesion > 0 || intentos > 0;
   const pasosMision = [
@@ -1013,6 +1043,8 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               disabled={ejecutando}
               modo={modoEditor}
               onModoChange={handleModoChange}
+              lineaError={lineaError}
+              fuenteDocumentacion={fuenteDocumentacionEditor}
             />
           </div>
 

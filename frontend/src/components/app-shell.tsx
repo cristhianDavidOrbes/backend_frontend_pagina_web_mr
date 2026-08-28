@@ -16,7 +16,7 @@ import {
 import { AvatarDisplay } from "@/components/avatar-display";
 import { clearAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
-type IconName = "route" | "reports" | "students" | "levels" | "profile" | "world" | "logout" | "headset" | "spark" | "code";
+type IconName = "route" | "reports" | "ranking" | "students" | "levels" | "profile" | "world" | "logout" | "headset" | "spark" | "code";
 
 type NavLink = {
   href: string;
@@ -37,6 +37,7 @@ const roleConfig: Record<UsuarioSesion["rol"], RoleConfig> = {
     descriptor: "Aprendiz activo",
     links: [
       { href: "/estudiante", label: "Mi ruta", icon: "route", exact: true },
+      { href: "/estudiante/ranking", label: "Ranking", icon: "ranking" },
       { href: "/estudiante/reportes", label: "Recomendaciones IA", icon: "reports" },
       { href: "/estudiante/codigo", label: "Programar POO", icon: "code" },
       { href: "/estudiante/perfil", label: "Mi perfil", icon: "profile" },
@@ -100,6 +101,14 @@ function ShellIcon({ name, className }: { name: IconName; className?: string }) 
       <svg {...common}>
         <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z" />
         <path d="M19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" />
+      </svg>
+    );
+  }
+  if (name === "ranking") {
+    return (
+      <svg {...common}>
+        <path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" />
+        <path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6" />
       </svg>
     );
   }

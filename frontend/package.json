@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:code-runner": "node scripts/verify-code-runner-isolation.mjs"
+    "test:code-runner": "node scripts/verify-code-runner-isolation.mjs",
+    "test:compiler-errors": "node --experimental-strip-types scripts/verify-compiler-errors.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

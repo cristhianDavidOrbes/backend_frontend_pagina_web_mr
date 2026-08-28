@@ -35,9 +35,40 @@ const ERROR_TIMEOUT = "__ALGOLAB_EXECUTION_TIMEOUT__";
 
 let pythonRuntime: PythonRuntime | null = null;
 
-function numeroDeLinea(mensaje: string): string {
-  const coincidencia = mensaje.match(/(?:line|línea)\s+(\d+)/i);
-  return coincidencia ? `Línea ${coincidencia[1]} · ` : "";
+/**
+ * Obtiene la línea que pertenece al código del estudiante, no la primera
+ * línea interna del runtime. Pyodide incluye antes marcos como
+ * `_pyodide/_base.py, line 573`; el marco `<exec>` es el archivo real que
+ * contiene lo escrito en el editor.
+ */
+export function obtenerLineaError(
+  mensaje: string,
+  lenguaje: LenguajeWorker,
+): number | null {
+  if (!mensaje) return null;
+
+  if (lenguaje === "python") {
+    const marcosDelEstudiante = [
+      ...mensaje.matchAll(
+        /File\s+["']<(?:exec|string|stdin|input)>["']\s*,\s*(?:line|línea)\s+(\d+)/gi,
+      ),
+    ];
+    const ultimoMarco = marcosDelEstudiante.at(-1);
+    if (ultimoMarco) return Number.parseInt(ultimoMarco[1], 10);
+  }
+
+  // El worker de Java adjunta esta marca después de convertir el código.
+  const lineaMarcada = mensaje.match(/__ALGOLAB_USER_LINE__:(\d+)/i);
+  if (lineaMarcada) return Number.parseInt(lineaMarcada[1], 10);
+
+  const coincidencias = [...mensaje.matchAll(/(?:line|línea)\s+(\d+)/gi)];
+  const coincidencia = lenguaje === "python" ? coincidencias.at(-1) : coincidencias[0];
+  return coincidencia ? Number.parseInt(coincidencia[1], 10) : null;
+}
+
+function numeroDeLinea(mensaje: string, lenguaje: LenguajeWorker): string {
+  const numero = obtenerLineaError(mensaje, lenguaje);
+  return numero ? `Línea ${numero} · ` : "";
 }
 
 /**
@@ -54,7 +85,7 @@ export function explicarErrorEnEspanol(
   const mensaje = error.trim();
   if (!mensaje) return "No fue posible ejecutar el código. Revisa la solución e inténtalo otra vez.";
 
-  const linea = numeroDeLinea(mensaje);
+  const linea = numeroDeLinea(mensaje, lenguaje);
   const ultimaLinea = mensaje.split("\n").map((parte) => parte.trim()).filter(Boolean).at(-1) ?? mensaje;
 
   if (/IndentationError|unexpected indent|expected an indented block/i.test(mensaje)) {
@@ -70,6 +101,15 @@ export function explicarErrorEnEspanol(
     return `${linea}“${nombreNoDefinido[1]}” no está definido. Decláralo antes de utilizarlo o corrige su nombre.`;
   }
 
+  const variableLocal = mensaje.match(
+    /UnboundLocalError:.*local variable ['"]([^'"]+)['"].*referenced before assignment/i,
+  ) ?? mensaje.match(
+    /UnboundLocalError:.*local variable ['"]([^'"]+)['"].*not associated with a value/i,
+  );
+  if (variableLocal) {
+    return `${linea}La variable “${variableLocal[1]}” se usó antes de recibir un valor dentro de esta función.`;
+  }
+
   const atributoPython = mensaje.match(/AttributeError:.*has no attribute ['"]([^'"]+)['"]/i);
   if (atributoPython) {
     return `${linea}El objeto no tiene el atributo o método “${atributoPython[1]}”. Revisa la clase y la escritura del nombre.`;
@@ -79,8 +119,39 @@ export function explicarErrorEnEspanol(
     return `${linea}No se encontró “${miembroJava[1]}”. Comprueba que exista en la clase y que sea accesible desde este punto.`;
   }
 
+  const propiedadNula = mensaje.match(
+    /Cannot read properties of (?:undefined|null) \(reading ['"]([^'"]+)['"]\)/i,
+  );
+  if (propiedadNula) {
+    return `${linea}Intentaste usar “${propiedadNula[1]}” sobre un objeto que no tiene valor. Inicializa el objeto antes de acceder a sus métodos o atributos.`;
+  }
+
   if (/TypeError|incompatible types|cannot be converted/i.test(mensaje)) {
+    const argumentosFaltantes = mensaje.match(/missing (\d+) required positional argument/i);
+    if (argumentosFaltantes) {
+      const cantidad = Number.parseInt(argumentosFaltantes[1], 10);
+      return `${linea}${cantidad === 1 ? "Falta 1 argumento obligatorio" : `Faltan ${cantidad} argumentos obligatorios`} al llamar esta función o método.`;
+    }
+    const argumentoInesperado = mensaje.match(/unexpected keyword argument ['"]([^'"]+)['"]/i);
+    if (argumentoInesperado) {
+      return `${linea}El argumento “${argumentoInesperado[1]}” no existe en la función o método que estás llamando.`;
+    }
+    if (/not callable/i.test(mensaje)) {
+      return `${linea}Intentaste llamar como función un valor que no se puede ejecutar. Revisa los paréntesis y el nombre usado.`;
+    }
+    if (/not iterable/i.test(mensaje)) {
+      return `${linea}Intentaste recorrer un valor que no es una colección.`;
+    }
+    if (/unsupported operand type(?:\(s\))?/i.test(mensaje)) {
+      return `${linea}La operación no admite los tipos de valores utilizados. Revisa ambos lados del operador.`;
+    }
+    if (/object is not subscriptable/i.test(mensaje)) {
+      return `${linea}Intentaste acceder por posición a un valor que no permite índices.`;
+    }
     return `${linea}Error de tipo: estás combinando valores u operaciones incompatibles. Revisa los tipos de las variables y parámetros.`;
+  }
+  if (/ValueError/i.test(mensaje)) {
+    return `${linea}El valor tiene el tipo correcto, pero su contenido no es válido para esta operación.`;
   }
   if (/ZeroDivisionError|division by zero|\/ by zero/i.test(mensaje)) {
     return `${linea}No se puede dividir entre cero. Valida el divisor antes de realizar la operación.`;
@@ -97,8 +168,32 @@ export function explicarErrorEnEspanol(
   if (/RecursionError|Maximum call stack/i.test(mensaje)) {
     return `${linea}La función se está llamando demasiadas veces. Revisa la condición que debe detener la recursión.`;
   }
+  if (/AssertionError/i.test(mensaje)) {
+    return `${linea}No se cumplió una condición obligatoria de la solución. Revisa la condición indicada por assert.`;
+  }
   if (/ModuleNotFoundError|ImportError|package .* does not exist/i.test(mensaje)) {
     return `${linea}No se encontró una librería utilizada por el código. En estos ejercicios usa únicamente las herramientas disponibles en el navegador.`;
+  }
+  if (/OverflowError|number outside safe range/i.test(mensaje)) {
+    return `${linea}El resultado numérico es demasiado grande para esta operación.`;
+  }
+  if (/PermissionError|SecurityError/i.test(mensaje)) {
+    return `${linea}La operación solicitada no está permitida dentro del compilador seguro.`;
+  }
+  if (/ArithmeticException/i.test(mensaje)) {
+    return `${linea}La operación aritmética no es válida. Revisa divisiones, rangos y valores numéricos.`;
+  }
+  if (/ClassCastException/i.test(mensaje)) {
+    return `${linea}No se puede convertir el objeto al tipo indicado.`;
+  }
+  if (/IllegalArgumentException/i.test(mensaje)) {
+    const cantidadArgumentos = mensaje.match(
+      /el método [“"]([^”"]+)[”"] espera ([\d o]+) argumento\(s\), pero recibió (\d+)/i,
+    );
+    if (cantidadArgumentos) {
+      return `${linea}El método “${cantidadArgumentos[1]}” espera ${cantidadArgumentos[2]} argumento(s), pero recibió ${cantidadArgumentos[3]}.`;
+    }
+    return `${linea}Uno de los argumentos enviados al método no es válido.`;
   }
 
   const etiqueta = lenguaje === "python" ? "Python" : "Java";
