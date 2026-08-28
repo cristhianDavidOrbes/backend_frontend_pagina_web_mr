@@ -393,6 +393,12 @@ async function ejecutarPython(codigo: string): Promise<ResultadoEjecucion> {
   }
 }
 
+import {
+  analizarCodigoPrevio,
+  diagnosticarErrorRuntime,
+  formatearDiagnosticoParaTerminal,
+} from "./code-diagnostics";
+
 export async function ejecutarCodigo(
   codigo: string,
   lenguaje: LenguajeWorker,
@@ -405,7 +411,28 @@ export async function ejecutarCodigo(
     };
   }
 
-  return lenguaje === "python" ? ejecutarPython(codigo) : ejecutarJava(codigo);
+  // 1. Análisis estático pedagógico previo
+  const diagnosticoPrevio = analizarCodigoPrevio(codigo, lenguaje);
+  if (diagnosticoPrevio) {
+    return {
+      salida: "",
+      error: formatearDiagnosticoParaTerminal(diagnosticoPrevio),
+      exitoso: false,
+      tiempoMs: 0,
+    };
+  }
+
+  // 2. Ejecución en runtime
+  const res = lenguaje === "python" ? await ejecutarPython(codigo) : await ejecutarJava(codigo);
+  if (res.error) {
+    const diagRuntime = diagnosticarErrorRuntime(res.error, codigo, lenguaje);
+    return {
+      ...res,
+      error: formatearDiagnosticoParaTerminal(diagRuntime),
+    };
+  }
+
+  return res;
 }
 
 /** Prepara Pyodide sin bloquear la interfaz. No envía sesión, perfil ni token. */

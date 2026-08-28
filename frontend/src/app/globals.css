@@ -3203,13 +3203,27 @@ button, a {
 
 .terminal-line.info { color: rgba(255,255,255,.45); }
 .terminal-line.output { color: #c9e8e1; }
-.terminal-line.error { color: #ff8080; }
-.terminal-line.success { color: #57eeb2; }
+.terminal-line.error {
+  color: #ff9999;
+  background: rgba(255, 46, 85, 0.08);
+  border-left: 3px solid #ff2e55;
+  border-radius: 0 6px 6px 0;
+  padding: 0.35rem 0.55rem;
+  margin: 0.2rem 0;
+}
+.terminal-line.success {
+  color: #57eeb2;
+  background: rgba(50, 230, 161, 0.06);
+  border-left: 3px solid #32e6a1;
+  border-radius: 0 6px 6px 0;
+  padding: 0.35rem 0.55rem;
+  margin: 0.2rem 0;
+}
 .terminal-line.pending { color: rgba(255,255,255,.35); }
 
 .terminal-prompt { color: #57eeb2; flex-shrink: 0; }
-.terminal-icon { flex-shrink: 0; }
-.terminal-text { margin: 0; white-space: pre-wrap; word-break: break-word; font: inherit; }
+.terminal-icon { flex-shrink: 0; font-weight: bold; }
+.terminal-text { margin: 0; white-space: pre-wrap; word-break: break-word; font: inherit; line-height: 1.55; }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
