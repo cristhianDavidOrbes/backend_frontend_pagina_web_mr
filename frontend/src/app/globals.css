@@ -3084,6 +3084,8 @@ button, a {
   0% { transform: scale(1); box-shadow: 0 0 6px #ff1e4b; }
   100% { transform: scale(1.08); box-shadow: 0 0 14px #ff1e4b, inset 0 0 4px #ffffff; }
 }
+
+.suggestion-kind {
   display: inline-flex;
   align-items: center;
   justify-content: center;
