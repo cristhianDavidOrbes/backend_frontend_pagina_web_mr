@@ -24,6 +24,23 @@ export type DiagnosticoError = {
   simboloAfectado?: string;
 };
 
+const PALABRAS_RESERVADAS_PYTHON = [
+  "def", "class", "return", "pass", "for", "while", "if", "elif", "else",
+  "import", "from", "as", "in", "is", "not", "and", "or", "try", "except",
+  "finally", "with", "yield", "lambda", "global", "nonlocal", "raise", "break",
+  "continue", "del", "assert", "async", "await"
+];
+
+const PALABRAS_RESERVADAS_JAVA = [
+  "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
+  "class", "const", "continue", "default", "do", "double", "else", "enum",
+  "extends", "final", "finally", "float", "for", "goto", "if", "implements",
+  "import", "instanceof", "int", "interface", "long", "native", "new", "package",
+  "private", "protected", "public", "return", "short", "static", "strictfp",
+  "super", "switch", "synchronized", "this", "throw", "throws", "transient",
+  "try", "void", "volatile", "while"
+];
+
 /**
  * Analiza el código del estudiante ANTES de la ejecución para detectar errores comunes
  * y prevenir ejecuciones fallidas con explicaciones directas y exactas.
@@ -34,7 +51,7 @@ export function analizarCodigoPrevio(
 ): DiagnosticoError | null {
   const lineas = codigo.split("\n");
 
-  // ─── 1. CRUCE DE LENGUAJES (Escribir Java en Python o Python en Java) ───
+  // ─── 1. CRUCE DE LENGUAJES (Escribir Java/JS/C en Python o Python/JS en Java) ───
   if (lenguaje === "python") {
     for (let i = 0; i < lineas.length; i++) {
       const numLinea = i + 1;
@@ -67,7 +84,7 @@ export function analizarCodigoPrevio(
           categoria: "Cruce de Lenguajes",
           resumen: "Método main de Java en Python",
           detalle: "En Python no necesitas definir 'public static void main'.",
-          solucion: "Escribe tus instrucciones directamente en el archivo.",
+          solucion: "Escribe tus instrucciones directamente en el archivo o usa 'if __name__ == \"__main__\":'.",
           simboloAfectado: "public static void main",
         };
       }
@@ -111,6 +128,16 @@ export function analizarCodigoPrevio(
           simboloAfectado: "extends",
         };
       }
+      if (/\bimplements\b/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Palabra clave 'implements' en Python",
+          detalle: "En Python no existe la palabra clave 'implements' para interfaces.",
+          solucion: "En Python se usa herencia múltiple directa: 'class MiClase(Interfaz1, Interfaz2):'.",
+          simboloAfectado: "implements",
+        };
+      }
       if (/console\.log\s*\(/i.test(linea)) {
         return {
           linea: numLinea,
@@ -119,6 +146,84 @@ export function analizarCodigoPrevio(
           detalle: "Intentaste usar 'console.log', que pertenece a JavaScript.",
           solucion: "Usa la función 'print(...)' para mostrar texto en consola.",
           simboloAfectado: "console.log",
+        };
+      }
+      if (/^\s*(?:let|const|var)\s+\w+/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Declaración con let/const/var en Python",
+          detalle: "En Python las variables se declaran directamente asignando su valor (ej: nombre = 'Juan'), sin 'let', 'const' o 'var'.",
+          solucion: "Elimina 'let', 'const' o 'var' y escribe directamente 'variable = valor'.",
+        };
+      }
+      if (/^\s*function\s+\w+\s*\(/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Palabra clave 'function' en Python",
+          detalle: "En Python las funciones se definen con 'def', no con 'function'.",
+          solucion: "Reemplaza 'function nombre()' por 'def nombre():'.",
+          simboloAfectado: "function",
+        };
+      }
+      if (/\bnew\s+[A-Z]\w*\s*\(/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Palabra clave 'new' en Python",
+          detalle: "En Python no se usa la palabra 'new' para instanciar objetos.",
+          solucion: "Llama directamente al constructor: 'objeto = MiClase(...)'.",
+          simboloAfectado: "new",
+        };
+      }
+      if (/\bthis\.\w+/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Uso de 'this' en lugar de 'self' en Python",
+          detalle: "En Python la referencia a la instancia actual de la clase se llama 'self', no 'this'.",
+          solucion: "Reemplaza 'this.atributo' por 'self.atributo'.",
+          simboloAfectado: "this",
+        };
+      }
+      if (/\b(?:String|int|double|float|boolean|char)\s+[a-zA-Z_]\w*\s*=/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Declaración de tipos estilo Java en Python",
+          detalle: "En Python no se antepone el tipo antes del nombre de la variable al declararla.",
+          solucion: "Escribe directamente 'nombre = valor' sin especificar el tipo al inicio.",
+        };
+      }
+      if (/\bprintf\s*\(/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Función 'printf' de C/C++ en Python",
+          detalle: "En Python para formatear e imprimir texto se usa print() con f-strings: print(f\"Valor: {x}\").",
+          solucion: "Usa 'print(f\"...\")' en lugar de 'printf'.",
+          simboloAfectado: "printf",
+        };
+      }
+      if (/\b\w+\.length\b/i.test(linea) && !/["'].*length.*["']/.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Propiedad '.length' en Python",
+          detalle: "En Python para obtener el tamaño de una lista, cadena o colección se usa la función global len(coleccion).",
+          solucion: "Reemplaza 'lista.length' por 'len(lista)'.",
+          simboloAfectado: ".length",
+        };
+      }
+      if (/\b\w+\.push\s*\(/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Método '.push()' de JavaScript en Python",
+          detalle: "En Python las listas agregan elementos usando el método '.append(elemento)'.",
+          solucion: "Reemplaza '.push(...)' por '.append(...)'.",
+          simboloAfectado: ".push",
         };
       }
     }
@@ -189,6 +294,57 @@ export function analizarCodigoPrevio(
           simboloAfectado: "console.log",
         };
       }
+      if (/\bself\.\w+/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Uso de 'self' en lugar de 'this' en Java",
+          detalle: "En Java la autoreferencia al objeto actual es 'this', no 'self'.",
+          solucion: "Reemplaza 'self.atributo' por 'this.atributo'.",
+          simboloAfectado: "self",
+        };
+      }
+      if (/\b__init__\b/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Constructor '__init__' de Python en Java",
+          detalle: "En Java los constructores llevan exactamente el mismo nombre de la clase (ej: 'Gato(...)'), no '__init__'.",
+          solucion: "Declara el constructor usando el nombre de la clase.",
+          simboloAfectado: "__init__",
+        };
+      }
+      if (/\belif\b/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Condicional 'elif' de Python en Java",
+          detalle: "En Java la condición alternativa se escribe 'else if (...)', no 'elif'.",
+          solucion: "Reemplaza 'elif' por 'else if (...)'.",
+          simboloAfectado: "elif",
+        };
+      }
+      if (/\blen\s*\(/i.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Función 'len()' de Python en Java",
+          detalle: "En Java para arreglos se usa '.length' y para textos/listas se usa '.length()' o '.size()'.",
+          solucion: "Usa 'arreglo.length' o 'texto.length()'.",
+          simboloAfectado: "len",
+        };
+      }
+      if (/class\s+([A-Z]\w*)\s*\(\s*([A-Z]\w*)\s*\)\s*\{/i.test(linea)) {
+        const matchHerencia = linea.match(/class\s+([A-Z]\w*)\s*\(\s*([A-Z]\w*)\s*\)\s*\{/i);
+        return {
+          linea: numLinea,
+          categoria: "Cruce de Lenguajes",
+          resumen: "Herencia con paréntesis estilo Python en Java",
+          detalle: `En Java la herencia se declara con la palabra clave 'extends', no con paréntesis '(' y ')'.`,
+          solucion: `Escribe 'class ${matchHerencia ? matchHerencia[1] : "Hijo"} extends ${matchHerencia ? matchHerencia[2] : "Padre"} {'.`,
+          simboloAfectado: "extends",
+        };
+      }
     }
   }
 
@@ -199,6 +355,47 @@ export function analizarCodigoPrevio(
       const linea = lineas[i].replace(/#.*$/, "").trim();
       if (!linea) continue;
 
+      // Variables que inician con números
+      const varIniciaNumero = linea.match(/^(\d+[a-zA-Z_]\w*)\s*=/);
+      if (varIniciaNumero) {
+        return {
+          linea: numLinea,
+          categoria: "Variables y Nombres",
+          resumen: `Nombre de variable inválido: '${varIniciaNumero[1]}'`,
+          detalle: "En programación los identificadores y nombres de variables NO pueden comenzar con números.",
+          solucion: `Cambia el nombre para que empiece con una letra o guion bajo (ej: 'var${varIniciaNumero[1]}').`,
+          simboloAfectado: varIniciaNumero[1],
+        };
+      }
+
+      // Uso de palabras reservadas como nombres de variable
+      for (const kw of PALABRAS_RESERVADAS_PYTHON) {
+        const regexKwAsignacion = new RegExp(`^${kw}\\s*=(?!=)`);
+        if (regexKwAsignacion.test(linea)) {
+          return {
+            linea: numLinea,
+            categoria: "Variables y Nombres",
+            resumen: `Palabra reservada '${kw}' usada como nombre de variable`,
+            detalle: `'${kw}' es una palabra clave del lenguaje Python y no puede ser reasignada como variable.`,
+            solucion: `Elige otro nombre descriptivo para tu variable (ej: '${kw}_valor' o 'mi_${kw}').`,
+            simboloAfectado: kw,
+          };
+        }
+      }
+
+      // Asignación con = dentro de un if o while
+      if (/^(?:if|elif|while)\s+[^=!<>\n]+=[^=!<>\n]+:/.test(linea)) {
+        return {
+          linea: numLinea,
+          categoria: "Sintaxis",
+          resumen: "Asignación '=' dentro de una condición",
+          detalle: "Usaste un solo '=' (asignación) para evaluar la condición.",
+          solucion: "Usa '==' (doble igual) para comprobar si dos valores son iguales.",
+          simboloAfectado: "==",
+        };
+      }
+
+      // ─── DOS PUNTOS FALTANTES EN PYTHON ───
       const palabrasClave = ["def", "class", "if", "elif", "else", "while", "for", "try", "except", "finally", "with"];
       for (const kw of palabrasClave) {
         const regexInicio = new RegExp(`^${kw}\\b`);
@@ -213,22 +410,10 @@ export function analizarCodigoPrevio(
           };
         }
       }
-
-      // Asignación con = dentro de un if
-      if (/^if\s+[^=!<>\n]+=[^=!<>\n]+:/.test(linea)) {
-        return {
-          linea: numLinea,
-          categoria: "Sintaxis",
-          resumen: "Asignación '=' dentro de una condición 'if'",
-          detalle: "Usaste un solo '=' (asignación) para evaluar la condición.",
-          solucion: "Usa '==' (doble igual) para comprobar si dos valores son iguales.",
-          simboloAfectado: "==",
-        };
-      }
     }
   }
 
-  // ─── 3. ERRORES DE DELIMITADORES (Llaves, Paréntesis, Comillas) ───
+  // ─── 3. ERRORES DE DELIMITADORES (Llaves, Paréntesis, Corchetes, Comillas) ───
   const aperturas: Record<string, string> = { "(": ")", "[": "]", "{": "}" };
   const cierresInversos: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
   const pila: { char: string; linea: number }[] = [];
@@ -302,19 +487,20 @@ export function analizarCodigoPrevio(
     };
   }
 
-  // ─── 4. PUNTO Y COMA FALTANTE EN JAVA ───
+  // ─── 4. REGLAS ESTÁTICAS DE JAVA (Punto y coma, constructores, palabras reservadas) ───
   if (lenguaje === "java") {
     for (let i = 0; i < lineas.length; i++) {
       const numLinea = i + 1;
       const linea = lineas[i].replace(/\/\/.*$/, "").trim();
       if (!linea || linea.startsWith("/*") || linea.startsWith("*")) continue;
+      const lineaSinCadenas = linea.replace(/"(?:[^"\\]|\\.)*"/g, '""').replace(/'(?:[^'\\]|\\.)*'/g, "''");
 
       const esSentencia =
         /^(?:(?:return|break|continue|throw)\b.*|(?:final\s+)?(?:String|int|double|float|long|short|byte|boolean|char|Object|[A-Z]\w*)(?:\[\])*\s+\w+.*|(?:this\.)?\w+(?:\.\w+)*\s*(?:=|\+=|-=|\*=|\/=|\+\+|--).*|System\.out\.(?:print|println)\s*\(.*\)|\w+\s*\(.*\))$/.test(
-          linea,
+          lineaSinCadenas,
         );
 
-      if (esSentencia && !/[{}:]/.test(linea) && !linea.endsWith(";")) {
+      if (esSentencia && !/[{}]/.test(lineaSinCadenas) && !/^\s*(?:for|if|while|switch|catch)\b/.test(lineaSinCadenas) && !linea.endsWith(";")) {
         return {
           linea: numLinea,
           categoria: "Sintaxis",
@@ -336,6 +522,71 @@ export function analizarCodigoPrevio(
           solucion: `Elimina 'void' de la declaración del constructor: '${constructorConVoid[1]}(...) { ... }'.`,
           simboloAfectado: constructorConVoid[1],
         };
+      }
+
+      // Variables con palabras reservadas en Java
+      for (const kw of PALABRAS_RESERVADAS_JAVA) {
+        const regexJavaKw = new RegExp(`(?:int|double|float|String|boolean|char)\\s+${kw}\\s*=` );
+        if (regexJavaKw.test(linea)) {
+          return {
+            linea: numLinea,
+            categoria: "Variables y Nombres",
+            resumen: `Palabra reservada '${kw}' usada como identificador`,
+            detalle: `'${kw}' es una palabra reservada del lenguaje Java y no puede ser utilizada como nombre de variable o método.`,
+            solucion: `Cambia '${kw}' por un nombre no reservado como 'mi${kw.charAt(0).toUpperCase() + kw.slice(1)}'.`,
+            simboloAfectado: kw,
+          };
+        }
+      }
+    }
+  }
+
+  // ─── 5. DIAGNÓSTICO ESTÁTICO DE POO EN PYTHON (self faltante en métodos) ───
+  if (lenguaje === "python") {
+    let dentroDeClase = false;
+    for (let i = 0; i < lineas.length; i++) {
+      const numLinea = i + 1;
+      const lineaOriginal = lineas[i];
+      const lineaTrim = lineaOriginal.trim();
+      if (!lineaTrim || lineaTrim.startsWith("#")) continue;
+
+      if (/^class\s+[A-Z]\w*/.test(lineaTrim)) {
+        dentroDeClase = true;
+        continue;
+      }
+
+      if (dentroDeClase) {
+        // Fin de clase si vuelve al margen 0
+        if (!/^\s+/.test(lineaOriginal) && !lineaTrim.startsWith("class")) {
+          dentroDeClase = false;
+        } else {
+          // Método dentro de clase
+          const matchMetodo = lineaTrim.match(/^def\s+([a-zA-Z_]\w*)\s*\(([^)]*)\):/);
+          if (matchMetodo) {
+            const nombreMetodo = matchMetodo[1];
+            const params = matchMetodo[2].trim();
+            if (nombreMetodo === "init") {
+              return {
+                linea: numLinea,
+                categoria: "Orientación a Objetos",
+                resumen: "Constructor 'init' mal nombrado (faltan guiones bajos)",
+                detalle: "En Python el método constructor debe llamarse '__init__' con dos guiones bajos antes y después.",
+                solucion: "Renombra 'def init(...)' por 'def __init__(self, ...):'.",
+                simboloAfectado: "__init__",
+              };
+            }
+            if (!params.startsWith("self") && !lineaTrim.includes("@staticmethod") && !lineaTrim.includes("@classmethod")) {
+              return {
+                linea: numLinea,
+                categoria: "Orientación a Objetos",
+                resumen: `Falta 'self' como primer parámetro en el método '${nombreMetodo}'`,
+                detalle: `En Python todos los métodos de instancia deben recibir 'self' como su primer parámetro para acceder a los atributos del objeto.`,
+                solucion: `Modifica la firma a 'def ${nombreMetodo}(self${params ? ", " + params : ""}):'.`,
+                simboloAfectado: "self",
+              };
+            }
+          }
+        }
       }
     }
   }
@@ -447,7 +698,7 @@ export function diagnosticarErrorRuntime(
     };
   }
 
-  const matchUnboundLocal = mensaje.match(/UnboundLocalError:.*local variable ['"]([^'"]+)['"].*/i);
+  const matchUnboundLocal = mensaje.match(/UnboundLocalError:.*local variable ['"]?([^'"\s]+)['"]?.*/i);
   if (matchUnboundLocal) {
     const varName = matchUnboundLocal[1];
     return {
@@ -461,16 +712,22 @@ export function diagnosticarErrorRuntime(
   }
 
   // ─── ERRORES DE ATRIBUTOS Y MÉTODOS (POO) ───
-  const matchAttrError = mensaje.match(/AttributeError:.*['"]?(\w+)['"]? object has no attribute ['"]([^'"]+)['"]/i);
+  const matchAttrError = mensaje.match(/AttributeError:.*['"]?(\w+)['"]?\s+object has no attribute\s+['"]?([^'"\s]+)['"]?/i);
   if (matchAttrError) {
     const clase = matchAttrError[1];
     const atributo = matchAttrError[2];
+    let sugerencia = `Comprueba el nombre exacto definido en la clase '${clase}' (recuerda que distingue mayúsculas de minúsculas).`;
+    if (atributo === "length" || atributo === "size") {
+      sugerencia = `En Python usa la función global len(objeto) en lugar de '.${atributo}'.`;
+    } else if (atributo === "push") {
+      sugerencia = "En listas de Python usa el método '.append(elemento)' en lugar de '.push()'.";
+    }
     return {
       linea,
       categoria: "Orientación a Objetos",
       resumen: `El objeto '${clase}' no tiene el atributo o método “${atributo}”`,
       detalle: `Intentaste acceder a '.${atributo}', pero la clase '${clase}' no lo define en sus métodos ni en '__init__'.`,
-      solucion: `Comprueba el nombre exacto definido en la clase '${clase}' (recuerda que distingue mayúsculas de minúsculas).`,
+      solucion: sugerencia,
       simboloAfectado: atributo,
     };
   }
@@ -502,6 +759,17 @@ export function diagnosticarErrorRuntime(
       };
     }
 
+    const tooManyArgs = mensaje.match(/takes (\d+) positional argument[s]? but (\d+) (?:were|was) given/i);
+    if (tooManyArgs) {
+      return {
+        linea,
+        categoria: "Tipos de Datos",
+        resumen: `Demasiados argumentos: esperaba ${tooManyArgs[1]} y recibió ${tooManyArgs[2]}`,
+        detalle: "Pasaste más parámetros de los que la función o método tiene definidos.",
+        solucion: `Ajusta los argumentos al llamar la función para que coincida con la cantidad definida (${tooManyArgs[1]}).`,
+      };
+    }
+
     if (/not callable/i.test(mensaje)) {
       return {
         linea,
@@ -512,7 +780,7 @@ export function diagnosticarErrorRuntime(
       };
     }
 
-    if (/can only concatenate str \(not ["']int["']\) to str/i.test(mensaje)) {
+    if (/can only concatenate str \(not ["']int["']\) to str|cannot concatenate ['"]str['"] and ['"]int['"]|TypeError: can only concatenate str/i.test(mensaje)) {
       return {
         linea,
         categoria: "Tipos de Datos",
@@ -563,7 +831,7 @@ export function diagnosticarErrorRuntime(
   }
 
   // ─── ERRORES DE ÍNDICE Y COLECCIONES ───
-  if (/IndexError|index out of (?:range|bounds)|ArrayIndexOutOfBoundsException/i.test(mensaje)) {
+  if (/IndexError|index out of (?:range|bounds)|ArrayIndexOutOfBoundsException|StringIndexOutOfBoundsException/i.test(mensaje)) {
     return {
       linea,
       categoria: "Colecciones e Índices",
@@ -609,15 +877,15 @@ export function diagnosticarErrorRuntime(
     };
   }
 
-  if (/ValueError/i.test(mensaje)) {
-    const convError = mensaje.match(/invalid literal for int\(\) with base 10:\s*['"]([^'"]+)['"]/i);
+  if (/ValueError|NumberFormatException/i.test(mensaje)) {
+    const convError = mensaje.match(/(?:invalid literal for int\(\) with base 10|For input string):\s*['"]?([^'"\n]+)['"]?/i);
     if (convError) {
       return {
         linea,
         categoria: "Tipos de Datos",
-        resumen: `No se puede convertir “${convError[1]}” a número entero`,
+        resumen: `No se puede convertir “${convError[1]}” a número`,
         detalle: `El texto '${convError[1]}' contiene letras o símbolos que no representan un número válido.`,
-        solucion: "Asegúrate de que la cadena contenga únicamente dígitos numéricos antes de usar int().",
+        solucion: "Asegúrate de que la cadena contenga únicamente dígitos numéricos antes de convertirla a número.",
         simboloAfectado: convError[1],
       };
     }
@@ -630,14 +898,47 @@ export function diagnosticarErrorRuntime(
     };
   }
 
-  // ─── ERRORES DE RECURSIÓN Y CICLOS INFINITOS ───
+  // ─── ERRORES DE RECURSIÓN Y CONTROL DE FLUJO ───
   if (/RecursionError|Maximum call stack|StackOverflowError/i.test(mensaje)) {
     return {
       linea,
       categoria: "Control de Flujo",
       resumen: "Recursión infinita (Desbordamiento de pila)",
-      detalle: "La función se llamó a sí misma tantas veces que agotó la memoria del navegador.",
+      detalle: "La función se llamó a sí misma tantas veces que agotó la memoria del sistema.",
       solucion: "Asegúrate de tener un caso base con 'if' que detenga las llamadas recursivas.",
+    };
+  }
+
+  if (/(?:SyntaxError:.*)?(?:['"]?break['"]?\s+outside loop)/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Control de Flujo",
+      resumen: "'break' fuera de un bucle",
+      detalle: "La instrucción 'break' solo puede usarse dentro de un bucle 'for' o 'while'.",
+      solucion: "Elimina 'break' o colócalo dentro de un bucle.",
+      simboloAfectado: "break",
+    };
+  }
+
+  if (/(?:SyntaxError:.*)?(?:['"]?continue['"]?\s+not properly in loop|continue['"]?\s+outside loop)/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Control de Flujo",
+      resumen: "'continue' fuera de un bucle",
+      detalle: "La instrucción 'continue' solo puede usarse dentro de un bucle 'for' o 'while'.",
+      solucion: "Elimina 'continue' o colócalo dentro de un bucle.",
+      simboloAfectado: "continue",
+    };
+  }
+
+  if (/(?:SyntaxError:.*)?(?:['"]?return['"]?\s+outside function)/i.test(mensaje)) {
+    return {
+      linea,
+      categoria: "Control de Flujo",
+      resumen: "'return' fuera de una función o método",
+      detalle: "La sentencia 'return' solo tiene sentido dentro del cuerpo de una función o método.",
+      solucion: "Coloca el 'return' dentro de una función 'def ...' o elimina la línea.",
+      simboloAfectado: "return",
     };
   }
 
