@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +37,7 @@ import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.modelos.CanalSegundoFactor;
 import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.seguridad.CorreoInstitucional;
+import com.algolab.backend_werb_mr.seguridad.JwtServicio;
 import com.algolab.backend_werb_mr.seguridad.NumeroCelular;
 import com.algolab.backend_werb_mr.servicios.AutenticacionSegundoFactorResultado;
 import com.algolab.backend_werb_mr.servicios.ISegundoFactorServicio;
@@ -50,10 +52,18 @@ public class UsuarioControlador {
 
     private final IUsuarioServicio usuarioServicio;
     private final ISegundoFactorServicio segundoFactorServicio;
+    private final JwtServicio jwtServicio;
+    private final boolean segundoFactorObligatorio;
 
-    public UsuarioControlador(IUsuarioServicio usuarioServicio, ISegundoFactorServicio segundoFactorServicio) {
+    public UsuarioControlador(
+            IUsuarioServicio usuarioServicio,
+            ISegundoFactorServicio segundoFactorServicio,
+            JwtServicio jwtServicio,
+            @Value("${app.segundo-factor.obligatorio:false}") boolean segundoFactorObligatorio) {
         this.usuarioServicio = usuarioServicio;
         this.segundoFactorServicio = segundoFactorServicio;
+        this.jwtServicio = jwtServicio;
+        this.segundoFactorObligatorio = segundoFactorObligatorio;
     }
 
     @PostMapping(value = "/iniciar-sesion", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -78,6 +88,15 @@ public class UsuarioControlador {
         if (usuarioEncontrado == null) {
             // Una respuesta unica evita revelar si la cuenta institucional existe.
             return errorSegundoFactor(HttpStatus.UNAUTHORIZED, "Correo o contrasena incorrectos");
+        }
+
+        if (!segundoFactorObligatorio) {
+            logger.info("Inicio de sesion directo habilitado para {}", correo);
+            return ResponseEntity.ok(new AuthRespuestaDTO(
+                    true,
+                    "Inicio de sesion correcto",
+                    jwtServicio.generarToken(usuarioEncontrado),
+                    UsuarioRespuestaDTO.desdeUsuario(usuarioEncontrado)));
         }
 
         CanalSegundoFactor canal = obtenerCanalSegundoFactor(request.getCanal());

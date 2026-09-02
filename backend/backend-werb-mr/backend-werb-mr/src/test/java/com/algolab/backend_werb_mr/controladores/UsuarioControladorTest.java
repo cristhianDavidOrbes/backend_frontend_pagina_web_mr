@@ -29,11 +29,11 @@ import com.algolab.backend_werb_mr.dtos.LoginRequest;
 import com.algolab.backend_werb_mr.dtos.RegistroUsuarioRequest;
 import com.algolab.backend_werb_mr.dtos.UsuarioRespuestaDTO;
 import com.algolab.backend_werb_mr.dtos.UsuarioSesionDTO;
-import com.algolab.backend_werb_mr.dtos.VerificarSegundoFactorRequest;
 import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.modelos.CanalSegundoFactor;
 import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.seguridad.CorreoInstitucional;
+import com.algolab.backend_werb_mr.seguridad.JwtServicio;
 import com.algolab.backend_werb_mr.servicios.AutenticacionSegundoFactorResultado;
 import com.algolab.backend_werb_mr.servicios.ISegundoFactorServicio;
 import com.algolab.backend_werb_mr.servicios.IUsuarioServicio;
@@ -41,7 +41,14 @@ import com.algolab.backend_werb_mr.servicios.IUsuarioServicio;
 class UsuarioControladorTest {
     private final UsuarioServicioPrueba usuarioServicio = new UsuarioServicioPrueba();
     private final SegundoFactorServicioPrueba segundoFactorServicio = new SegundoFactorServicioPrueba();
-    private final UsuarioControlador controlador = new UsuarioControlador(usuarioServicio, segundoFactorServicio);
+    private final JwtServicio jwtServicio = new JwtServicio(
+            "secreto-de-prueba-algolab-suficientemente-largo",
+            86400000L);
+    private final UsuarioControlador controlador = new UsuarioControlador(
+            usuarioServicio,
+            segundoFactorServicio,
+            jwtServicio,
+            false);
 
     @Test
     void registroPublicoRechazaRolesPrivilegiados() {
@@ -107,7 +114,7 @@ class UsuarioControladorTest {
     }
 
     @Test
-    void inicioSesionExitosoConCorreoCreaDesafioSinToken() {
+    void inicioSesionExitosoConCorreoEntregaSesionDirecta() {
         Usuario usuario = usuarioServicio.registrar(
                 new Usuario(null, "Estudiante", "estudiante@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
         usuario.setNombreUsuario("estudiante");
@@ -118,33 +125,32 @@ class UsuarioControladorTest {
 
         ResponseEntity<?> respuesta = controlador.iniciarSesion(request);
 
-        assertEquals(HttpStatus.ACCEPTED, respuesta.getStatusCode());
-        DesafioSegundoFactorRespuestaDTO desafio = assertInstanceOf(
-                DesafioSegundoFactorRespuestaDTO.class, respuesta.getBody());
-        assertTrue(desafio.isRequiereSegundoFactor());
-        assertEquals("desafio-prueba", desafio.getDesafioId());
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        AuthRespuestaDTO sesion = assertInstanceOf(AuthRespuestaDTO.class, respuesta.getBody());
+        assertTrue(sesion.isExitoso());
+        assertNotNull(sesion.getToken());
+        assertEquals("estudiante@campusucc.edu.co", sesion.getUsuario().getCorreo());
     }
 
     @Test
-    void jwtSoloSeEntregaDespuesDeVerificarSegundoFactor() {
+    void segundoFactorSePuedeReactivarPorConfiguracion() {
         usuarioServicio.registrar(
                 new Usuario(null, "Estudiante", "verificado@campusucc.edu.co", Rol.ESTUDIANTE, "123456"));
         LoginRequest login = new LoginRequest();
         login.setCorreo("verificado@campusucc.edu.co");
         login.setContrasena("123456");
 
-        ResponseEntity<?> inicio = controlador.iniciarSesion(login);
+        UsuarioControlador controladorConSegundoFactor = new UsuarioControlador(
+                usuarioServicio,
+                segundoFactorServicio,
+                jwtServicio,
+                true);
+        ResponseEntity<?> inicio = controladorConSegundoFactor.iniciarSesion(login);
         assertEquals(HttpStatus.ACCEPTED, inicio.getStatusCode());
-        assertInstanceOf(DesafioSegundoFactorRespuestaDTO.class, inicio.getBody());
-
-        VerificarSegundoFactorRequest verificacion = new VerificarSegundoFactorRequest();
-        verificacion.setDesafioId("desafio-prueba");
-        verificacion.setCodigo("123456");
-        ResponseEntity<AuthRespuestaDTO> respuesta = controlador.verificarSegundoFactor(verificacion);
-
-        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
-        assertEquals("token-prueba", respuesta.getBody().getToken());
-        assertEquals("verificado@campusucc.edu.co", respuesta.getBody().getUsuario().getCorreo());
+        DesafioSegundoFactorRespuestaDTO desafio = assertInstanceOf(
+                DesafioSegundoFactorRespuestaDTO.class, inicio.getBody());
+        assertTrue(desafio.isRequiereSegundoFactor());
+        assertEquals("desafio-prueba", desafio.getDesafioId());
     }
 
     @Test
