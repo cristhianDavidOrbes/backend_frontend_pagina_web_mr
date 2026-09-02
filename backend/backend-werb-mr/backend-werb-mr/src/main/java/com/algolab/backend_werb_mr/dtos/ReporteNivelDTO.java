@@ -27,25 +27,26 @@ public class ReporteNivelDTO {
     private LocalDateTime fechaGeneracion;
 
     public static ReporteNivelDTO desdeModelo(ReporteNivel reporte) {
+        if (reporte == null) return null;
         ReporteNivelDTO dto = new ReporteNivelDTO();
         dto.id = reporte.getId();
-        dto.usuarioId = reporte.getUsuario().getId();
-        dto.usuarioNombre = reporte.getUsuario().getNombre();
-        dto.nivel = reporte.getNivel();
-        dto.tituloNivel = reporte.getTituloNivel();
-        dto.puntaje = reporte.getPuntaje();
-        dto.tiempoRestante = reporte.getTiempoRestante();
-        dto.intentos = reporte.getIntentos();
-        dto.completado = reporte.getCompletado();
-        dto.dominio = reporte.getDominio();
-        dto.resumen = reporte.getResumen();
+        dto.usuarioId = reporte.getUsuario() != null ? reporte.getUsuario().getId() : null;
+        dto.usuarioNombre = reporte.getUsuario() != null ? reporte.getUsuario().getNombre() : "";
+        dto.nivel = reporte.getNivel() != null ? reporte.getNivel() : 1;
+        dto.tituloNivel = reporte.getTituloNivel() != null ? reporte.getTituloNivel() : "";
+        dto.puntaje = reporte.getPuntaje() != null ? reporte.getPuntaje() : 0;
+        dto.tiempoRestante = reporte.getTiempoRestante() != null ? reporte.getTiempoRestante() : 0;
+        dto.intentos = reporte.getIntentos() != null ? reporte.getIntentos() : 0;
+        dto.completado = reporte.getCompletado() != null ? reporte.getCompletado() : false;
+        dto.dominio = reporte.getDominio() != null ? reporte.getDominio() : 0;
+        dto.resumen = reporte.getResumen() != null ? reporte.getResumen() : "";
         dto.fortalezas = separar(reporte.getFortalezas());
         dto.aspectosMejora = separar(reporte.getAspectosMejora());
         dto.recomendaciones = separar(reporte.getRecomendaciones());
         dto.evidencias = separar(reporte.getEvidencias());
-        dto.proximoEjercicio = reporte.getProximoEjercicio();
-        dto.generadoPorIa = reporte.getGeneradoPorIa();
-        dto.fechaGeneracion = reporte.getFechaGeneracion();
+        dto.proximoEjercicio = reporte.getProximoEjercicio() != null ? reporte.getProximoEjercicio() : "";
+        dto.generadoPorIa = reporte.getGeneradoPorIa() != null ? reporte.getGeneradoPorIa() : false;
+        dto.fechaGeneracion = reporte.getFechaGeneracion() != null ? reporte.getFechaGeneracion() : LocalDateTime.now();
         return dto;
     }
 

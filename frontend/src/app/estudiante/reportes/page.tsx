@@ -16,8 +16,14 @@ export default function EstudianteReportesPage() {
     if (!hydrated || !token) return;
     
     apiRequest<ReporteNivel[]>("/api/reportes", token)
-      .then((data) => setReportes(data))
-      .catch((err) => setError(err.message))
+      .then((data) => {
+        setReportes(Array.isArray(data) ? data : []);
+        setError("");
+      })
+      .catch((err) => {
+        console.warn("No se pudieron cargar reportes:", err);
+        setReportes([]);
+      })
       .finally(() => setLoading(false));
   }, [hydrated, token]);
 

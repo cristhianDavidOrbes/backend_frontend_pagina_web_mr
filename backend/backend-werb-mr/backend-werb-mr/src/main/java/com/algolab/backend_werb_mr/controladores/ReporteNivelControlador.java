@@ -3,6 +3,8 @@ package com.algolab.backend_werb_mr.controladores;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,8 @@ import com.algolab.backend_werb_mr.servicios.ReporteNivelServicio;
 @RestController
 @RequestMapping("/api/reportes-nivel")
 public class ReporteNivelControlador {
+    private static final Logger log = LoggerFactory.getLogger(ReporteNivelControlador.class);
+
     private final ReporteNivelServicio reporteServicio;
     private final IUsuarioServicio usuarioServicio;
 
@@ -36,7 +40,12 @@ public class ReporteNivelControlador {
     public ResponseEntity<?> listarPropios(Authentication authentication) {
         Usuario usuario = usuarioAutenticado(authentication);
         if (usuario == null) return noAutorizado();
-        return ResponseEntity.ok(reporteServicio.listarUsuario(usuario));
+        try {
+            return ResponseEntity.ok(reporteServicio.listarUsuario(usuario));
+        } catch (Exception ex) {
+            log.error("Error al obtener reportes propios para el usuario {}: {}", usuario.getCorreo(), ex.getMessage(), ex);
+            return ResponseEntity.ok(List.of());
+        }
     }
 
     @GetMapping
@@ -44,7 +53,12 @@ public class ReporteNivelControlador {
         if (!esDocenteOAdministrador(authentication)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("mensaje", "Solo docentes y administradores pueden consultar todos los reportes"));
         }
-        return ResponseEntity.ok(reporteServicio.listarTodos());
+        try {
+            return ResponseEntity.ok(reporteServicio.listarTodos());
+        } catch (Exception ex) {
+            log.error("Error al listar todos los reportes: {}", ex.getMessage(), ex);
+            return ResponseEntity.ok(List.of());
+        }
     }
 
     @GetMapping("/usuario/{usuarioId}")
@@ -55,7 +69,12 @@ public class ReporteNivelControlador {
         if (!esDocenteOAdministrador(authentication) && (actual == null || !actual.getId().equals(usuarioId))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("mensaje", "No puede consultar los reportes de otro usuario"));
         }
-        return ResponseEntity.ok(reporteServicio.listarUsuario(solicitado));
+        try {
+            return ResponseEntity.ok(reporteServicio.listarUsuario(solicitado));
+        } catch (Exception ex) {
+            log.error("Error al obtener reportes para el usuario con id {}: {}", usuarioId, ex.getMessage(), ex);
+            return ResponseEntity.ok(List.of());
+        }
     }
 
     @PutMapping(value = "/{nivel}/ia", consumes = MediaType.APPLICATION_JSON_VALUE)

@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -61,11 +62,11 @@ public class ReporteNivel {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String recomendaciones;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String evidencias;
+    @Column(columnDefinition = "TEXT")
+    private String evidencias = "";
 
-    @Column(nullable = false, length = 1000)
-    private String proximoEjercicio;
+    @Column(length = 1000)
+    private String proximoEjercicio = "";
 
     @Column(nullable = false)
     private Boolean generadoPorIa = false;
@@ -73,6 +74,7 @@ public class ReporteNivel {
     @Column(nullable = false)
     private LocalDateTime fechaGeneracion;
 
+    @PostLoad
     @PrePersist
     @PreUpdate
     public void normalizar() {
