@@ -16,12 +16,15 @@ import com.algolab.backend_werb_mr.dtos.ProgresoNivelDTO;
 import com.algolab.backend_werb_mr.dtos.ProgresoUsuarioDTO;
 import com.algolab.backend_werb_mr.modelos.DescripcionNivel;
 import com.algolab.backend_werb_mr.modelos.ProgresoNivel;
+import com.algolab.backend_werb_mr.modelos.ProgresoOop;
 import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.repositorio.IProgresoNivelRepositorio;
 
 @Service
 public class ProgresoServicio implements IProgresoServicio {
     private static final Logger logger = LoggerFactory.getLogger(ProgresoServicio.class);
+    private static final int TOTAL_NIVELES_VR = 6;
+    private static final int TOTAL_NIVELES_WEB = 8;
     private static final Map<Integer, Integer> PUNTAJE_MAXIMO_POR_NIVEL = Map.of(
             1, 80,
             2, 240,
@@ -241,11 +244,38 @@ public class ProgresoServicio implements IProgresoServicio {
 
         int puntajePrincipal = calcularPuntajeTotal(progresos);
         int puntajeOop = progresoOopRepositorio != null ? progresoOopRepositorio.calcularPuntajeTotalOop(usuario) : 0;
+        List<ProgresoOop> progresosWeb = progresoOopRepositorio != null
+                ? progresoOopRepositorio.findByUsuarioOrderByNivelAsc(usuario)
+                : List.of();
+        int nivelesVrCompletados = (int) progresos.stream()
+                .filter(progreso -> Boolean.TRUE.equals(progreso.getCompletado()))
+                .map(ProgresoNivel::getNivel)
+                .filter(nivel -> nivel != null && nivel >= 1 && nivel <= TOTAL_NIVELES_VR)
+                .distinct()
+                .count();
+        int nivelesWebCompletados = (int) progresosWeb.stream()
+                .filter(progreso -> Boolean.TRUE.equals(progreso.getCompletado()))
+                .map(ProgresoOop::getNivel)
+                .filter(nivel -> nivel != null && nivel >= 1 && nivel <= TOTAL_NIVELES_WEB)
+                .distinct()
+                .count();
+        boolean rutaVrCompletada = nivelesVrCompletados == TOTAL_NIVELES_VR;
+        boolean rutaWebCompletada = nivelesWebCompletados == TOTAL_NIVELES_WEB;
+        String categoria = rutaVrCompletada && rutaWebCompletada
+                ? "Fullstack"
+                : (rutaVrCompletada || rutaWebCompletada ? "Senior" : "Junior");
 
         return new ProgresoUsuarioDTO(
                 usuario.getId(),
                 usuario.getNivelActual(),
                 puntajePrincipal + puntajeOop,
-                niveles);
+                niveles,
+                nivelesVrCompletados,
+                TOTAL_NIVELES_VR,
+                nivelesWebCompletados,
+                TOTAL_NIVELES_WEB,
+                rutaVrCompletada,
+                rutaWebCompletada,
+                categoria);
     }
 }

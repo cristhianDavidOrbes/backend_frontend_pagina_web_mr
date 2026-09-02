@@ -1,7 +1,9 @@
 package com.algolab.backend_werb_mr.servicios;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -19,11 +21,67 @@ import com.algolab.backend_werb_mr.dtos.ProgresoNivelDTO;
 import com.algolab.backend_werb_mr.dtos.ProgresoUsuarioDTO;
 import com.algolab.backend_werb_mr.modelos.DescripcionNivel;
 import com.algolab.backend_werb_mr.modelos.ProgresoNivel;
+import com.algolab.backend_werb_mr.modelos.ProgresoOop;
 import com.algolab.backend_werb_mr.modelos.Rol;
 import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.repositorio.IProgresoNivelRepositorio;
+import com.algolab.backend_werb_mr.repositorio.IProgresoOopRepositorio;
 
 class ProgresoServicioTest {
+    @Test
+    void calculaCategoriaSoloPorRutasCompletadas() {
+        IProgresoNivelRepositorio progresoRepositorio = mock(IProgresoNivelRepositorio.class);
+        IProgresoOopRepositorio progresoOopRepositorio = mock(IProgresoOopRepositorio.class);
+        IUsuarioServicio usuarioServicio = mock(IUsuarioServicio.class);
+        IDescripcionNivelServicio descripcionNivelServicio = mock(IDescripcionNivelServicio.class);
+        Usuario usuario = new Usuario(10L, "Grace", "grace@test.com", Rol.ESTUDIANTE, "123456");
+
+        List<ProgresoNivel> ningunVr = List.of(progresoVr(usuario, 1, false));
+        List<ProgresoNivel> todosVr = java.util.stream.IntStream.rangeClosed(1, 6)
+                .mapToObj(nivel -> progresoVr(usuario, nivel, true))
+                .toList();
+        List<ProgresoOop> ningunWeb = List.of(progresoWeb(usuario, 1, false));
+        List<ProgresoOop> todosWeb = java.util.stream.IntStream.rangeClosed(1, 8)
+                .mapToObj(nivel -> progresoWeb(usuario, nivel, true))
+                .toList();
+
+        when(progresoRepositorio.findByUsuarioOrderByNivelAsc(usuario))
+                .thenReturn(ningunVr, todosVr, ningunVr, todosVr);
+        when(progresoOopRepositorio.findByUsuarioOrderByNivelAsc(usuario))
+                .thenReturn(ningunWeb, ningunWeb, todosWeb, todosWeb);
+        when(progresoOopRepositorio.calcularPuntajeTotalOop(usuario)).thenReturn(0);
+
+        ProgresoServicio servicio = new ProgresoServicio(
+                progresoRepositorio,
+                usuarioServicio,
+                descripcionNivelServicio,
+                null,
+                progresoOopRepositorio);
+
+        ProgresoUsuarioDTO junior = servicio.consultarProgreso(usuario);
+        ProgresoUsuarioDTO seniorVr = servicio.consultarProgreso(usuario);
+        ProgresoUsuarioDTO seniorWeb = servicio.consultarProgreso(usuario);
+        ProgresoUsuarioDTO fullstack = servicio.consultarProgreso(usuario);
+
+        assertEquals("Junior", junior.getCategoria());
+        assertFalse(junior.getRutaVrCompletada());
+        assertFalse(junior.getRutaWebCompletada());
+
+        assertEquals("Senior", seniorVr.getCategoria());
+        assertEquals(6, seniorVr.getNivelesVrCompletados());
+        assertTrue(seniorVr.getRutaVrCompletada());
+        assertFalse(seniorVr.getRutaWebCompletada());
+
+        assertEquals("Senior", seniorWeb.getCategoria());
+        assertEquals(8, seniorWeb.getNivelesWebCompletados());
+        assertFalse(seniorWeb.getRutaVrCompletada());
+        assertTrue(seniorWeb.getRutaWebCompletada());
+
+        assertEquals("Fullstack", fullstack.getCategoria());
+        assertTrue(fullstack.getRutaVrCompletada());
+        assertTrue(fullstack.getRutaWebCompletada());
+    }
+
     @Test
     void guardaMejorPuntajePorNivelYRecalculaTotalSinAcumularRepeticiones() {
         IProgresoNivelRepositorio progresoRepositorio = mock(IProgresoNivelRepositorio.class);
@@ -132,5 +190,23 @@ class ProgresoServicioTest {
                 .findFirst()
                 .map(ProgresoNivelDTO::getIntentos)
                 .orElseThrow();
+    }
+
+    private static ProgresoNivel progresoVr(Usuario usuario, int nivel, boolean completado) {
+        ProgresoNivel progreso = new ProgresoNivel();
+        progreso.setUsuario(usuario);
+        progreso.setNivel(nivel);
+        progreso.setCompletado(completado);
+        progreso.setPuntaje(0);
+        return progreso;
+    }
+
+    private static ProgresoOop progresoWeb(Usuario usuario, int nivel, boolean completado) {
+        ProgresoOop progreso = new ProgresoOop();
+        progreso.setUsuario(usuario);
+        progreso.setNivel(nivel);
+        progreso.setCompletado(completado);
+        progreso.setPuntaje(0);
+        return progreso;
     }
 }
