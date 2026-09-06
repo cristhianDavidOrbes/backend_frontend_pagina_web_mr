@@ -154,6 +154,26 @@ class UsuarioControladorTest {
     }
 
     @Test
+    void inicioSesionNoExigeSegundoFactorCuandoNoEstaHabilitadoEnElDespliegue() {
+        usuarioServicio.registrar(
+                new Usuario(null, "Estudiante", "directo@gmail.com", Rol.ESTUDIANTE, "123456"));
+        LoginRequest login = new LoginRequest();
+        login.setCorreo("directo@gmail.com");
+        login.setContrasena("123456");
+
+        UsuarioControlador controladorSinSegundoFactor = new UsuarioControlador(
+                usuarioServicio,
+                segundoFactorServicio,
+                jwtServicio,
+                true,
+                false);
+        ResponseEntity<?> respuesta = controladorSinSegundoFactor.iniciarSesion(login);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertTrue(assertInstanceOf(AuthRespuestaDTO.class, respuesta.getBody()).isExitoso());
+    }
+
+    @Test
     void inicioSesionRechazaNombreUsuarioPorqueExigeCorreoInstitucional() {
         LoginRequest request = new LoginRequest();
         request.setCorreo("estudiante");

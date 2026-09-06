@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -55,15 +56,30 @@ public class UsuarioControlador {
     private final JwtServicio jwtServicio;
     private final boolean segundoFactorObligatorio;
 
+    @Autowired
     public UsuarioControlador(
             IUsuarioServicio usuarioServicio,
             ISegundoFactorServicio segundoFactorServicio,
             JwtServicio jwtServicio,
-            @Value("${app.segundo-factor.obligatorio:false}") boolean segundoFactorObligatorio) {
+            @Value("${app.segundo-factor.obligatorio:false}") boolean segundoFactorObligatorio,
+            @Value("${app.segundo-factor.habilitado:false}") boolean segundoFactorHabilitado) {
         this.usuarioServicio = usuarioServicio;
         this.segundoFactorServicio = segundoFactorServicio;
         this.jwtServicio = jwtServicio;
-        this.segundoFactorObligatorio = segundoFactorObligatorio;
+        // El segundo factor es una función opcional. Un valor antiguo de
+        // DOS_FA_REQUIRED no puede bloquear el acceso si no se habilitó de
+        // forma explícita en el entorno de despliegue.
+        this.segundoFactorObligatorio = segundoFactorHabilitado && segundoFactorObligatorio;
+    }
+
+    // Conserva un constructor práctico para pruebas y para una futura
+    // activación explícita desde la configuración administrativa.
+    public UsuarioControlador(
+            IUsuarioServicio usuarioServicio,
+            ISegundoFactorServicio segundoFactorServicio,
+            JwtServicio jwtServicio,
+            boolean segundoFactorObligatorio) {
+        this(usuarioServicio, segundoFactorServicio, jwtServicio, segundoFactorObligatorio, true);
     }
 
     @PostMapping(value = "/iniciar-sesion", consumes = MediaType.APPLICATION_JSON_VALUE)
