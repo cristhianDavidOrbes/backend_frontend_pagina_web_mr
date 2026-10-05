@@ -1,7 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 
-const DEFAULT_API_BASE_URL = "https://backendfrontendpaginawebmr-production.up.railway.app";
+const DEFAULT_API_BASE_URL = "https://algolab-backend-7j0h.onrender.com";
 
 type ProxyOptions = {
   request: Request;
