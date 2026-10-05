@@ -54,6 +54,10 @@ export type RankingItem = {
   nombreUsuario?: string;
   nivelActual: number;
   puntaje: number;
+  avatar?: UsuarioSesion["avatar"];
+  avatarUrl?: string | null;
 };
+
+export type PerfilPublico = Pick<RankingItem, "nombre" | "nombreUsuario" | "nivelActual" | "puntaje" | "avatar" | "avatarUrl"> & { id: number };
 
 export type Ranking = { total: number; estudiantes: RankingItem[] };

@@ -71,7 +71,7 @@ class UsuarioControladorTest {
     }
 
     @Test
-    void registroPublicoExigeConsentimientosLegales() {
+    void registroPublicoExigeAutorizacionDeDatos() {
         RegistroUsuarioRequest request = solicitudRegistro(
                 "Estudiante", "consentimiento@campusucc.edu.co", Rol.ESTUDIANTE, "123456");
         request.setAceptaTratamientoDatos(false);
@@ -90,9 +90,8 @@ class UsuarioControladorTest {
 
         assertEquals(HttpStatus.CREATED, respuesta.getStatusCode());
         Usuario guardado = usuarioServicio.buscarPorCorreo(correo).orElseThrow();
-        assertNotNull(guardado.getTerminosAceptadosEn());
         assertNotNull(guardado.getTratamientoDatosAceptadoEn());
-        assertEquals("2026-08-26", guardado.getVersionConsentimiento());
+        assertEquals("2026-10-05", guardado.getVersionConsentimiento());
     }
 
     @Test
@@ -442,9 +441,8 @@ class UsuarioControladorTest {
         request.setCorreo(correo);
         request.setRol(rol.name());
         request.setContrasena(contrasena);
-        request.setAceptaTerminos(true);
         request.setAceptaTratamientoDatos(true);
-        request.setVersionConsentimiento("2026-08-26");
+        request.setVersionConsentimiento("2026-10-05");
         return request;
     }
 

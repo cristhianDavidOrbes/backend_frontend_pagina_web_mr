@@ -44,16 +44,18 @@ import com.algolab.backend_werb_mr.servicios.AutenticacionSegundoFactorResultado
 import com.algolab.backend_werb_mr.servicios.ISegundoFactorServicio;
 import com.algolab.backend_werb_mr.servicios.IUsuarioServicio;
 import com.algolab.backend_werb_mr.servicios.SegundoFactorException;
+import com.algolab.backend_werb_mr.servicios.DatosUsuarioServicio;
 
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioControlador {
     private static final Logger logger = LoggerFactory.getLogger(UsuarioControlador.class);
-    private static final String VERSION_CONSENTIMIENTO_ACTUAL = "2026-08-26";
+    private static final String VERSION_CONSENTIMIENTO_ACTUAL = "2026-10-05";
 
     private final IUsuarioServicio usuarioServicio;
     private final ISegundoFactorServicio segundoFactorServicio;
     private final JwtServicio jwtServicio;
+    private final DatosUsuarioServicio datosUsuarioServicio;
     private final boolean segundoFactorObligatorio;
 
     @Autowired
@@ -61,11 +63,13 @@ public class UsuarioControlador {
             IUsuarioServicio usuarioServicio,
             ISegundoFactorServicio segundoFactorServicio,
             JwtServicio jwtServicio,
+            DatosUsuarioServicio datosUsuarioServicio,
             @Value("${app.segundo-factor.obligatorio:false}") boolean segundoFactorObligatorio,
             @Value("${app.segundo-factor.habilitado:false}") boolean segundoFactorHabilitado) {
         this.usuarioServicio = usuarioServicio;
         this.segundoFactorServicio = segundoFactorServicio;
         this.jwtServicio = jwtServicio;
+        this.datosUsuarioServicio = datosUsuarioServicio;
         // El segundo factor es una función opcional. Un valor antiguo de
         // DOS_FA_REQUIRED no puede bloquear el acceso si no se habilitó de
         // forma explícita en el entorno de despliegue.
@@ -78,8 +82,25 @@ public class UsuarioControlador {
             IUsuarioServicio usuarioServicio,
             ISegundoFactorServicio segundoFactorServicio,
             JwtServicio jwtServicio,
+            DatosUsuarioServicio datosUsuarioServicio,
             boolean segundoFactorObligatorio) {
-        this(usuarioServicio, segundoFactorServicio, jwtServicio, segundoFactorObligatorio, true);
+        this(usuarioServicio, segundoFactorServicio, jwtServicio, datosUsuarioServicio, segundoFactorObligatorio, true);
+    }
+
+    public UsuarioControlador(IUsuarioServicio usuarioServicio,
+            ISegundoFactorServicio segundoFactorServicio,
+            JwtServicio jwtServicio,
+            boolean segundoFactorObligatorio) {
+        this(usuarioServicio, segundoFactorServicio, jwtServicio, null, segundoFactorObligatorio, true);
+    }
+
+    public UsuarioControlador(IUsuarioServicio usuarioServicio,
+            ISegundoFactorServicio segundoFactorServicio,
+            JwtServicio jwtServicio,
+            boolean segundoFactorObligatorio,
+            boolean segundoFactorHabilitado) {
+        this(usuarioServicio, segundoFactorServicio, jwtServicio, null,
+                segundoFactorObligatorio, segundoFactorHabilitado);
     }
 
     @PostMapping(value = "/iniciar-sesion", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -227,11 +248,10 @@ public class UsuarioControlador {
         }
 
         if (!permitirRolesPrivilegiados) {
-            if (!Boolean.TRUE.equals(request.getAceptaTerminos())
-                    || !Boolean.TRUE.equals(request.getAceptaTratamientoDatos())) {
+            if (!Boolean.TRUE.equals(request.getAceptaTratamientoDatos())) {
                 return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
                         false,
-                        "Debes aceptar los Terminos y Condiciones y el Tratamiento de Datos Personales",
+                        "Debes autorizar el almacenamiento de tu cuenta y progreso para usar AlgoLab",
                         null,
                         null));
             }
@@ -257,7 +277,6 @@ public class UsuarioControlador {
         usuario.setCelular(celular);
         if (!permitirRolesPrivilegiados) {
             LocalDateTime aceptadoEn = LocalDateTime.now();
-            usuario.setTerminosAceptadosEn(aceptadoEn);
             usuario.setTratamientoDatosAceptadoEn(aceptadoEn);
             usuario.setVersionConsentimiento(VERSION_CONSENTIMIENTO_ACTUAL);
         }
@@ -387,6 +406,44 @@ public class UsuarioControlador {
         }
 
         return ResponseEntity.ok(UsuarioRespuestaDTO.desdeUsuario(usuario));
+    }
+
+    @GetMapping("/{id}/publico")
+    public ResponseEntity<?> consultarPerfilPublico(@PathVariable Long id) {
+        Usuario usuario = usuarioServicio.buscarPorId(id).orElse(null);
+        if (usuario == null || usuario.getRol() != Rol.ESTUDIANTE) {
+            return ResponseEntity.notFound().build();
+        }
+        String avatarUrl = usuario.getAvatarVersion() == null ? null
+                : "/api/usuarios/" + id + "/avatar?v=" + usuario.getAvatarVersion();
+        return ResponseEntity.ok(Map.of(
+                "id", usuario.getId(),
+                "nombre", usuario.getNombre(),
+                "nombreUsuario", usuario.getNombreUsuario() == null ? "" : usuario.getNombreUsuario(),
+                "nivelActual", usuario.getNivelActual(),
+                "puntaje", usuario.getPuntaje(),
+                "avatar", usuario.getAvatar() == null ? "orbita" : usuario.getAvatar(),
+                "avatarUrl", avatarUrl == null ? "" : avatarUrl));
+    }
+
+    @DeleteMapping("/me/historial")
+    public ResponseEntity<?> borrarHistorial(Authentication authentication) {
+        Usuario usuario = usuarioAutenticado(authentication);
+        if (usuario == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        datosUsuarioServicio.borrarHistorial(usuario.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/me/datos")
+    public ResponseEntity<?> borrarMisDatos(Authentication authentication) {
+        Usuario usuario = usuarioAutenticado(authentication);
+        if (usuario == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (usuario.getRol() != Rol.ESTUDIANTE) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "mensaje", "Esta opción solo está disponible para cuentas de estudiante"));
+        }
+        datosUsuarioServicio.borrarCuenta(usuario.getId());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)

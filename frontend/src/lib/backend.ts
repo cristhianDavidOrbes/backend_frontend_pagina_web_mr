@@ -159,7 +159,7 @@ export async function proxyBackendAvatarPublico(
     const headers = new Headers();
     const contentType = respuesta.headers.get("content-type") || "image/jpeg";
     headers.set("Content-Type", contentType);
-    headers.set("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    headers.set("Cache-Control", "private, max-age=86400");
     if (version) {
       headers.set("ETag", `"${version}"`);
     }

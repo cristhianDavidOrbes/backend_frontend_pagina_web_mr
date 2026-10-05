@@ -133,7 +133,10 @@ public class AvatarControlador {
         boolean esPropietario = solicitante.getId() != null && solicitante.getId().equals(id);
         boolean puedeConsultarEstudiantes = solicitante.getRol() == Rol.DOCENTE
                 || solicitante.getRol() == Rol.ADMINISTRADOR;
-        if (!esPropietario && !puedeConsultarEstudiantes) {
+        Usuario propietario = usuarioServicio.buscarPorId(id).orElse(null);
+        boolean perfilEnRanking = solicitante.getRol() == Rol.ESTUDIANTE
+                && propietario != null && propietario.getRol() == Rol.ESTUDIANTE;
+        if (!esPropietario && !puedeConsultarEstudiantes && !perfilEnRanking) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                     "mensaje", "No puedes consultar la foto de otro usuario"));
         }

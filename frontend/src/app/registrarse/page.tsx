@@ -10,7 +10,6 @@ import {
   RefreshCw,
   Sparkles,
   User,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,9 +34,7 @@ import {
 
 type Paso = "datos" | "codigo" | "bienvenida";
 type Tono = "error" | "aviso" | "exito";
-type DocumentoLegal = "terminos" | "datos";
-
-const LEGAL_VERSION = "2026-08-26";
+const CONSENT_VERSION = "2026-10-05";
 
 function pw(p: string) {
   if (!p) return { pct: 0, label: "", color: "" };
@@ -228,10 +225,8 @@ export default function RegistrarsePage() {
   const [pass, setPass] = useState("");
   const [verPass, setVerPass] = useState(false);
   const [correoTocado, setCorreoTocado] = useState(false);
-  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [aceptaDatos, setAceptaDatos] = useState(false);
   const [consentimientoTocado, setConsentimientoTocado] = useState(false);
-  const [documentoLegal, setDocumentoLegal] = useState<DocumentoLegal | null>(null);
   const dir = 1;
 
   const [enviando, setEnviando] = useState(false);
@@ -242,7 +237,7 @@ export default function RegistrarsePage() {
   const errCorreo = correoTocado ? institutionalEmailError(correo) : "";
   const pwState = useMemo(() => pw(pass), [pass]);
 
-  // 1. Restaurar automáticamente el borrador guardado en sessionStorage (al volver de ver términos)
+  // Restaurar los campos no sensibles si el usuario vuelve al registro.
   useEffect(() => {
     const restaurar = window.setTimeout(() => {
       try {
@@ -251,12 +246,10 @@ export default function RegistrarsePage() {
           const draft = JSON.parse(raw) as {
             nombre?: string;
             correo?: string;
-            aceptaTerminos?: boolean;
             aceptaDatos?: boolean;
           };
           if (draft.nombre) setNombre(draft.nombre);
           if (draft.correo) setCorreo(draft.correo);
-          if (typeof draft.aceptaTerminos === "boolean") setAceptaTerminos(draft.aceptaTerminos);
           if (typeof draft.aceptaDatos === "boolean") setAceptaDatos(draft.aceptaDatos);
         }
       } catch {
@@ -269,16 +262,16 @@ export default function RegistrarsePage() {
   // 2. Persistir automáticamente el borrador cada vez que el usuario escribe
   useEffect(() => {
     try {
-      if (nombre || correo || aceptaTerminos || aceptaDatos) {
+      if (nombre || correo || aceptaDatos) {
         sessionStorage.setItem(
           REGISTRO_DRAFT_KEY,
-          JSON.stringify({ nombre, correo, aceptaTerminos, aceptaDatos })
+          JSON.stringify({ nombre, correo, aceptaDatos })
         );
       }
     } catch {
       // Ignorar excepciones de cuota de storage
     }
-  }, [nombre, correo, aceptaTerminos, aceptaDatos]);
+  }, [nombre, correo, aceptaDatos]);
 
   useEffect(() => {
     if (!hydrated || !existingToken || !usuario) return;
@@ -290,23 +283,6 @@ export default function RegistrarsePage() {
         : "/estudiante"
     );
   }, [hydrated, existingToken, usuario, router]);
-
-  useEffect(() => {
-    if (!documentoLegal) return;
-
-    const overflowAnterior = document.body.style.overflow;
-    const cerrarConEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDocumentoLegal(null);
-    };
-
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", cerrarConEscape);
-
-    return () => {
-      document.body.style.overflow = overflowAnterior;
-      window.removeEventListener("keydown", cerrarConEscape);
-    };
-  }, [documentoLegal]);
 
   async function registrar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -322,9 +298,9 @@ export default function RegistrarsePage() {
       setMsg({ texto: "La contraseña debe tener mínimo 6 caracteres.", tono: "error" });
       return;
     }
-    if (!aceptaTerminos || !aceptaDatos) {
+    if (!aceptaDatos) {
       setMsg({
-        texto: "Para crear tu cuenta debes aceptar ambos documentos legales.",
+        texto: "Para crear tu cuenta debes autorizar que AlgoLab guarde tu perfil y progreso.",
         tono: "error",
       });
       return;
@@ -342,9 +318,8 @@ export default function RegistrarsePage() {
           correo: email,
           contrasena: pass,
           rol: "ESTUDIANTE",
-          aceptaTerminos,
           aceptaTratamientoDatos: aceptaDatos,
-          versionConsentimiento: LEGAL_VERSION,
+          versionConsentimiento: CONSENT_VERSION,
         }),
       });
 
@@ -404,7 +379,10 @@ export default function RegistrarsePage() {
       <main className="auth-shell flex min-h-screen items-center justify-center p-4 md:p-8">
         <div className="w-full max-w-4xl">
           <OnboardingShowcase
-            onComplete={() => router.replace("/estudiante")}
+            onComplete={() => {
+              if (usuarioReg) localStorage.setItem(`algolab_onboarding:${usuarioReg.id}`, "completado");
+              router.replace("/estudiante");
+            }}
             usuario={usuarioReg}
           />
         </div>
@@ -573,36 +551,13 @@ export default function RegistrarsePage() {
                   </div>
                   <fieldset
                     className={`${css.consentGroup} ${
-                      consentimientoTocado && (!aceptaTerminos || !aceptaDatos)
+                      consentimientoTocado && !aceptaDatos
                         ? css.consentGroupError
                         : ""
                     }`}
                     aria-describedby="consent-help consent-error"
                   >
-                    <legend>Consentimientos requeridos</legend>
-                    <div className={css.consentRow}>
-                      <input
-                        id="acepta-terminos"
-                        type="checkbox"
-                        checked={aceptaTerminos}
-                        onChange={(event) => {
-                          setAceptaTerminos(event.target.checked);
-                          setMsg(null);
-                        }}
-                        aria-invalid={consentimientoTocado && !aceptaTerminos}
-                        required
-                      />
-                      <div>
-                        <label htmlFor="acepta-terminos">Acepto los Términos y Condiciones.</label>
-                        <button
-                          type="button"
-                          className={css.consentLink}
-                          onClick={() => setDocumentoLegal("terminos")}
-                        >
-                          Leer documento completo
-                        </button>
-                      </div>
-                    </div>
+                    <legend>Control de tus datos</legend>
                     <div className={css.consentRow}>
                       <input
                         id="acepta-datos"
@@ -617,23 +572,16 @@ export default function RegistrarsePage() {
                       />
                       <div>
                         <label htmlFor="acepta-datos">
-                          Autorizo el tratamiento de mis datos personales para operar AlgoLab.
+                          Autorizo que AlgoLab guarde mi perfil y progreso para sincronizar la web y las gafas.
                         </label>
-                        <button
-                          type="button"
-                          className={css.consentLink}
-                          onClick={() => setDocumentoLegal("datos")}
-                        >
-                          Consultar política de datos
-                        </button>
                       </div>
                     </div>
                     <small id="consent-help">
-                      Son autorizaciones independientes y necesarias para crear la cuenta.
+                      Podrás borrar tus reportes, reiniciar el recorrido o eliminar tu cuenta desde Configuración. El correo se usa para acceder y el puntaje para mostrar tu avance.
                     </small>
-                    {consentimientoTocado && (!aceptaTerminos || !aceptaDatos) && (
+                    {consentimientoTocado && !aceptaDatos && (
                       <small id="consent-error" role="alert" className={css.consentError}>
-                        Marca las dos casillas para continuar.
+                        Marca la casilla para continuar.
                       </small>
                     )}
                   </fieldset>
@@ -644,7 +592,6 @@ export default function RegistrarsePage() {
                       !nombre.trim() ||
                       !pass ||
                       Boolean(errCorreo) ||
-                      !aceptaTerminos ||
                       !aceptaDatos
                     }
                     type="submit"
@@ -672,69 +619,6 @@ export default function RegistrarsePage() {
         </motion.div>
       </section>
 
-      <AnimatePresence>
-        {documentoLegal && (
-          <motion.div
-            className={css.legalModalBackdrop}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setDocumentoLegal(null);
-            }}
-          >
-            <motion.section
-              className={css.legalModal}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="registro-documento-legal"
-              initial={rm ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={rm ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.98 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-            >
-              <header className={css.legalModalHeader}>
-                <div>
-                  <span>Documento legal de AlgoLab</span>
-                  <h2 id="registro-documento-legal">
-                    {documentoLegal === "terminos"
-                      ? "Términos y Condiciones"
-                      : "Tratamiento de Datos Personales"}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  className={css.legalModalClose}
-                  onClick={() => setDocumentoLegal(null)}
-                  aria-label="Cerrar documento y volver al registro"
-                  autoFocus
-                >
-                  <X size={22} aria-hidden />
-                </button>
-              </header>
-              <iframe
-                className={css.legalModalFrame}
-                src={
-                  documentoLegal === "terminos"
-                    ? "/terminos-y-condiciones?embedded=1"
-                    : "/tratamiento-de-datos?embedded=1"
-                }
-                title={
-                  documentoLegal === "terminos"
-                    ? "Términos y Condiciones de AlgoLab"
-                    : "Tratamiento de Datos Personales de AlgoLab"
-                }
-              />
-              <footer className={css.legalModalFooter}>
-                <p>Tu formulario permanece intacto mientras consultas este documento.</p>
-                <button type="button" onClick={() => setDocumentoLegal(null)}>
-                  Volver al registro
-                </button>
-              </footer>
-            </motion.section>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </main>
   );
 }

@@ -273,12 +273,14 @@ export default function IniciarSesionPage() {
   function finalizarLoginExitoso(token: string, usuarioDto: UsuarioSesion) {
     setEstadoCargaLogin("Abriendo tu espacio…");
     saveAuthSession(token, usuarioDto);
+    const onboardingPendiente = usuarioDto.rol === "ESTUDIANTE"
+      && localStorage.getItem(`algolab_onboarding:${usuarioDto.id}`) !== "completado";
     const destino =
       usuarioDto.rol === "ADMINISTRADOR"
         ? "/administrador"
         : usuarioDto.rol === "DOCENTE"
         ? "/docente"
-        : "/estudiante";
+        : onboardingPendiente ? "/estudiante/bienvenida" : "/estudiante";
     router.replace(destino);
   }
 

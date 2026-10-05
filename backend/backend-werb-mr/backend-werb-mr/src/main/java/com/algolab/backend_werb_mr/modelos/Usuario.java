@@ -62,9 +62,6 @@ public class Usuario {
     @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean tutorialCompletado = false;
 
-    @Column(name = "terminos_aceptados_en")
-    private LocalDateTime terminosAceptadosEn;
-
     @Column(name = "tratamiento_datos_aceptado_en")
     private LocalDateTime tratamientoDatosAceptadoEn;
 
@@ -226,14 +223,6 @@ public class Usuario {
 
     public void setTutorialCompletado(boolean tutorialCompletado) {
         this.tutorialCompletado = tutorialCompletado;
-    }
-
-    public LocalDateTime getTerminosAceptadosEn() {
-        return terminosAceptadosEn;
-    }
-
-    public void setTerminosAceptadosEn(LocalDateTime terminosAceptadosEn) {
-        this.terminosAceptadosEn = terminosAceptadosEn;
     }
 
     public LocalDateTime getTratamientoDatosAceptadoEn() {

@@ -16,7 +16,7 @@ import {
 import { AvatarDisplay } from "@/components/avatar-display";
 import { clearAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
-type IconName = "route" | "reports" | "ranking" | "students" | "levels" | "profile" | "world" | "logout" | "headset" | "spark" | "code";
+type IconName = "route" | "reports" | "ranking" | "students" | "levels" | "profile" | "world" | "logout" | "headset" | "spark" | "code" | "settings";
 
 type NavLink = {
   href: string;
@@ -41,6 +41,7 @@ const roleConfig: Record<UsuarioSesion["rol"], RoleConfig> = {
       { href: "/estudiante/reportes", label: "Recomendaciones IA", icon: "reports" },
       { href: "/estudiante/codigo", label: "Programar POO", icon: "code" },
       { href: "/estudiante/perfil", label: "Mi perfil", icon: "profile" },
+      { href: "/estudiante/configuracion", label: "Configuración", icon: "settings" },
       { href: "/", label: "Explorar AlgoLab", icon: "world", exact: true },
     ],
   },
@@ -136,6 +137,14 @@ function ShellIcon({ name, className }: { name: IconName; className?: string }) 
       <svg {...common}>
         <circle cx="12" cy="8" r="3.4" />
         <path d="M5.5 20c.6-4 2.8-6 6.5-6s5.9 2 6.5 6" />
+      </svg>
+    );
+  }
+  if (name === "settings") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4m10.6 10.6 1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4" />
       </svg>
     );
   }

@@ -23,17 +23,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.8,
     },
-    {
-      url: `${baseUrl}/terminos-y-condiciones`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/tratamiento-de-datos`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
   ];
 }

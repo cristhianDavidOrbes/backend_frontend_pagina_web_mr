@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Crown, Medal, Trophy } from "lucide-react";
+import { Crown, Medal, Trophy, X } from "lucide-react";
 
+import { AvatarDisplay } from "@/components/avatar-display";
 import { apiRequest } from "@/lib/client-api";
-import type { Ranking } from "@/lib/types";
+import type { PerfilPublico, Ranking } from "@/lib/types";
 import { useAuthSession } from "@/lib/use-auth-session";
 
 export default function EstudianteRankingPage() {
@@ -12,6 +13,22 @@ export default function EstudianteRankingPage() {
   const [ranking, setRanking] = useState<Ranking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [perfil, setPerfil] = useState<PerfilPublico | null>(null);
+  const [cargandoPerfil, setCargandoPerfil] = useState(false);
+
+  async function abrirPerfil(id: number) {
+    if (!token) return;
+    setCargandoPerfil(true);
+    setError("");
+    try {
+      const datos = await apiRequest<PerfilPublico>(`/api/usuarios/${id}/publico`, token);
+      setPerfil(datos);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No se pudo abrir el perfil.");
+    } finally {
+      setCargandoPerfil(false);
+    }
+  }
 
   useEffect(() => {
     if (!hydrated || !token) return;
@@ -70,10 +87,10 @@ export default function EstudianteRankingPage() {
                   <span className={`grid h-9 w-9 place-items-center rounded-xl font-mono text-sm font-bold ${top ? "border border-amber-300/25 bg-amber-300/10 text-amber-200" : "bg-white/[.04] text-slate-400"}`}>
                     {top ? <Medal size={17} /> : item.posicion}
                   </span>
-                  <div className="min-w-0">
-                    <strong className="block truncate text-sm text-white sm:text-base">{item.nombre}{esActual ? " (Tú)" : ""}</strong>
-                    <span className="block truncate text-xs text-slate-500">@{item.nombreUsuario || `estudiante-${item.usuarioId}`}</span>
-                  </div>
+                  <button className="flex min-w-0 items-center gap-3 text-left hover:opacity-80 focus-visible:rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300" disabled={cargandoPerfil} onClick={() => void abrirPerfil(item.usuarioId)} type="button">
+                    <AvatarDisplay className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 text-sm font-bold text-white [&>img]:object-cover" usuario={item} />
+                    <span className="min-w-0"><strong className="block truncate text-sm text-white sm:text-base">{item.nombre}{esActual ? " (Tú)" : ""}</strong><span className="block truncate text-xs text-slate-500">@{item.nombreUsuario || `estudiante-${item.usuarioId}`}</span></span>
+                  </button>
                   <div className="hidden text-center sm:block"><span className="block text-[10px] uppercase tracking-wider text-slate-500">Nivel</span><strong className="text-sm text-cyan-200">{item.nivelActual}</strong></div>
                   <div className="text-right"><span className="hidden text-[10px] uppercase tracking-wider text-slate-500 sm:block">Puntos</span><strong className="font-mono text-sm text-emerald-200 sm:text-base">{item.puntaje}</strong></div>
                 </li>
@@ -84,6 +101,17 @@ export default function EstudianteRankingPage() {
           <div className="empty-state m-5"><Trophy className="mx-auto mb-3 opacity-40" size={36} /><p>El ranking aparecerá cuando existan puntajes registrados.</p></div>
         ) : null}
       </section>
+
+      {perfil && <div className="fixed inset-0 z-[100] grid place-items-center bg-black/75 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setPerfil(null); }} role="presentation">
+        <section aria-labelledby="perfil-publico-titulo" aria-modal="true" className="w-full max-w-md rounded-3xl border border-emerald-300/20 bg-[#0b1b19] p-6 shadow-2xl" role="dialog">
+          <div className="flex justify-end"><button aria-label="Cerrar perfil" onClick={() => setPerfil(null)} type="button"><X size={20} /></button></div>
+          <AvatarDisplay className="relative mx-auto grid h-24 w-24 place-items-center overflow-hidden rounded-full border-2 border-emerald-300/30 text-3xl font-bold text-white [&>img]:object-cover" usuario={perfil} />
+          <h3 className="mt-4 text-center text-2xl font-bold text-white" id="perfil-publico-titulo">{perfil.nombre}</h3>
+          <p className="mt-1 text-center text-sm text-slate-400">@{perfil.nombreUsuario || `estudiante-${perfil.id}`}</p>
+          <div className="mt-6 grid grid-cols-2 gap-3 text-center"><div className="rounded-xl bg-white/5 p-4"><span className="block text-xs text-slate-400">Nivel</span><strong className="text-xl text-cyan-200">{perfil.nivelActual}</strong></div><div className="rounded-xl bg-white/5 p-4"><span className="block text-xs text-slate-400">Puntos</span><strong className="text-xl text-emerald-200">{perfil.puntaje}</strong></div></div>
+          <p className="mt-5 text-center text-xs text-slate-500">Solo se muestra información pública de aprendizaje; el correo y otros datos privados no se comparten.</p>
+        </section>
+      </div>}
     </div>
   );
 }

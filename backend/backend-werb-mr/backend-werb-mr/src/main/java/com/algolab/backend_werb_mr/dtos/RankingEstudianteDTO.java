@@ -9,6 +9,8 @@ public class RankingEstudianteDTO {
     private String nombreUsuario;
     private Integer nivelActual;
     private Integer puntaje;
+    private String avatar;
+    private String avatarUrl;
 
     public RankingEstudianteDTO() {
     }
@@ -20,6 +22,9 @@ public class RankingEstudianteDTO {
         this.nombreUsuario = usuario.getNombreUsuario();
         this.nivelActual = usuario.getNivelActual();
         this.puntaje = usuario.getPuntaje();
+        this.avatar = usuario.getAvatar();
+        this.avatarUrl = usuario.getAvatarVersion() == null ? null
+                : "/api/usuarios/" + usuario.getId() + "/avatar?v=" + usuario.getAvatarVersion();
     }
 
     public Integer getPosicion() {
@@ -69,4 +74,9 @@ public class RankingEstudianteDTO {
     public void setPuntaje(Integer puntaje) {
         this.puntaje = puntaje;
     }
+
+    public String getAvatar() { return avatar; }
+    public void setAvatar(String avatar) { this.avatar = avatar; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 }
