@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { isWebAuthnSupported, registrarPasskeyEnNavegador } from "@/lib/webauthn-client";
+import { apiRequest } from "@/lib/client-api";
 import { RecoveryCodesModal } from "./recovery-codes-modal";
 import { TotpSetupModal } from "./totp-setup-modal";
 
@@ -49,17 +50,13 @@ function mensajeDeError(error: unknown, fallback: string) {
 }
 
 async function consultarConfiguracion(token: string) {
-  const res = await fetch("/api/auth/2fa/configuracion", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!res.ok) return null;
-  return (await res.json()) as Configuracion2fa;
+  return apiRequest<Configuracion2fa>("/api/auth/2fa/configuracion", token);
 }
 
 export function TwoFactorSettings({ token }: Props) {
   const [config, setConfig] = useState<Configuracion2fa | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [reintentos, setReintentos] = useState(0);
   const [mensaje, setMensaje] = useState<{ tipo: "exito" | "error"; texto: string } | null>(null);
 
   // Modales
@@ -83,11 +80,9 @@ export function TwoFactorSettings({ token }: Props) {
     try {
       setCargando(true);
       const data = await consultarConfiguracion(token);
-      if (data) {
-        setConfig(data);
-      }
-    } catch {
-      setMensaje({ tipo: "error", texto: "No se pudo cargar la configuración 2FA" });
+      setConfig(data);
+    } catch (error) {
+      setMensaje({ tipo: "error", texto: mensajeDeError(error, "No se pudo cargar la configuración de seguridad") });
     } finally {
       setCargando(false);
     }
@@ -95,14 +90,18 @@ export function TwoFactorSettings({ token }: Props) {
 
   useEffect(() => {
     let cancelado = false;
+    setCargando(true);
 
     consultarConfiguracion(token)
       .then((data) => {
-        if (!cancelado && data) setConfig(data);
-      })
-      .catch(() => {
         if (!cancelado) {
-          setMensaje({ tipo: "error", texto: "No se pudo cargar la configuración 2FA" });
+          setConfig(data);
+          setMensaje(null);
+        }
+      })
+      .catch((error) => {
+        if (!cancelado) {
+          setMensaje({ tipo: "error", texto: mensajeDeError(error, "No se pudo cargar la configuración de seguridad") });
         }
       })
       .finally(() => {
@@ -112,7 +111,7 @@ export function TwoFactorSettings({ token }: Props) {
     return () => {
       cancelado = true;
     };
-  }, [token]);
+  }, [token, reintentos]);
 
   async function handleCambiarMetodoPreferido(nuevoMetodo: Metodo2fa) {
     try {
@@ -269,6 +268,21 @@ export function TwoFactorSettings({ token }: Props) {
       <div className="flex items-center justify-center py-12 text-xs text-slate-400">
         <Loader2 className="mr-2 h-4 w-4 animate-spin text-emerald-400" />
         Cargando configuración de seguridad...
+      </div>
+    );
+  }
+
+  if (!config) {
+    return (
+      <div className="space-y-3 py-6 text-sm text-slate-300" role="alert">
+        <p>{mensaje?.texto || "No se pudo cargar la configuración de seguridad."}</p>
+        <button
+          className="rounded-xl border border-emerald-300/30 px-4 py-2 font-semibold text-emerald-200 hover:bg-emerald-300/10"
+          type="button"
+          onClick={() => setReintentos((actual) => actual + 1)}
+        >
+          Reintentar
+        </button>
       </div>
     );
   }

@@ -71,27 +71,26 @@ class UsuarioControladorTest {
     }
 
     @Test
-    void registroPublicoExigeAutorizacionDeDatos() {
+    void registroPublicoNoExigeAutorizacionDeDatos() {
         RegistroUsuarioRequest request = solicitudRegistro(
                 "Estudiante", "consentimiento@campusucc.edu.co", Rol.ESTUDIANTE, "123456");
-        request.setAceptaTratamientoDatos(false);
 
         ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(request);
 
-        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
-        assertFalse(respuesta.getBody().isExitoso());
+        assertEquals(HttpStatus.CREATED, respuesta.getStatusCode());
+        assertTrue(respuesta.getBody().isExitoso());
     }
 
     @Test
-    void registroPublicoGuardaFechaYVersionDelConsentimiento() {
+    void registroPublicoNoRegistraConsentimientoNoSolicitado() {
         String correo = "auditoria@campusucc.edu.co";
         ResponseEntity<AuthRespuestaDTO> respuesta = controlador.registrarUsuario(
                 solicitudRegistro("Estudiante", correo, Rol.ESTUDIANTE, "123456"));
 
         assertEquals(HttpStatus.CREATED, respuesta.getStatusCode());
         Usuario guardado = usuarioServicio.buscarPorCorreo(correo).orElseThrow();
-        assertNotNull(guardado.getTratamientoDatosAceptadoEn());
-        assertEquals("2026-10-05", guardado.getVersionConsentimiento());
+        assertNull(guardado.getTratamientoDatosAceptadoEn());
+        assertNull(guardado.getVersionConsentimiento());
     }
 
     @Test
@@ -441,8 +440,6 @@ class UsuarioControladorTest {
         request.setCorreo(correo);
         request.setRol(rol.name());
         request.setContrasena(contrasena);
-        request.setAceptaTratamientoDatos(true);
-        request.setVersionConsentimiento("2026-10-05");
         return request;
     }
 

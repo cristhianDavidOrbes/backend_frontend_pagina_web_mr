@@ -19,10 +19,19 @@ export async function apiRequest<T>(path: string, token: string, init?: RequestI
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(path, {
-    ...init,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      ...init,
+      headers,
+      signal: init?.signal ?? AbortSignal.timeout(90_000),
+    });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new Error("La conexión tardó demasiado. Comprueba Internet y vuelve a intentarlo.");
+    }
+    throw new Error("No se pudo conectar con el servidor. Comprueba Internet y vuelve a intentarlo.");
+  }
 
   const text = await response.text();
   let data: unknown = null;

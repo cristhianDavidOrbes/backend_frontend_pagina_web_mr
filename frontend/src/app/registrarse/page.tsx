@@ -34,7 +34,6 @@ import {
 
 type Paso = "datos" | "codigo" | "bienvenida";
 type Tono = "error" | "aviso" | "exito";
-const CONSENT_VERSION = "2026-10-05";
 
 function pw(p: string) {
   if (!p) return { pct: 0, label: "", color: "" };
@@ -225,8 +224,6 @@ export default function RegistrarsePage() {
   const [pass, setPass] = useState("");
   const [verPass, setVerPass] = useState(false);
   const [correoTocado, setCorreoTocado] = useState(false);
-  const [aceptaDatos, setAceptaDatos] = useState(false);
-  const [consentimientoTocado, setConsentimientoTocado] = useState(false);
   const dir = 1;
 
   const [enviando, setEnviando] = useState(false);
@@ -246,11 +243,9 @@ export default function RegistrarsePage() {
           const draft = JSON.parse(raw) as {
             nombre?: string;
             correo?: string;
-            aceptaDatos?: boolean;
           };
           if (draft.nombre) setNombre(draft.nombre);
           if (draft.correo) setCorreo(draft.correo);
-          if (typeof draft.aceptaDatos === "boolean") setAceptaDatos(draft.aceptaDatos);
         }
       } catch {
         // Ignorar excepciones de lectura
@@ -262,16 +257,16 @@ export default function RegistrarsePage() {
   // 2. Persistir automáticamente el borrador cada vez que el usuario escribe
   useEffect(() => {
     try {
-      if (nombre || correo || aceptaDatos) {
+      if (nombre || correo) {
         sessionStorage.setItem(
           REGISTRO_DRAFT_KEY,
-          JSON.stringify({ nombre, correo, aceptaDatos })
+          JSON.stringify({ nombre, correo })
         );
       }
     } catch {
       // Ignorar excepciones de cuota de storage
     }
-  }, [nombre, correo, aceptaDatos]);
+  }, [nombre, correo]);
 
   useEffect(() => {
     if (!hydrated || !existingToken || !usuario) return;
@@ -287,7 +282,6 @@ export default function RegistrarsePage() {
   async function registrar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setCorreoTocado(true);
-    setConsentimientoTocado(true);
     const email = normalizeInstitutionalEmail(correo);
     const eE = institutionalEmailError(email);
     if (eE) {
@@ -296,13 +290,6 @@ export default function RegistrarsePage() {
     }
     if (!pass || pass.length < 6) {
       setMsg({ texto: "La contraseña debe tener mínimo 6 caracteres.", tono: "error" });
-      return;
-    }
-    if (!aceptaDatos) {
-      setMsg({
-        texto: "Para crear tu cuenta debes autorizar que AlgoLab guarde tu perfil y progreso.",
-        tono: "error",
-      });
       return;
     }
 
@@ -318,8 +305,6 @@ export default function RegistrarsePage() {
           correo: email,
           contrasena: pass,
           rol: "ESTUDIANTE",
-          aceptaTratamientoDatos: aceptaDatos,
-          versionConsentimiento: CONSENT_VERSION,
         }),
       });
 
@@ -549,50 +534,13 @@ export default function RegistrarsePage() {
                       </div>
                     )}
                   </div>
-                  <fieldset
-                    className={`${css.consentGroup} ${
-                      consentimientoTocado && !aceptaDatos
-                        ? css.consentGroupError
-                        : ""
-                    }`}
-                    aria-describedby="consent-help consent-error"
-                  >
-                    <legend>Control de tus datos</legend>
-                    <div className={css.consentRow}>
-                      <input
-                        id="acepta-datos"
-                        type="checkbox"
-                        checked={aceptaDatos}
-                        onChange={(event) => {
-                          setAceptaDatos(event.target.checked);
-                          setMsg(null);
-                        }}
-                        aria-invalid={consentimientoTocado && !aceptaDatos}
-                        required
-                      />
-                      <div>
-                        <label htmlFor="acepta-datos">
-                          Autorizo que AlgoLab guarde mi perfil y progreso para sincronizar la web y las gafas.
-                        </label>
-                      </div>
-                    </div>
-                    <small id="consent-help">
-                      Podrás borrar tus reportes, reiniciar el recorrido o eliminar tu cuenta desde Configuración. El correo se usa para acceder y el puntaje para mostrar tu avance.
-                    </small>
-                    {consentimientoTocado && !aceptaDatos && (
-                      <small id="consent-error" role="alert" className={css.consentError}>
-                        Marca la casilla para continuar.
-                      </small>
-                    )}
-                  </fieldset>
                   <button
                     className="primary-button flex w-full items-center justify-center gap-2 mt-2"
                     disabled={
                       enviando ||
                       !nombre.trim() ||
                       !pass ||
-                      Boolean(errCorreo) ||
-                      !aceptaDatos
+                      Boolean(errCorreo)
                     }
                     type="submit"
                   >

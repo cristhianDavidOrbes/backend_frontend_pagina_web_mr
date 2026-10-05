@@ -1,6 +1,5 @@
 package com.algolab.backend_werb_mr.controladores;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -50,7 +49,6 @@ import com.algolab.backend_werb_mr.servicios.DatosUsuarioServicio;
 @RequestMapping("/api/usuarios")
 public class UsuarioControlador {
     private static final Logger logger = LoggerFactory.getLogger(UsuarioControlador.class);
-    private static final String VERSION_CONSENTIMIENTO_ACTUAL = "2026-10-05";
 
     private final IUsuarioServicio usuarioServicio;
     private final ISegundoFactorServicio segundoFactorServicio;
@@ -247,24 +245,6 @@ public class UsuarioControlador {
                     null));
         }
 
-        if (!permitirRolesPrivilegiados) {
-            if (!Boolean.TRUE.equals(request.getAceptaTratamientoDatos())) {
-                return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
-                        false,
-                        "Debes autorizar el almacenamiento de tu cuenta y progreso para usar AlgoLab",
-                        null,
-                        null));
-            }
-
-            if (!VERSION_CONSENTIMIENTO_ACTUAL.equals(limpiar(request.getVersionConsentimiento()))) {
-                return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
-                        false,
-                        "La version de la autorizacion de datos no esta vigente. Actualiza la pagina e intenta de nuevo",
-                        null,
-                        null));
-            }
-        }
-
         if (usuarioServicio.existePorCorreo(correo)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthRespuestaDTO(
                     false,
@@ -275,11 +255,6 @@ public class UsuarioControlador {
 
         Usuario usuario = new Usuario(null, nombre, correo, rol, contrasena);
         usuario.setCelular(celular);
-        if (!permitirRolesPrivilegiados) {
-            LocalDateTime aceptadoEn = LocalDateTime.now();
-            usuario.setTratamientoDatosAceptadoEn(aceptadoEn);
-            usuario.setVersionConsentimiento(VERSION_CONSENTIMIENTO_ACTUAL);
-        }
         Usuario usuarioGuardado = usuarioServicio.registrar(usuario);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new AuthRespuestaDTO(

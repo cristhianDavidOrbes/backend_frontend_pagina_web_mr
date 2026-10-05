@@ -44,6 +44,8 @@ export default function AdministradorUsuariosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [datosCargados, setDatosCargados] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
+  const [reintentos, setReintentos] = useState(0);
   const [usuarioForm, setUsuarioForm] = useState<UsuarioForm>(usuarioInicial);
 
   const usuariosFiltrados = useMemo(() => {
@@ -62,10 +64,14 @@ export default function AdministradorUsuariosPage() {
     if (!hydrated || !token) return;
 
     async function cargarDatos() {
+      setDatosCargados(false);
+      setErrorCarga(false);
+      setMensaje("");
       try {
         const data = await apiRequest<Usuario[]>("/api/usuarios", token as string);
         setUsuarios(data);
       } catch (error) {
+        setErrorCarga(true);
         setMensaje(error instanceof Error ? error.message : "Error al cargar usuarios.");
       } finally {
         setDatosCargados(true);
@@ -73,7 +79,7 @@ export default function AdministradorUsuariosPage() {
     }
 
     void cargarDatos();
-  }, [hydrated, token]);
+  }, [hydrated, token, reintentos]);
 
   async function guardarUsuario(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -168,6 +174,15 @@ export default function AdministradorUsuariosPage() {
             }`}
           />
           {mensaje}
+          {errorCarga ? (
+            <button
+              className="ml-auto shrink-0 rounded-lg border border-amber-300/30 px-3 py-1.5 font-semibold text-amber-100 hover:bg-amber-300/10"
+              type="button"
+              onClick={() => setReintentos((actual) => actual + 1)}
+            >
+              Reintentar
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -268,7 +283,7 @@ export default function AdministradorUsuariosPage() {
               Cargando telemetría de usuarios…
             </div>
           ) : null}
-          {!cargando && !usuariosFiltrados.length ? (
+          {!cargando && !errorCarga && !usuariosFiltrados.length ? (
             <div className="empty-state mt-4">
               <Search size={20} />
               <p>No hay identidades que coincidan con la búsqueda.</p>
