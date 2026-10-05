@@ -8,8 +8,6 @@ import {
   CarFront,
   ShieldCheck,
   Disc3,
-  GitFork,
-  Shuffle,
   Gamepad2,
   type LucideIcon,
 } from "lucide-react";
@@ -90,36 +88,6 @@ export const NIVELES: NivelData[] = [
     accentHex: "#148cff",
     bgGradient: "from-blue-500/20 via-slate-900/80 to-slate-950",
   },
-  {
-    numero: "05",
-    id: 5,
-    titulo: "Herencia",
-    concepto: "Jerarquías y Reutilización",
-    objeto: "Árbol de tipos y familias",
-    texto: "Construye jerarquías y descubre qué comportamiento pasa de una clase padre a sus especializaciones.",
-    detalles: "Evita la duplicación de código compartiendo lógica común en superclases mientras permites comportamientos especializados en subclases.",
-    misionVR: "Conecta nodos de herencia física arrastrando bloques para ver qué atributos se heredan automáticamente.",
-    image: "/algolab/herencia.png",
-    icon: GitFork,
-    color: "violet",
-    accentHex: "#9e7bff",
-    bgGradient: "from-violet-500/20 via-slate-900/80 to-slate-950",
-  },
-  {
-    numero: "06",
-    id: 6,
-    titulo: "Polimorfismo",
-    concepto: "Sobreescritura y Mensajes",
-    objeto: "Acciones mutables en tiempo real",
-    texto: "Observa cómo el mismo mensaje produce comportamientos distintos según el objeto que lo recibe.",
-    detalles: "Envía la misma orden a diferentes objetos y observa cómo cada uno responde según su propia implementación polimórfica.",
-    misionVR: "Emite el comando ejecutar() a diferentes entidades en la escena y analiza las variadas respuestas en el diagrama.",
-    image: "/algolab/polimorfismo.png",
-    icon: Shuffle,
-    color: "rose",
-    accentHex: "#e96868",
-    bgGradient: "from-rose-500/20 via-slate-900/80 to-slate-950",
-  },
 ];
 
 export function LevelsCarousel() {
@@ -155,7 +123,7 @@ export function LevelsCarousel() {
       <header className={styles.heading}>
         <div>
           <span className={styles.eyebrow}>Aprender haciendo</span>
-          <h3>Explora los seis niveles</h3>
+          <h3>Explora los cuatro niveles</h3>
           <p>Elige un tema para conocer qué aprenderás y cómo lo practicarás en realidad mixta.</p>
         </div>
         <div className={styles.controls}>

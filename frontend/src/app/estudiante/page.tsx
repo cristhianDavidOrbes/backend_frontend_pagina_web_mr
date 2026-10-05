@@ -100,25 +100,31 @@ export default function EstudiantePage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-    Promise.all([
-      apiRequest<ProgresoUsuario>("/api/progreso", token),
-      apiRequest<ReporteNivel[]>("/api/reportes", token),
-      apiRequest<Nivel[]>("/api/niveles", token),
-      apiRequest<Ranking>("/api/ranking", token),
-    ])
-      .then(([avance, reportesData, nivelesData, rankingData]) => {
-        setProgreso(avance);
-        setReportes(reportesData);
-        setNiveles([...nivelesData].sort((a, b) => a.nivel - b.nivel));
-        setRanking(rankingData);
-      })
+    let cancelado = false;
+    const opciones = { signal: AbortSignal.timeout(45_000) };
+
+    apiRequest<ProgresoUsuario>("/api/progreso", token, opciones)
+      .then((avance) => { if (!cancelado) setProgreso(avance); })
       .catch((reason: unknown) => {
+        if (cancelado) return;
         if (reason instanceof ApiRequestError && reason.status === 401) {
           return;
         }
-        setError(reason instanceof Error ? reason.message : "No pudimos cargar los datos.");
+        setError("No se pudo actualizar el progreso. Puedes seguir explorando; intenta recargar más tarde.");
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelado) setLoading(false); });
+
+    apiRequest<ReporteNivel[]>("/api/reportes", token, opciones)
+      .then((datos) => { if (!cancelado) setReportes(datos); })
+      .catch(() => { /* El panel sigue disponible aunque los diagnósticos tarden. */ });
+    apiRequest<Nivel[]>("/api/niveles", token, opciones)
+      .then((datos) => { if (!cancelado) setNiveles([...datos].sort((a, b) => a.nivel - b.nivel)); })
+      .catch(() => { /* Se conserva la descripción local de los niveles. */ });
+    apiRequest<Ranking>("/api/ranking", token, opciones)
+      .then((datos) => { if (!cancelado) setRanking(datos); })
+      .catch(() => { /* El ranking no bloquea el laboratorio. */ });
+
+    return () => { cancelado = true; };
   }, [hydrated, token]);
 
   const usuarioActivo = sesion;
@@ -153,10 +159,9 @@ export default function EstudiantePage() {
   const seleccionadoBloqueado = !resultadoSeleccionado?.completado && (detalleSeleccionado?.nivel ?? 1) > nivelActual;
 
   if (!usuarioActivo) return null;
-  if (loading) return <div className="loading-card">Sincronizando tu laboratorio…</div>;
-
   return (
     <>
+      {loading ? <div className="loading-card mb-5" role="status">Actualizando tu progreso en segundo plano. Puedes explorar tu laboratorio mientras tanto…</div> : null}
       {error ? <div className="alert-error mb-5">{error}</div> : null}
 
       <section className="student-command-hero">

@@ -170,7 +170,7 @@ export default function Home() {
             </a>
           </div>
           <div className="hero-proof">
-            <div><strong>6</strong><span>misiones progresivas</span></div>
+            <div><strong>4</strong><span>misiones progresivas</span></div>
             <div><strong>3D</strong><span>objetos manipulables</span></div>
             <div><strong>IA</strong><span>mentor pedagógico</span></div>
           </div>
@@ -228,9 +228,9 @@ export default function Home() {
       <section className="levels-section" id="niveles">
         <Reveal className="section-heading mb-8">
           <p className="section-kicker">Ruta de aprendizaje interactiva</p>
-          <h2>Seis niveles. Un mundo que evoluciona.</h2>
+          <h2>Cuatro niveles. Un mundo que evoluciona.</h2>
           <p>
-            Explora cada una de las misiones diseñadas para llevarte desde la comprensión de clases hasta el polimorfismo dinámico.
+            Explora cada misión, desde la comprensión de clases y objetos hasta la abstracción.
           </p>
         </Reveal>
 
