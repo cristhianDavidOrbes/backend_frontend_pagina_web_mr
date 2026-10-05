@@ -259,7 +259,7 @@ public class UsuarioControlador {
             if (!VERSION_CONSENTIMIENTO_ACTUAL.equals(limpiar(request.getVersionConsentimiento()))) {
                 return ResponseEntity.badRequest().body(new AuthRespuestaDTO(
                         false,
-                        "La version de los documentos legales no esta vigente. Actualiza la pagina e intenta de nuevo",
+                        "La version de la autorizacion de datos no esta vigente. Actualiza la pagina e intenta de nuevo",
                         null,
                         null));
             }
