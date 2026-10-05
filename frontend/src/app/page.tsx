@@ -16,7 +16,6 @@ import {
   Bot,
 } from "lucide-react";
 import { FloatLayer, Reveal } from "@/components/reveal";
-import { SignalMarquee } from "@/components/signal-marquee";
 import { useAuthSession } from "@/lib/use-auth-session";
 
 function LandingModuleFallback({ label }: { label: string }) {
@@ -202,9 +201,6 @@ export default function Home() {
           </div>
         </Reveal>
       </section>
-
-      {/* Seamless Infinite Marquee Strip */}
-      <SignalMarquee />
 
       {/* Experience Section */}
       <section className="experience-section" id="experiencia">

@@ -254,10 +254,10 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
         type="button"
       >
         <span>
-          <span className="section-kicker">Identidad AlgoLab</span>
-          <strong className="mt-1 block text-lg">Tu perfil sincronizado</strong>
+          <span className="section-kicker">Tus datos</span>
+          <strong className="mt-1 block text-lg">Información del perfil</strong>
         </span>
-        <span className="text-emerald-300 font-semibold">{open ? "Ocultar" : "Editar"} ↗</span>
+        <span className="text-emerald-300 font-semibold">{open ? "Ocultar" : "Editar"}</span>
       </button>
 
       {open ? (
@@ -318,12 +318,12 @@ export function ProfileEditor({ usuario, token, onSaved, defaultOpen = false }: 
             <div className="mt-3 flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4 sm:flex-row sm:items-center">
               <div
                 aria-label={avatarUrl ? "Vista previa del avatar" : `Avatar ${preset}`}
-                className={`avatar-token avatar-${preset} shrink-0 overflow-hidden shadow-xl ring-2 ring-emerald-400/20`}
+                className={`avatar-token avatar-${preset} shrink-0 overflow-hidden ring-2 ring-emerald-400/20`}
                 role="img"
                 style={{
                   width: "6.25rem",
                   height: "6.25rem",
-                  borderRadius: "1.75rem",
+                  borderRadius: "50%",
                   backgroundImage: avatarUrl ? `url("${avatarUrl.replaceAll('"', "%22")}")` : undefined,
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",

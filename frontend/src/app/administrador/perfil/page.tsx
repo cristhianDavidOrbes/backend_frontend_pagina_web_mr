@@ -1,7 +1,6 @@
 "use client";
 
 import { ProfileEditor } from "@/components/profile-editor";
-import { TwoFactorSettings } from "@/components/auth/two-factor-settings";
 import { saveAuthUser, useAuthSession } from "@/lib/use-auth-session";
 
 export default function AdministradorPerfilPage() {
@@ -17,13 +16,10 @@ export default function AdministradorPerfilPage() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-6 backdrop-blur-md">
-        <span className="section-kicker">Identidad Administrativa</span>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-          Perfil de control del sistema y seguridad
-        </h1>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Mi perfil</h1>
         <p className="mt-2 text-sm text-slate-400">
-          Personaliza tu perfil administrativo, avatar central y gestiona las llaves de seguridad 2FA.
+          Actualiza tu identidad y la imagen que aparece en AlgoLab.
         </p>
       </div>
 
@@ -36,9 +32,6 @@ export default function AdministradorPerfilPage() {
         usuario={usuario}
       />
 
-      <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-6 backdrop-blur-md">
-        <TwoFactorSettings token={token} />
-      </div>
     </div>
   );
 }

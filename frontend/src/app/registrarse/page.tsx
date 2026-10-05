@@ -1,572 +1,135 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import {
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  LockKeyhole,
-  Mail,
-  RefreshCw,
-  Sparkles,
-  User,
-} from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
-import css from "@/components/auth-security.module.css";
-import { OnboardingShowcase } from "@/components/auth/onboarding-showcase";
-import {
-  institutionalEmailError,
-  normalizeInstitutionalEmail,
-} from "@/lib/institutional-email";
-import {
-  saveAuthSession,
-  useAuthSession,
-  type UsuarioSesion,
-} from "@/lib/use-auth-session";
+import styles from "../auth-pages.module.css";
+import { institutionalEmailError, normalizeInstitutionalEmail } from "@/lib/institutional-email";
+import { saveAuthSession, useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
-type Paso = "datos" | "codigo" | "bienvenida";
-type Tono = "error" | "aviso" | "exito";
-
-function pw(p: string) {
-  if (!p) return { pct: 0, label: "", color: "" };
-  let pts = 0;
-  if (p.length >= 6) pts += 25;
-  if (p.length >= 10) pts += 25;
-  if (/[A-Z]/.test(p) && /[a-z]/.test(p)) pts += 25;
-  if (/\d/.test(p) || /[^A-Za-z0-9]/.test(p)) pts += 25;
-  if (pts <= 25) return { pct: 25, label: "Débil", color: "#ff8080" };
-  if (pts <= 50) return { pct: 50, label: "Aceptable", color: "#fbbf24" };
-  if (pts <= 75) return { pct: 75, label: "Buena", color: "#38bdf8" };
-  return { pct: 100, label: "Muy segura", color: "#57eeb2" };
-}
-async function rj<T>(r: Response): Promise<T> {
-  try {
-    return (await r.json()) as T;
-  } catch {
-    throw new Error("Respuesta inesperada del servidor.");
-  }
-}
-
-/* ─── Stepper ─────────────────────────────────────────────────── */
-function Stepper({ paso }: { paso: Paso }) {
-  if (paso === "bienvenida") return null;
-  const steps = [
-    { id: "datos", label: "Registro" },
-    { id: "codigo", label: "Verificación" },
-  ] as const;
-  const cur = steps.findIndex((s) => s.id === paso);
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        marginBottom: "1.5rem",
-        padding: "0.4rem 0.6rem",
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: "14px",
-      }}
-    >
-      {steps.map((s, i) => {
-        const done = i < cur,
-          active = i === cur;
-        return (
-          <div key={s.id} style={{ display: "flex", alignItems: "center" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.35rem",
-                padding: "0.28rem 0.55rem",
-                borderRadius: "9px",
-                fontSize: "0.67rem",
-                fontWeight: 700,
-                fontFamily: "var(--font-geist-mono)",
-                whiteSpace: "nowrap",
-                color: active ? "#e8fff8" : done ? "#a5b6ff" : "#4d6860",
-                background: active
-                  ? "rgba(87,238,178,0.14)"
-                  : done
-                  ? "rgba(141,162,251,0.08)"
-                  : "transparent",
-                border: active ? "1px solid rgba(87,238,178,0.35)" : "1px solid transparent",
-                boxShadow: active ? "0 0 14px rgba(87,238,178,0.14)" : "none",
-                transition: "all 0.3s ease",
-              }}
-            >
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "17px",
-                  height: "17px",
-                  borderRadius: "50%",
-                  flexShrink: 0,
-                  fontSize: "0.6rem",
-                  fontWeight: 900,
-                  background: active
-                    ? "#57eeb2"
-                    : done
-                    ? "rgba(141,162,251,0.3)"
-                    : "rgba(255,255,255,0.06)",
-                  color: active ? "#03120e" : done ? "#a5b6ff" : "#4d6860",
-                  boxShadow: active ? "0 0 10px #57eeb2" : "none",
-                }}
-              >
-                {done ? <CheckCircle2 size={10} /> : i + 1}
-              </span>
-              {s.label}
-            </div>
-            {i < steps.length - 1 && (
-              <div
-                style={{
-                  width: "clamp(8px, 3vw, 32px)",
-                  height: "2px",
-                  background: done
-                    ? "linear-gradient(90deg, #57eeb2, #8da2fb)"
-                    : "rgba(255,255,255,0.07)",
-                  borderRadius: "99px",
-                  boxShadow: done ? "0 0 8px rgba(87,238,178,0.3)" : "none",
-                  transition: "all 0.4s ease",
-                  margin: "0 0.15rem",
-                }}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── FlexboxInput ─────────────────────────────────────────────── */
-function FInput({
-  id,
-  icon,
-  type = "text",
-  placeholder,
-  value,
-  onChange,
-  onBlur,
-  autoComplete,
-  required,
-  minLength,
-  hasError,
-  showToggle,
-  toggleOpen,
-  onToggle,
-}: {
-  id: string;
-  icon: React.ReactNode;
-  type?: string;
-  placeholder?: string;
-  value: string;
-  onChange: (v: string) => void;
-  onBlur?: () => void;
-  autoComplete?: string;
-  required?: boolean;
-  minLength?: number;
-  hasError?: boolean;
-  showToggle?: boolean;
-  toggleOpen?: boolean;
-  onToggle?: () => void;
-}) {
-  return (
-    <div className={`${css.inputRow} ${hasError ? css.inputRowError : ""}`}>
-      <span className={css.inputIcon}>{icon}</span>
-      <input
-        id={id}
-        className={css.inputField}
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        autoComplete={autoComplete}
-        required={required}
-        minLength={minLength}
-        spellCheck={false}
-        autoCapitalize={type === "email" ? "none" : undefined}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-      />
-      {showToggle && (
-        <button
-          type="button"
-          className={css.inputToggle}
-          onClick={onToggle}
-          aria-label={toggleOpen ? "Ocultar contraseña" : "Mostrar contraseña"}
-        >
-          {toggleOpen ? <EyeOff size={16} /> : <Eye size={16} />}
-        </button>
-      )}
-    </div>
-  );
-}
-
-const REGISTRO_DRAFT_KEY = "algolab_registro_draft";
+type RespuestaAuth = {
+  exitoso?: boolean;
+  mensaje?: string;
+  token?: string;
+  usuario?: UsuarioSesion;
+};
 
 export default function RegistrarsePage() {
   const router = useRouter();
-  const rm = useReducedMotion();
-  const { hydrated, token: existingToken, usuario } = useAuthSession();
-
-  const [paso, setPaso] = useState<Paso>("datos");
+  const { hydrated, token, usuario } = useAuthSession();
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
-  const [pass, setPass] = useState("");
-  const [verPass, setVerPass] = useState(false);
-  const [correoTocado, setCorreoTocado] = useState(false);
-  const dir = 1;
-
+  const [contrasena, setContrasena] = useState("");
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [msg, setMsg] = useState<{ texto: string; tono: Tono } | null>(null);
-
-  const [usuarioReg, setUsuarioReg] = useState<UsuarioSesion | undefined>();
-
-  const errCorreo = correoTocado ? institutionalEmailError(correo) : "";
-  const pwState = useMemo(() => pw(pass), [pass]);
-
-  // Restaurar los campos no sensibles si el usuario vuelve al registro.
-  useEffect(() => {
-    const restaurar = window.setTimeout(() => {
-      try {
-        const raw = sessionStorage.getItem(REGISTRO_DRAFT_KEY);
-        if (raw) {
-          const draft = JSON.parse(raw) as {
-            nombre?: string;
-            correo?: string;
-          };
-          if (draft.nombre) setNombre(draft.nombre);
-          if (draft.correo) setCorreo(draft.correo);
-        }
-      } catch {
-        // Ignorar excepciones de lectura
-      }
-    }, 0);
-    return () => window.clearTimeout(restaurar);
-  }, []);
-
-  // 2. Persistir automáticamente el borrador cada vez que el usuario escribe
-  useEffect(() => {
-    try {
-      if (nombre || correo) {
-        sessionStorage.setItem(
-          REGISTRO_DRAFT_KEY,
-          JSON.stringify({ nombre, correo })
-        );
-      }
-    } catch {
-      // Ignorar excepciones de cuota de storage
-    }
-  }, [nombre, correo]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!hydrated || !existingToken || !usuario) return;
-    router.replace(
-      usuario.rol === "ADMINISTRADOR"
-        ? "/administrador"
-        : usuario.rol === "DOCENTE"
-        ? "/docente"
-        : "/estudiante"
-    );
-  }, [hydrated, existingToken, usuario, router]);
+    if (!hydrated || !token || !usuario) return;
+    router.replace(usuario.rol === "ADMINISTRADOR" ? "/administrador" : usuario.rol === "DOCENTE" ? "/docente" : "/estudiante");
+  }, [hydrated, token, usuario, router]);
 
-  async function registrar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setCorreoTocado(true);
-    const email = normalizeInstitutionalEmail(correo);
-    const eE = institutionalEmailError(email);
-    if (eE) {
-      setMsg({ texto: eE, tono: "error" });
-      return;
-    }
-    if (!pass || pass.length < 6) {
-      setMsg({ texto: "La contraseña debe tener mínimo 6 caracteres.", tono: "error" });
-      return;
-    }
+  async function registrar(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const correoNormalizado = normalizeInstitutionalEmail(correo);
+    const errorCorreo = institutionalEmailError(correoNormalizado);
+    if (errorCorreo) return setError(errorCorreo);
+    if (!nombre.trim()) return setError("Escribe tu nombre.");
+    if (contrasena.length < 6) return setError("La contraseña debe tener al menos 6 caracteres.");
 
     setEnviando(true);
-    setMsg(null);
-
+    setError("");
+    let cuentaCreada = false;
     try {
-      const res = await fetch("/api/registrar", {
+      const respuesta = await fetch("/api/registrar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: nombre.trim(),
-          correo: email,
-          contrasena: pass,
-          rol: "ESTUDIANTE",
-        }),
+        body: JSON.stringify({ nombre: nombre.trim(), correo: correoNormalizado, contrasena, rol: "ESTUDIANTE" }),
+        signal: AbortSignal.timeout(90_000),
       });
-
-      const data = await rj<{ exitoso?: boolean; mensaje?: string; token?: string; usuario?: UsuarioSesion }>(res);
-
-      if (!res.ok || data.exitoso === false) {
-        throw new Error(data.mensaje || "No se pudo crear la cuenta.");
+      const registro = (await respuesta.json()) as RespuestaAuth;
+      if (!respuesta.ok || registro.exitoso === false) {
+        throw new Error(registro.mensaje || "No se pudo crear la cuenta.");
       }
+      cuentaCreada = true;
 
-      // Completar una autenticación real: nunca se crea una sesión local sin JWT.
-      const loginRes = await fetch("/api/auth/2fa/iniciar-sesion", {
+      const login = await fetch("/api/iniciar-sesion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo: email, contrasena: pass }),
+        body: JSON.stringify({ correo: correoNormalizado, contrasena }),
+        signal: AbortSignal.timeout(90_000),
       });
-      const loginData = await rj<{
-        exitoso?: boolean;
-        mensaje?: string;
-        requiere2fa?: boolean;
-        token?: string;
-        usuario?: UsuarioSesion;
-      }>(loginRes);
-
-      if (!loginRes.ok || loginData.exitoso === false) {
-        throw new Error(loginData.mensaje || "La cuenta se creó, pero no fue posible iniciar sesión.");
-      }
-
-      if (loginData.requiere2fa) {
-        router.replace(`/iniciar-sesion?correo=${encodeURIComponent(email)}&registro=exitoso`);
+      const sesion = (await login.json()) as RespuestaAuth;
+      if (!login.ok || !sesion.exitoso || !sesion.token || !sesion.usuario) {
+        router.replace(`/iniciar-sesion?correo=${encodeURIComponent(correoNormalizado)}&registro=exitoso`);
         return;
       }
 
-      if (!loginData.token || !loginData.usuario) {
-        throw new Error("La cuenta se creó, pero el servidor no entregó una sesión válida. Inicia sesión nuevamente.");
+      saveAuthSession(sesion.token, sesion.usuario);
+      router.replace("/estudiante/bienvenida");
+    } catch (cause) {
+      if (cuentaCreada) {
+        router.replace(`/iniciar-sesion?correo=${encodeURIComponent(correoNormalizado)}&registro=exitoso`);
+        return;
       }
-
-      try {
-        sessionStorage.removeItem(REGISTRO_DRAFT_KEY);
-      } catch {
-        // ignore
-      }
-      saveAuthSession(loginData.token, loginData.usuario);
-      setUsuarioReg(loginData.usuario);
-      setPaso("bienvenida");
-
-    } catch (err: unknown) {
-      setMsg({
-        texto: err instanceof Error ? err.message : "Error al conectar con el servidor.",
-        tono: "error",
-      });
+      setError(cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError")
+        ? "El servidor tardó en responder. Espera unos segundos y vuelve a intentarlo."
+        : cause instanceof Error ? cause.message : "No se pudo conectar con el servidor.");
     } finally {
       setEnviando(false);
     }
   }
-  if (paso === "bienvenida") {
-    return (
-      <main className="auth-shell flex min-h-screen items-center justify-center p-4 md:p-8">
-        <div className="w-full max-w-4xl">
-          <OnboardingShowcase
-            onComplete={() => {
-              if (usuarioReg) localStorage.setItem(`algolab_onboarding:${usuarioReg.id}`, "completado");
-              router.replace("/estudiante");
-            }}
-            usuario={usuarioReg}
-          />
-        </div>
-      </main>
-    );
-  }
-
-  const scaleBlurSlide = (d: number) =>
-    rm
-      ? {}
-      : {
-          initial: { opacity: 0, x: d * 60, scale: 0.9, filter: "blur(10px)", rotateY: d * 8 },
-          animate: { opacity: 1, x: 0, scale: 1, filter: "blur(0px)", rotateY: 0 },
-          exit: { opacity: 0, x: d * -60, scale: 0.9, filter: "blur(10px)", rotateY: d * -8 },
-          transition: { type: "spring" as const, stiffness: 300, damping: 28, mass: 0.9 },
-        };
 
   return (
-    <main className="auth-shell min-h-screen">
-      <Link className="auth-brand" href="/">
-        <span className="brand-mark">A</span>
-        <strong>AlgoLab</strong>
-      </Link>
-
-      <section className="auth-layout">
-        {/* Left story */}
-        <motion.div
-          className="auth-story"
-          initial={{ opacity: 0, x: rm ? 0 : -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={paso}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -14 }}
-              transition={{ duration: 0.32, ease: "easeOut" }}
-            >
-              <span className="section-kicker">
-                {paso === "datos" && "Registro en AlgoLab"}
-                {paso === "codigo" && "Verificación de Correo"}
-              </span>
-              <h1>
-                {paso === "datos" && "Crea tu perfil y accede a los niveles."}
-                {paso === "codigo" && "Confirma tu código de seguridad."}
-              </h1>
-              <p>
-                {paso === "datos" &&
-                  "Tu cuenta conecta el portal web, el compilador local y las experiencias de Realidad Mixta."}
-                {paso === "codigo" &&
-                  `Revisa tu bandeja de entrada e ingresa el código de 6 dígitos enviado a tu correo.`}
-              </p>
-            </motion.div>
-          </AnimatePresence>
-          <div className="auth-code mt-8">
-            <span>estudiante</span>
-            <strong>{paso === "datos" ? ".crearPerfil();" : ".verificarIdentidad();"}</strong>
-            <small>
-              {paso === "datos"
-                ? "// gmail o institucional · contraseña"
-                : "// verificación segura"}
-            </small>
+    <main className={styles.shell}>
+      <div className={styles.frame}>
+        <header className={styles.topbar}>
+          <Link className={styles.brand} href="/" aria-label="AlgoLab, inicio">
+            <span className={styles.brandMark}>A</span><strong>AlgoLab</strong>
+          </Link>
+          <Link className={styles.topLink} href="/">Volver al inicio</Link>
+        </header>
+        <div className={styles.body}>
+          <div className={styles.intro}>
+            <span className={styles.eyebrow}>Empieza con una idea</span>
+            <h1>Aprender POO puede ser <em>tangible.</em></h1>
+            <p>Abre tu cuenta para guardar los niveles que completes. Después podrás contar quién eres y personalizar tu perfil.</p>
+            <div className={styles.introNote}><span>01 / 02</span> Crea la cuenta ahora; completa tu perfil en el siguiente paso.</div>
           </div>
-        </motion.div>
-
-        {/* Right card */}
-        <motion.div
-          className={`auth-card ${css.securityCard}`}
-          initial={{ opacity: 0, scale: rm ? 1 : 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.35 }}
-        >
-          <div aria-hidden className={css.cardCircuit} />
-          <Stepper paso={paso} />
-
-          <AnimatePresence mode="wait" custom={dir}>
-            {/* ══ PASO 1: DATOS ══ */}
-            {paso === "datos" && (
-              <motion.div key="datos" {...scaleBlurSlide(dir)}>
-                <p className="section-kicker">Paso 1 de 2</p>
-                <h2>Crear tu cuenta</h2>
-                <p className="auth-copy">
-                  Completa tus datos para ingresar al laboratorio de programación de AlgoLab.
-                </p>
-
-                {msg && (
-                  <div className={`auth-banner auth-banner-${msg.tono} mt-3`}>
-                    {msg.texto}
-                  </div>
-                )}
-
-                <form className="mt-5 space-y-4" onSubmit={registrar} noValidate>
-                  <div>
-                    <label className="field-label" htmlFor="rn">
-                      Nombre completo
-                    </label>
-                    <FInput
-                      id="rn"
-                      icon={<User size={18} />}
-                      placeholder="Ej: Cristhian Orbes"
-                      value={nombre}
-                      onChange={setNombre}
-                      autoComplete="name"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <label className="field-label" htmlFor="re">
-                        Correo Electrónico
-                      </label>
-                    </div>
-                    <FInput
-                      id="re"
-                      icon={<Mail size={18} />}
-                      type="email"
-                      placeholder="ejemplo@gmail.com o institucional"
-                      value={correo}
-                      onChange={(v) => {
-                        setCorreo(v);
-                        if (correoTocado) setMsg(null);
-                      }}
-                      onBlur={() => setCorreoTocado(true)}
-                      autoComplete="email"
-                      required
-                      hasError={Boolean(errCorreo)}
-                    />
-                    <small className={errCorreo ? css.fieldError : css.fieldHelp}>
-                      {errCorreo || "Puedes registrarte con Gmail, correo institucional o personal."}
-                    </small>
-                  </div>
-                  <div>
-                    <label className="field-label" htmlFor="rpw">
-                      Contraseña
-                    </label>
-                    <FInput
-                      id="rpw"
-                      icon={<LockKeyhole size={18} />}
-                      type={verPass ? "text" : "password"}
-                      placeholder="Mínimo 6 caracteres"
-                      value={pass}
-                      onChange={setPass}
-                      autoComplete="new-password"
-                      required
-                      minLength={6}
-                      showToggle
-                      toggleOpen={verPass}
-                      onToggle={() => setVerPass((p) => !p)}
-                    />
-                    {pass && (
-                      <div className={css.strengthMeter}>
-                        <div className={css.strengthBarTrack}>
-                          <div
-                            className={css.strengthBarFill}
-                            style={{ width: `${pwState.pct}%`, backgroundColor: pwState.color }}
-                          />
-                        </div>
-                        <div className={css.strengthText}>
-                          <span style={{ color: pwState.color }}>{pwState.label}</span>
-                          <span>{pass.length} caracteres</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    className="primary-button flex w-full items-center justify-center gap-2 mt-2"
-                    disabled={
-                      enviando ||
-                      !nombre.trim() ||
-                      !pass ||
-                      Boolean(errCorreo)
-                    }
-                    type="submit"
-                  >
-                    {enviando ? (
-                      <RefreshCw className={css.spinning} size={18} />
-                    ) : (
-                      <Sparkles size={18} />
-                    )}
-                    {enviando ? "Creando cuenta…" : "Crear Cuenta (Acceso Inmediato)"}
+          <section className={styles.card} aria-labelledby="titulo-registro">
+            <span className={styles.cardLabel}>NUEVA CUENTA</span>
+            <h2 id="titulo-registro">Crea tu cuenta</h2>
+            <p className={styles.cardLead}>Tres datos para empezar. Tu perfil se completa al entrar.</p>
+            {error ? <p className={styles.error} role="alert">{error}</p> : null}
+            <form className={styles.form} onSubmit={registrar}>
+              <label className={styles.field}>
+                <span className={styles.cardLabel}>Nombre completo</span>
+                <input className={styles.input} autoComplete="name" value={nombre} onChange={(event) => setNombre(event.target.value)} placeholder="Tu nombre y apellido" required maxLength={100} />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.cardLabel}>Correo electrónico</span>
+                <input className={styles.input} type="email" autoComplete="email" value={correo} onChange={(event) => setCorreo(event.target.value)} placeholder="tu@correo.com" required />
+              </label>
+              <div className={styles.field}>
+                <label className={styles.cardLabel} htmlFor="contrasena-registro">Contraseña</label>
+                <span className={styles.inputWrap}>
+                  <input id="contrasena-registro" className={`${styles.input} ${styles.inputWithButton}`} type={mostrarContrasena ? "text" : "password"} autoComplete="new-password" value={contrasena} onChange={(event) => setContrasena(event.target.value)} minLength={6} required />
+                  <button className={styles.fieldAction} type="button" onClick={() => setMostrarContrasena((actual) => !actual)} aria-label={mostrarContrasena ? "Ocultar contraseña" : "Mostrar contraseña"}>
+                    {mostrarContrasena ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
-                </form>
-
-                <div className="pt-4 text-center text-xs text-slate-400">
-                  ¿Ya tienes una cuenta?{" "}
-                  <Link href="/iniciar-sesion" className="font-semibold text-emerald-400 hover:underline">
-                    Inicia sesión aquí
-                  </Link>
-                </div>
-              </motion.div>
-            )}
-
-
-          </AnimatePresence>
-        </motion.div>
-      </section>
-
+                </span>
+                <span className={styles.fieldHelp}>Usa al menos 6 caracteres.</span>
+              </div>
+              <button className={styles.submit} type="submit" disabled={enviando}>
+                {enviando ? <><LoaderCircle className="animate-spin" size={18} /> Creando cuenta…</> : <>Crear cuenta <ArrowRight size={17} /></>}
+              </button>
+            </form>
+            <p className={styles.footer}>¿Ya tienes cuenta? <Link href="/iniciar-sesion">Inicia sesión</Link></p>
+          </section>
+        </div>
+      </div>
     </main>
   );
 }

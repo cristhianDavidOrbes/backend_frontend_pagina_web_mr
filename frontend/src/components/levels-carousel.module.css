@@ -1,0 +1,157 @@
+.explorer {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #d8e5d9;
+  border-radius: 24px;
+  background: #f6f7f1;
+  color: #16302a;
+  box-shadow: 0 18px 55px rgb(10 39 28 / 10%);
+}
+
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  padding: 36px 40px 26px;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #287759;
+  font-size: .79rem;
+  font-weight: 750;
+  letter-spacing: .04em;
+}
+
+.heading h3 {
+  margin: 0;
+  color: #132e27;
+  font-size: clamp(1.75rem, 3vw, 2.45rem);
+  letter-spacing: -.045em;
+  line-height: 1.08;
+}
+
+.heading p {
+  max-width: 650px;
+  margin: 10px 0 0;
+  color: #50665d;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.controls { display: flex; gap: 8px; flex: none; }
+.controls button {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  border: 1px solid #c9d8cc;
+  border-radius: 13px;
+  background: #fff;
+  color: #18372e;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.controls button:hover { background: #e5efe6; transform: translateY(-2px); }
+.controls button:focus-visible, .tab:focus-visible { outline: 3px solid #3eaa7b; outline-offset: 3px; }
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 40px 28px;
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1px solid #d9e3d8;
+  border-radius: 13px;
+  background: #fff;
+  color: #3b564c;
+  text-align: left;
+  cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s;
+}
+.tab small { margin-bottom: 5px; color: #627a6f; font-size: .71rem; font-weight: 700; }
+.tab span { font-size: .85rem; font-weight: 700; line-height: 1.25; }
+.tab:hover { border-color: #75ae90; background: #eef5ed; }
+.tab.active { border-color: #1b6149; background: #164937; color: #fff; }
+.tab.active small { color: #a8dfbd; }
+
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(260px, .7fr);
+  gap: 30px;
+  padding: 34px 40px 38px;
+  border-top: 1px solid #dce7db;
+  background: #fff;
+  animation: reveal .3s ease both;
+}
+.copy { min-width: 0; }
+.level { color: #2b7857; font-size: .84rem; font-weight: 800; }
+.copy h4 {
+  max-width: 650px;
+  margin: 13px 0 14px;
+  color: #132e27;
+  font-size: clamp(1.9rem, 3.2vw, 3.1rem);
+  letter-spacing: -.05em;
+  line-height: 1.06;
+}
+.intro { max-width: 690px; margin: 0; color: #3d574d; font-size: 1.08rem; line-height: 1.6; }
+.briefs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 34px; }
+.briefs div { padding-top: 18px; border-top: 2px solid #d4e5d5; }
+.briefs strong { color: #1d5a41; font-size: .94rem; }
+.briefs p { margin: 8px 0 0; color: #52675d; font-size: .94rem; line-height: 1.6; }
+.visual {
+  display: flex;
+  min-height: 320px;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(140deg, #1a5c45, #0e3429);
+  color: #e9f7eb;
+}
+.icon { display: grid; flex: 1; place-items: center; }
+.icon svg { filter: drop-shadow(0 10px 22px rgb(0 0 0 / 18%)); }
+.visualFooter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 22px;
+  border-top: 1px solid rgb(255 255 255 / 16%);
+  color: #cae9d3;
+  font-size: .85rem;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 40px;
+  border-top: 1px solid #dce7db;
+  color: #557065;
+  font-size: .84rem;
+}
+.footer strong { color: #1d5a41; }
+@keyframes reveal { from { opacity: .5; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 1000px) {
+  .tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .heading { padding: 26px 22px 20px; align-items: flex-start; }
+  .heading p { font-size: .93rem; }
+  .controls button { width: 38px; height: 38px; }
+  .tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 22px 22px; }
+  .tab { min-height: 58px; }
+  .content { grid-template-columns: 1fr; padding: 26px 22px; }
+  .briefs { grid-template-columns: 1fr; gap: 16px; }
+  .visual { min-height: 220px; }
+  .footer { padding: 14px 22px; }
+}
+@media (prefers-reduced-motion: reduce) { .content { animation: none; } .controls button { transition: none; } }

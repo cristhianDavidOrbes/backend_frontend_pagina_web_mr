@@ -1,887 +1,129 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  Fingerprint,
-  KeyRound,
-  Loader2,
-  LockKeyhole,
-  Mail,
-  ShieldCheck,
-  Smartphone,
-} from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
-import {
-  institutionalEmailError,
-  normalizeInstitutionalEmail,
-} from "@/lib/institutional-email";
-import {
-  clearAuthSession,
-  saveAuthSession,
-  type UsuarioSesion,
-} from "@/lib/use-auth-session";
-import { autenticarPasskeyEnNavegador, isWebAuthnSupported } from "@/lib/webauthn-client";
+import styles from "../auth-pages.module.css";
+import { institutionalEmailError, normalizeInstitutionalEmail } from "@/lib/institutional-email";
+import { necesitaCompletarPerfil } from "@/lib/profile-onboarding";
+import { clearAuthSession, saveAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 
-type MetodoActivo = "EMAIL" | "PASSKEY" | "TOTP" | "RECOVERY" | "PASSWORD_DIRECT";
-
-type Metodos2faInfo = {
-  requiere2fa: boolean;
-  sessionToken: string;
-  metodoPreferido: "EMAIL" | "PASSKEY" | "TOTP";
-  email: {
-    enabled: boolean;
-    available: boolean;
-    destinoEnmascarado: string;
-  };
-  passkey: {
-    enabled: boolean;
-    registered: boolean;
-    totalDispositivos: number;
-    nombresDispositivos: string[];
-  };
-  totp: {
-    enabled: boolean;
-    configured: boolean;
-  };
-  codigosRecuperacionDisponibles: boolean;
+type RespuestaLogin = {
+  exitoso?: boolean;
+  mensaje?: string;
+  token?: string;
+  usuario?: UsuarioSesion;
 };
-
-function mensajeDeError(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
-
-function mensajeDeRespuesta(payload: unknown) {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "mensaje" in payload &&
-    typeof payload.mensaje === "string"
-  ) {
-    return payload.mensaje;
-  }
-
-  return undefined;
-}
 
 export default function IniciarSesionPage() {
   const router = useRouter();
-
-  // Estados del formulario de credenciales
   const [correo, setCorreo] = useState("");
-  const [pass, setPass] = useState("");
-  const [verPass, setVerPass] = useState(false);
-  const [cargandoLogin, setCargandoLogin] = useState(false);
-  const [estadoCargaLogin, setEstadoCargaLogin] = useState("Verificando credenciales…");
-  const [errorLogin, setErrorLogin] = useState("");
-  const [avisoLogin, setAvisoLogin] = useState("");
+  const [contrasena, setContrasena] = useState("");
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState("");
+  const [aviso, setAviso] = useState("");
 
-  // Estado de decisión 2FA
-  const [enPaso2FA, setEnPaso2FA] = useState(false);
-  const [info2fa, setInfo2fa] = useState<Metodos2faInfo | null>(null);
-  const [metodoActivo, setMetodoActivo] = useState<MetodoActivo>("EMAIL");
-
-  // Estado del OTP Email / TOTP
-  const [otpDigitos, setOtpDigitos] = useState(["", "", "", "", "", ""]);
-  const [codigoRecuperacion, setCodigoRecuperacion] = useState("");
-  const [verificando2fa, setVerificando2fa] = useState(false);
-  const [error2fa, setError2fa] = useState("");
-  const [mensaje2fa, setMensaje2fa] = useState("");
-
-  // Temporizador para reenvío de Email OTP
-  const [segundosReenvio, setSegundosReenvio] = useState(0);
-  const [reenviandoEmail, setReenviandoEmail] = useState(false);
-
-  const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
-
-
-
-  // Recupera el correo al volver del registro y muestra avisos sin provocar
-  // renders encadenados durante la hidratación.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const correoRegistrado = normalizeInstitutionalEmail(params.get("correo") ?? "");
-    const sesionExpirada = params.get("expirado") === "1";
-    const registroExitoso = params.get("registro") === "exitoso";
-
-    if (!sesionExpirada && !registroExitoso && !correoRegistrado) return;
-
-    if (sesionExpirada) clearAuthSession();
-    const aviso = window.setTimeout(() => {
-      if (correoRegistrado && !institutionalEmailError(correoRegistrado)) {
-        setCorreo(correoRegistrado);
-      }
-      if (sesionExpirada) {
-        setErrorLogin("Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.");
-      } else if (registroExitoso) {
-        setAvisoLogin("Cuenta creada correctamente. Inicia sesión para completar la verificación.");
-      }
+    if (params.get("expirado") === "1") {
+      clearAuthSession();
+    }
+    const correoPrevio = normalizeInstitutionalEmail(params.get("correo") ?? "");
+    const timer = window.setTimeout(() => {
+      if (params.get("expirado") === "1") setError("Tu sesión terminó. Inicia sesión de nuevo para continuar.");
+      if (correoPrevio && !institutionalEmailError(correoPrevio)) setCorreo(correoPrevio);
+      if (params.get("registro") === "exitoso") setAviso("Tu cuenta está lista. Inicia sesión para completar tu perfil.");
     }, 0);
-
-    return () => window.clearTimeout(aviso);
+    return () => window.clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    router.prefetch("/estudiante");
-    router.prefetch("/docente");
-    router.prefetch("/administrador");
-  }, [router]);
+  async function iniciarSesion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const correoNormalizado = normalizeInstitutionalEmail(correo);
+    const errorCorreo = institutionalEmailError(correoNormalizado);
+    if (errorCorreo) return setError(errorCorreo);
+    if (!contrasena) return setError("Escribe tu contraseña.");
 
-  // Manejo del contador de reenvío
-  useEffect(() => {
-    if (segundosReenvio <= 0) return;
-    const t = setInterval(() => setSegundosReenvio((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, [segundosReenvio]);
-
-  // Autofoco al cambiar de método
-  useEffect(() => {
-    if (enPaso2FA && (metodoActivo === "EMAIL" || metodoActivo === "TOTP")) {
-      const f = requestAnimationFrame(() => otpInputsRef.current[0]?.focus());
-      return () => cancelAnimationFrame(f);
-    }
-  }, [enPaso2FA, metodoActivo]);
-
-  function cambiarMetodoActivo(metodo: MetodoActivo) {
-    setOtpDigitos(["", "", "", "", "", ""]);
-    setError2fa("");
-    setMensaje2fa("");
-    setMetodoActivo(metodo);
-  }
-
-  async function handleLoginInicial(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const emailNorm = normalizeInstitutionalEmail(correo);
-    const err = institutionalEmailError(emailNorm);
-    if (err) {
-      setErrorLogin(err);
-      return;
-    }
-    if (!pass) {
-      setErrorLogin("Ingresa tu contraseña.");
-      return;
-    }
-
-    setCargandoLogin(true);
-    setEstadoCargaLogin("Verificando credenciales…");
-    setErrorLogin("");
-    setAvisoLogin("");
-
+    setCargando(true);
+    setError("");
+    setAviso("");
     try {
-      const res = await fetch("/api/auth/2fa/iniciar-sesion", {
+      const respuesta = await fetch("/api/iniciar-sesion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo: emailNorm, contrasena: pass }),
+        body: JSON.stringify({ correo: correoNormalizado, contrasena }),
+        signal: AbortSignal.timeout(90_000),
       });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.exitoso) {
-        throw new Error(data.mensaje || "Correo o contraseña incorrectos.");
+      const datos = (await respuesta.json()) as RespuestaLogin;
+      if (!respuesta.ok || !datos.exitoso || !datos.token || !datos.usuario) {
+        throw new Error(datos.mensaje || "No pudimos iniciar sesión. Revisa tus datos.");
       }
 
-      // Caso 1: Acceso Directo sin 2FA (ej: cuentas UCC sin TOTP configurado o cuentas sin 2FA)
-      if (!data.requiere2fa && data.token && data.usuario) {
-        await finalizarLoginExitoso(data.token, data.usuario);
-        return;
-      }
-
-      // Caso 2: Usuario con 2FA disponible / requerido
-      if (data.requiere2fa && data.dosFactores) {
-        const info = data.dosFactores as Metodos2faInfo;
-        setInfo2fa(info);
-        setEnPaso2FA(true);
-
-        // Determinar método inicial según preferencia
-        if (info.metodoPreferido === "EMAIL" && info.email.enabled && info.email.available) {
-          cambiarMetodoActivo("EMAIL");
-        } else if (info.metodoPreferido === "PASSKEY" && info.passkey.registered) {
-          cambiarMetodoActivo("PASSKEY");
-        } else if (info.metodoPreferido === "TOTP" && info.totp.configured) {
-          cambiarMetodoActivo("TOTP");
-        } else if (info.email.enabled && info.email.available) {
-          cambiarMetodoActivo("EMAIL");
-        } else if (info.totp.configured) {
-          cambiarMetodoActivo("TOTP");
-        } else if (info.passkey.registered) {
-          cambiarMetodoActivo("PASSKEY");
-        } else {
-          cambiarMetodoActivo("RECOVERY");
-        }
-      }
-    } catch (err: unknown) {
-      setErrorLogin(mensajeDeError(err, "Error al conectar con el servidor."));
-    } finally {
-      setCargandoLogin(false);
-    }
-  }
-
-  function handleOtpChange(index: number, val: string) {
-    const clean = val.replace(/\D/g, "");
-    if (!clean) {
-      const nuevo = [...otpDigitos];
-      nuevo[index] = "";
-      setOtpDigitos(nuevo);
-      return;
-    }
-
-    if (clean.length > 1) {
-      const chars = clean.slice(0, 6).split("");
-      const nuevo = [...otpDigitos];
-      chars.forEach((c, i) => {
-        if (index + i < 6) nuevo[index + i] = c;
-      });
-      setOtpDigitos(nuevo);
-      const nextIdx = Math.min(5, index + chars.length);
-      otpInputsRef.current[nextIdx]?.focus();
-      return;
-    }
-
-    const nuevo = [...otpDigitos];
-    nuevo[index] = clean;
-    setOtpDigitos(nuevo);
-    setError2fa("");
-
-    if (index < 5) {
-      otpInputsRef.current[index + 1]?.focus();
-    }
-  }
-
-  function handleOtpKeyDown(index: number, e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace" && !otpDigitos[index] && index > 0) {
-      otpInputsRef.current[index - 1]?.focus();
-    }
-    if (e.key === "Enter" && otpDigitos.join("").length === 6) {
-      if (metodoActivo === "EMAIL") handleVerificarEmailOtp();
-      else if (metodoActivo === "TOTP") handleVerificarTotp();
-    }
-  }
-
-  function finalizarLoginExitoso(token: string, usuarioDto: UsuarioSesion) {
-    setEstadoCargaLogin("Abriendo tu espacio…");
-    saveAuthSession(token, usuarioDto);
-    const onboardingPendiente = usuarioDto.rol === "ESTUDIANTE"
-      && localStorage.getItem(`algolab_onboarding:${usuarioDto.id}`) !== "completado";
-    const destino =
-      usuarioDto.rol === "ADMINISTRADOR"
+      saveAuthSession(datos.token, datos.usuario);
+      const destino = datos.usuario.rol === "ADMINISTRADOR"
         ? "/administrador"
-        : usuarioDto.rol === "DOCENTE"
-        ? "/docente"
-        : onboardingPendiente ? "/estudiante/bienvenida" : "/estudiante";
-    router.replace(destino);
-  }
-
-  async function handleVerificarEmailOtp() {
-    const code = otpDigitos.join("").trim();
-    if (code.length !== 6) {
-      setError2fa("Introduce el código de 6 dígitos completo");
-      return;
-    }
-
-    setVerificando2fa(true);
-    setError2fa("");
-
-    try {
-      const res = await fetch("/api/auth/2fa/email/verificar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-2FA-Session-Token": info2fa?.sessionToken || "",
-        },
-        body: JSON.stringify({
-          sessionToken: info2fa?.sessionToken,
-          codigo: code,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.exitoso) {
-        throw new Error(data.mensaje || "Código incorrecto.");
-      }
-
-      await finalizarLoginExitoso(data.token, data.usuario);
-    } catch (err: unknown) {
-      setError2fa(mensajeDeError(err, "Error al verificar código"));
+        : datos.usuario.rol === "DOCENTE"
+          ? "/docente"
+          : necesitaCompletarPerfil(datos.usuario)
+            ? "/estudiante/bienvenida"
+            : "/estudiante";
+      router.replace(destino);
+    } catch (cause) {
+      setError(cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError")
+        ? "El servidor tardó en responder. Vuelve a intentarlo en unos segundos."
+        : cause instanceof Error ? cause.message : "No se pudo conectar con el servidor.");
     } finally {
-      setVerificando2fa(false);
-    }
-  }
-
-  async function handleReenviarEmailOtp() {
-    if (segundosReenvio > 0) return;
-    setReenviandoEmail(true);
-    setError2fa("");
-    setMensaje2fa("");
-
-    try {
-      const res = await fetch("/api/auth/2fa/email/enviar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-2FA-Session-Token": info2fa?.sessionToken || "",
-        },
-        body: JSON.stringify({ sessionToken: info2fa?.sessionToken }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.exitoso) {
-        throw new Error(data.mensaje || "No se pudo reenviar el código");
-      }
-
-      setMensaje2fa("Nuevo código enviado a tu correo institucional.");
-      setSegundosReenvio(60);
-      setOtpDigitos(["", "", "", "", "", ""]);
-      otpInputsRef.current[0]?.focus();
-    } catch (err: unknown) {
-      setError2fa(mensajeDeError(err, "Error al reenviar código"));
-    } finally {
-      setReenviandoEmail(false);
-    }
-  }
-
-  async function handleVerificarTotp() {
-    const code = otpDigitos.join("").trim();
-    if (code.length !== 6) {
-      setError2fa("Introduce el código de 6 dígitos de tu aplicación");
-      return;
-    }
-
-    setVerificando2fa(true);
-    setError2fa("");
-
-    try {
-      const res = await fetch("/api/auth/2fa/totp/verificar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-2FA-Session-Token": info2fa?.sessionToken || "",
-        },
-        body: JSON.stringify({
-          sessionToken: info2fa?.sessionToken,
-          codigo: code,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.exitoso) {
-        throw new Error(data.mensaje || "Código de autenticación incorrecto.");
-      }
-
-      await finalizarLoginExitoso(data.token, data.usuario);
-    } catch (err: unknown) {
-      setError2fa(mensajeDeError(err, "Código incorrecto"));
-    } finally {
-      setVerificando2fa(false);
-    }
-  }
-
-  async function handleAutenticarPasskey() {
-    if (!isWebAuthnSupported()) {
-      setError2fa("Tu dispositivo o navegador no soporta autenticación biométrica.");
-      return;
-    }
-
-    setVerificando2fa(true);
-    setError2fa("");
-
-    try {
-      const resOpciones = await fetch("/api/auth/2fa/passkey/auth/opciones", {
-        method: "POST",
-        headers: {
-          "X-2FA-Session-Token": info2fa?.sessionToken || "",
-        },
-      });
-
-      if (!resOpciones.ok) {
-        const payload: unknown = await resOpciones.json().catch(() => null);
-        throw new Error(
-          mensajeDeRespuesta(payload) || "No se pudieron obtener las opciones biométricas",
-        );
-      }
-
-      const opciones = await resOpciones.json();
-      const credencialAssertion = await autenticarPasskeyEnNavegador(opciones);
-
-      const resVerificar = await fetch("/api/auth/2fa/passkey/auth/verificar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-2FA-Session-Token": info2fa?.sessionToken || "",
-        },
-        body: JSON.stringify({
-          ...credencialAssertion,
-          sessionToken: info2fa?.sessionToken,
-        }),
-      });
-
-      const data = await resVerificar.json();
-      if (!resVerificar.ok || !data.exitoso) {
-        throw new Error(data.mensaje || "Autenticación biométrica fallida.");
-      }
-
-      await finalizarLoginExitoso(data.token, data.usuario);
-    } catch (err: unknown) {
-      if (!(err instanceof Error && err.name === "NotAllowedError")) {
-        setError2fa(mensajeDeError(err, "Error al verificar con huella/dispositivo"));
-      }
-    } finally {
-      setVerificando2fa(false);
-    }
-  }
-
-  async function handleVerificarRecuperacion() {
-    if (!codigoRecuperacion.trim()) {
-      setError2fa("Ingresa un código de recuperación");
-      return;
-    }
-
-    setVerificando2fa(true);
-    setError2fa("");
-
-    try {
-      const res = await fetch("/api/auth/2fa/recuperacion/verificar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-2FA-Session-Token": info2fa?.sessionToken || "",
-        },
-        body: JSON.stringify({
-          sessionToken: info2fa?.sessionToken,
-          codigo: codigoRecuperacion.trim(),
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.exitoso) {
-        throw new Error(data.mensaje || "Código de recuperación inválido");
-      }
-
-      await finalizarLoginExitoso(data.token, data.usuario);
-    } catch (err: unknown) {
-      setError2fa(mensajeDeError(err, "Error al validar código de recuperación"));
-    } finally {
-      setVerificando2fa(false);
+      setCargando(false);
     }
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center p-4">
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#0a1222]/95 p-8 shadow-2xl backdrop-blur-2xl">
-        <AnimatePresence mode="wait">
-          {!enPaso2FA ? (
-            /* ─── PASO 1: CREDENCIALES ──────────────────────────────── */
-            <motion.div
-              key="credenciales"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-6"
-            >
-              <div>
-                <span className="section-kicker">Portal Seguro</span>
-                <h1 className="mt-2 text-2xl font-extrabold text-white">Iniciar Sesión</h1>
-                <p className="mt-1.5 text-xs text-slate-400">
-                  Accede con tu cuenta de Google (Gmail), correo institucional o personal.
-                </p>
+    <main className={styles.shell}>
+      <div className={styles.frame}>
+        <header className={styles.topbar}>
+          <Link className={styles.brand} href="/" aria-label="AlgoLab, inicio">
+            <span className={styles.brandMark}>A</span><strong>AlgoLab</strong>
+          </Link>
+          <Link className={styles.topLink} href="/">Volver al inicio</Link>
+        </header>
+        <div className={styles.body}>
+          <div className={styles.intro}>
+            <span className={styles.eyebrow}>Tu espacio de aprendizaje</span>
+            <h1>Vuelve a donde <em>lo dejaste.</em></h1>
+            <p>Continúa los niveles de programación orientada a objetos en la web y en tus gafas, con el mismo perfil y progreso.</p>
+            <div className={styles.introNote}><span>01 / 06</span> Una ruta para entender cada concepto antes de escribirlo en código.</div>
+          </div>
+          <section className={styles.card} aria-labelledby="titulo-acceso">
+            <span className={styles.cardLabel}>ACCESO A ALGOLAB</span>
+            <h2 id="titulo-acceso">Inicia sesión</h2>
+            <p className={styles.cardLead}>Ingresa con el correo y la contraseña de tu cuenta.</p>
+            {aviso ? <p className={styles.notice} role="status">{aviso}</p> : null}
+            {error ? <p className={styles.error} role="alert">{error}</p> : null}
+            <form className={styles.form} onSubmit={iniciarSesion}>
+              <label className={styles.field}>
+                <span className={styles.cardLabel}>Correo electrónico</span>
+                <input className={styles.input} type="email" autoComplete="email" value={correo} onChange={(event) => setCorreo(event.target.value)} placeholder="tu@correo.com" required />
+              </label>
+              <div className={styles.field}>
+                <label className={styles.cardLabel} htmlFor="contrasena">Contraseña</label>
+                <span className={styles.inputWrap}>
+                  <input id="contrasena" className={`${styles.input} ${styles.inputWithButton}`} type={mostrarContrasena ? "text" : "password"} autoComplete="current-password" value={contrasena} onChange={(event) => setContrasena(event.target.value)} required />
+                  <button className={styles.fieldAction} type="button" onClick={() => setMostrarContrasena((actual) => !actual)} aria-label={mostrarContrasena ? "Ocultar contraseña" : "Mostrar contraseña"}>
+                    {mostrarContrasena ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </span>
               </div>
-
-              {errorLogin && (
-                <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-300">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
-                  <span>{errorLogin}</span>
-                </div>
-              )}
-
-              {avisoLogin && (
-                <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-300">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-                  <span>{avisoLogin}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleLoginInicial} className="space-y-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-slate-300">Correo Electrónico</label>
-                  </div>
-                  <div className="relative flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 focus-within:border-emerald-400">
-                    <Mail className="mr-2 h-4 w-4 text-slate-400" />
-                    <input
-                      type="email"
-                      value={correo}
-                      onChange={(e) => setCorreo(e.target.value)}
-                      placeholder="ejemplo@gmail.com o institucional"
-                      className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
-                      required
-                      autoFocus
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-400">
-                    Acceso seguro con contraseña o código de verificación.
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Contraseña</label>
-                  <div className="relative flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 focus-within:border-emerald-400">
-                    <LockKeyhole className="mr-2 h-4 w-4 text-slate-400" />
-                    <input
-                      type={verPass ? "text" : "password"}
-                      value={pass}
-                      onChange={(e) => setPass(e.target.value)}
-                      placeholder="••••••••••••"
-                      className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setVerPass(!verPass)}
-                      className="text-slate-400 hover:text-white"
-                    >
-                      {verPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={cargandoLogin}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-400 disabled:opacity-50"
-                >
-                  {cargandoLogin ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {estadoCargaLogin}
-                    </>
-                  ) : (
-                    "Continuar a AlgoLab"
-                  )}
-                </button>
-              </form>
-
-              <div className="pt-2 text-center text-xs text-slate-400">
-                ¿No tienes una cuenta aún?{" "}
-                <Link href="/registrarse" className="font-semibold text-emerald-400 hover:underline">
-                  Regístrate aquí
-                </Link>
-              </div>
-            </motion.div>
-          ) : (
-            /* ─── PASO 2: VERIFICA TU IDENTIDAD (2FA) ──────────────── */
-            <motion.div
-              key="2fa"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-6"
-            >
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => {
-                    setEnPaso2FA(false);
-                    setError2fa("");
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Volver
-                </button>
-                <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
-                  <ShieldCheck className="h-4 w-4" />
-                  2FA Protegido
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-2xl font-extrabold text-white">¿Cómo deseas verificar?</h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  Elige tu método de confirmación favorito para entrar.
-                </p>
-              </div>
-
-              {/* Selector de Métodos Diferenciado según cuenta */}
-              <div className="flex rounded-xl bg-white/5 p-1 border border-white/5">
-                {info2fa?.email.enabled && info2fa.email.available && (
-                  <button
-                    onClick={() => cambiarMetodoActivo("EMAIL")}
-                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
-                      metodoActivo === "EMAIL"
-                        ? "bg-emerald-500 text-slate-950 shadow"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <Mail className="h-3.5 w-3.5" />
-                    Correo
-                  </button>
-                )}
-
-                {info2fa?.totp.configured && (
-                  <button
-                    onClick={() => cambiarMetodoActivo("TOTP")}
-                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
-                      metodoActivo === "TOTP"
-                        ? "bg-emerald-500 text-slate-950 shadow"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <Smartphone className="h-3.5 w-3.5" />
-                    Authenticator
-                  </button>
-                )}
-
-                {/* 3. Opción Huella / Passkey */}
-                {info2fa?.passkey.registered && (
-                  <button
-                    onClick={() => cambiarMetodoActivo("PASSKEY")}
-                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all ${
-                      metodoActivo === "PASSKEY"
-                        ? "bg-emerald-500 text-slate-950 shadow"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <Fingerprint className="h-3.5 w-3.5" />
-                    Huella
-                  </button>
-                )}
-              </div>
-
-              {error2fa && (
-                <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-300">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
-                  <span>{error2fa}</span>
-                </div>
-              )}
-
-              {mensaje2fa && (
-                <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-300">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-                  <span>{mensaje2fa}</span>
-                </div>
-              )}
-
-              {/* ─── VISTA: CORREO ELECTRÓNICO (GMAIL) ─────────── */}
-              {metodoActivo === "EMAIL" && (
-                <div className="space-y-4">
-                  {info2fa?.email.available ? (
-                    <>
-                      <div className="text-center">
-                        <p className="text-xs text-slate-300">
-                          Código de 6 dígitos enviado a:
-                        </p>
-                        <p className="mt-0.5 font-mono text-xs font-bold text-emerald-400">
-                          {info2fa.email.destinoEnmascarado}
-                        </p>
-                      </div>
-
-                      {/* 6 Casillas OTP */}
-                      <div className="flex justify-center gap-2 py-2">
-                        {otpDigitos.map((digito, idx) => (
-                          <input
-                            key={idx}
-                            ref={(el) => {
-                              otpInputsRef.current[idx] = el;
-                            }}
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={1}
-                            value={digito}
-                            onChange={(e) => handleOtpChange(idx, e.target.value)}
-                            onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                            className="h-12 w-11 rounded-xl border border-white/15 bg-white/5 text-center font-mono text-lg font-bold text-white focus:border-emerald-400 focus:bg-white/10 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                            autoFocus={idx === 0}
-                          />
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={handleVerificarEmailOtp}
-                        disabled={verificando2fa || otpDigitos.join("").length !== 6}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-400 disabled:opacity-50"
-                      >
-                        {verificando2fa ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Verificando...
-                          </>
-                        ) : (
-                          "Verificar e Ingresar"
-                        )}
-                      </button>
-
-                      <div className="text-center">
-                        <button
-                          onClick={handleReenviarEmailOtp}
-                          disabled={segundosReenvio > 0 || reenviandoEmail}
-                          className="text-xs font-semibold text-slate-400 hover:text-emerald-400 disabled:cursor-not-allowed disabled:text-slate-600"
-                        >
-                          {reenviandoEmail ? (
-                            "Reenviando..."
-                          ) : segundosReenvio > 0 ? (
-                            `Reenviar código en ${segundosReenvio} s`
-                          ) : (
-                            "Reenviar código"
-                          )}
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center text-xs text-amber-200">
-                      <p className="font-bold">Servicio de Correo No Disponible</p>
-                      <p className="mt-1 text-[11px] text-amber-300/80">
-                        Selecciona la pestaña <strong>Authenticator</strong> para ingresar con tu aplicación de 2FA.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ─── VISTA: APLICACIÓN DE SEGURIDAD ──────────────── */}
-              {metodoActivo === "TOTP" && (
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <h3 className="text-sm font-bold text-white">Código de tu aplicación de seguridad</h3>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Abre la aplicación de seguridad que vinculaste e introduce el código de 6 dígitos.
-                    </p>
-                  </div>
-
-                  <div className="flex justify-center gap-2 py-2">
-                    {otpDigitos.map((digito, idx) => (
-                      <input
-                        key={idx}
-                        ref={(el) => {
-                          otpInputsRef.current[idx] = el;
-                        }}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={1}
-                        value={digito}
-                        onChange={(e) => handleOtpChange(idx, e.target.value)}
-                        onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                        className="h-12 w-11 rounded-xl border border-white/15 bg-white/5 text-center font-mono text-lg font-bold text-white focus:border-emerald-400 focus:bg-white/10 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                        autoFocus={idx === 0}
-                      />
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={handleVerificarTotp}
-                    disabled={verificando2fa || otpDigitos.join("").length !== 6}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-400 disabled:opacity-50"
-                  >
-                    {verificando2fa ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Verificando...
-                      </>
-                    ) : (
-                      "Verificar con Authenticator"
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {/* ─── VISTA: HUELLA O DISPOSITIVO ─────────────────── */}
-              {metodoActivo === "PASSKEY" && (
-                <div className="space-y-5 text-center">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-400 shadow-inner">
-                    <Fingerprint className="h-8 w-8" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-bold text-white">Huella o Dispositivo</h3>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Confirma tu identidad mediante el sensor biométrico, Face ID o PIN de tu dispositivo.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={handleAutenticarPasskey}
-                    disabled={verificando2fa}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-500 py-3.5 text-xs font-bold text-white shadow-lg shadow-purple-500/20 transition-all hover:bg-purple-400 disabled:opacity-50"
-                  >
-                    {verificando2fa ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Esperando biometría...
-                      </>
-                    ) : (
-                      <>
-                        <Fingerprint className="h-4 w-4" />
-                        Usar huella o dispositivo
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {/* ─── VISTA: CÓDIGO DE RECUPERACIÓN ───────────────── */}
-              {metodoActivo === "RECOVERY" && (
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <h3 className="text-sm font-bold text-white">Código de Recuperación</h3>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Introduce uno de tus códigos de respaldo de 8 caracteres (ej: AB39-KP27).
-                    </p>
-                  </div>
-
-                  <input
-                    type="text"
-                    value={codigoRecuperacion}
-                    onChange={(e) => setCodigoRecuperacion(e.target.value.toUpperCase())}
-                    placeholder="XXXX-XXXX"
-                    className="w-full rounded-xl border border-white/15 bg-white/5 py-3 text-center font-mono text-base font-bold text-emerald-400 focus:border-emerald-400 focus:outline-none"
-                    autoFocus
-                  />
-
-                  <button
-                    onClick={handleVerificarRecuperacion}
-                    disabled={verificando2fa || !codigoRecuperacion.trim()}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition-all hover:bg-amber-400 disabled:opacity-50"
-                  >
-                    {verificando2fa ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Verificando...
-                      </>
-                    ) : (
-                      "Acceder con código de respaldo"
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {/* Enlace para usar código de recuperación si no está activo */}
-              {metodoActivo !== "RECOVERY" && info2fa?.codigosRecuperacionDisponibles && (
-                <div className="pt-2 text-center">
-                  <button
-                    onClick={() => cambiarMetodoActivo("RECOVERY")}
-                    className="flex items-center justify-center gap-1.5 mx-auto text-xs text-slate-400 hover:text-amber-400"
-                  >
-                    <KeyRound className="h-3.5 w-3.5" />
-                    ¿Problemas para acceder? Usar código de recuperación
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <button className={styles.submit} type="submit" disabled={cargando}>
+                {cargando ? <><LoaderCircle className="animate-spin" size={18} /> Conectando…</> : <>Entrar a AlgoLab <ArrowRight size={17} /></>}
+              </button>
+            </form>
+            <p className={styles.footer}>¿Es tu primera vez? <Link href="/registrarse">Crea una cuenta</Link></p>
+          </section>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

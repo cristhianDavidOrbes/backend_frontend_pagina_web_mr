@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu,
   X,
-  Sparkles,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -274,10 +273,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           </span>
           <span className="min-w-0" data-sidebar-hide>
             <strong className="block text-lg tracking-[-.03em] text-white">AlgoLab</strong>
-            <small className="flex items-center gap-1.5 text-[9px] uppercase tracking-[.25em] text-emerald-300/75">
-              <span className="h-1 w-1 rounded-full bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" />{" "}
-              Portal MR activo
-            </small>
+            <small className="block text-[11px] text-slate-400">Aprender programación</small>
           </span>
         </Link>
 
@@ -337,11 +333,11 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           <div className="sidebar-user-row flex min-w-0 items-center gap-3">
             {usuario ? (
               <AvatarDisplay
-                className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-[.85rem] border border-white/15 text-sm font-extrabold text-white shadow-lg ring-1 ring-emerald-400/20 [&>img]:object-cover"
+                className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 text-sm font-extrabold text-white [&>img]:object-cover"
                 usuario={usuario}
               />
             ) : (
-              <span className="h-10 w-10 animate-pulse rounded-[.85rem] bg-white/5" />
+              <span className="h-10 w-10 animate-pulse rounded-full bg-white/5" />
             )}
             <div className="min-w-0 flex-1" data-sidebar-hide>
               <strong className="block truncate text-xs font-bold text-slate-100">
@@ -395,7 +391,7 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           </span>
           {usuario ? (
             <AvatarDisplay
-              className="relative grid h-8 w-8 place-items-center overflow-hidden rounded-lg border border-white/15 text-xs font-bold text-white [&>img]:object-cover"
+              className="relative grid h-8 w-8 place-items-center overflow-hidden rounded-full border border-white/15 text-xs font-bold text-white [&>img]:object-cover"
               usuario={usuario}
             />
           ) : null}
@@ -491,28 +487,15 @@ export function AppShell({ usuario, children, eyebrow, title }: Props) {
           {/* Main Top Header Banner */}
           {!isCodeWorkspace ? (
           <header className="relative mb-4 min-w-0 overflow-hidden border-b border-white/10 pb-3 pt-1 sm:mb-5 sm:pb-4 lg:mb-6">
-            <div
-              aria-hidden="true"
-              className="absolute -right-20 -top-28 h-64 w-64 rounded-full bg-emerald-300/[.07] blur-3xl"
-            />
-            <div
-              aria-hidden="true"
-              className="absolute right-[18%] top-0 h-px w-40 bg-gradient-to-r from-transparent via-cyan-200/50 to-transparent"
-            />
             <div className="relative flex min-w-0 items-end justify-between gap-3 sm:gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="min-w-0">
-                  <p className="section-kicker flex items-center gap-2">
-                    <Sparkles size={12} className="text-emerald-300" /> {eyebrow}
-                  </p>
+                  <p className="section-kicker">{eyebrow}</p>
                   <h1 className="mt-1 break-words text-lg font-bold leading-tight tracking-[-.035em] text-white min-[390px]:text-xl sm:text-2xl">
                     {title}
                   </h1>
                 </div>
               </div>
-              <span className="hidden items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[.08] px-3 py-1.5 text-[9px] text-emerald-200 sm:inline-flex">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_#6ee7b7]" /> Sincronizado
-              </span>
             </div>
           </header>
           ) : null}
