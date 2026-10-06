@@ -23,6 +23,7 @@ export type ProgresoUsuario = {
   usuarioId: number;
   nivelActual: number;
   puntajeTotal: number;
+  tiempoJugadoSegundos?: number;
   niveles: ProgresoNivel[];
 };
 

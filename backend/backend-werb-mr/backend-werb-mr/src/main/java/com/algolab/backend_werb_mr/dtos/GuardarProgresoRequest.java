@@ -6,6 +6,7 @@ public class GuardarProgresoRequest {
     private Integer puntaje;
     private Integer tiempoRestante;
     private Integer intentos;
+    private Integer tiempoJugadoSegundos;
 
     public GuardarProgresoRequest() {
     }
@@ -48,5 +49,13 @@ public class GuardarProgresoRequest {
 
     public void setIntentos(Integer intentos) {
         this.intentos = intentos;
+    }
+
+    public Integer getTiempoJugadoSegundos() {
+        return tiempoJugadoSegundos;
+    }
+
+    public void setTiempoJugadoSegundos(Integer tiempoJugadoSegundos) {
+        this.tiempoJugadoSegundos = tiempoJugadoSegundos;
     }
 }

@@ -113,6 +113,12 @@ public class ProgresoControlador {
                     "mensaje", "El tiempoRestante no debe ser negativo"));
         }
 
+        if (request.getTiempoJugadoSegundos() != null &&
+                (request.getTiempoJugadoSegundos() < 0 || request.getTiempoJugadoSegundos() > 31_536_000)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "mensaje", "El tiempo jugado debe estar entre 0 y 31536000 segundos"));
+        }
+
         if (request.getIntentos() == null || request.getIntentos() < 0) {
             return ResponseEntity.badRequest().body(Map.of(
                     "mensaje", "Los intentos deben ser mayores o iguales a 0"));

@@ -11,6 +11,7 @@ public class UsuarioSesionDTO {
     private Rol rol;
     private Integer nivelActual;
     private Integer puntaje;
+    private Integer tiempoJugadoSegundos;
     private String biografia;
     private String institucion;
     private String programa;
@@ -43,7 +44,7 @@ public class UsuarioSesionDTO {
     }
 
     public static UsuarioSesionDTO desdeUsuario(Usuario usuario) {
-        return new UsuarioSesionDTO(
+        UsuarioSesionDTO dto = new UsuarioSesionDTO(
                 usuario.getId(),
                 usuario.getNombre(),
                 usuario.getCorreo(),
@@ -58,6 +59,8 @@ public class UsuarioSesionDTO {
                 construirAvatarUrl(usuario),
                 usuario.getAvatarVersion(),
                 usuario.isTutorialCompletado());
+        dto.setTiempoJugadoSegundos(usuario.getTiempoJugadoSegundos());
+        return dto;
     }
 
     private static String construirAvatarUrl(Usuario usuario) {
@@ -121,6 +124,11 @@ public class UsuarioSesionDTO {
 
     public void setPuntaje(Integer puntaje) {
         this.puntaje = puntaje;
+    }
+
+    public Integer getTiempoJugadoSegundos() { return tiempoJugadoSegundos; }
+    public void setTiempoJugadoSegundos(Integer tiempoJugadoSegundos) {
+        this.tiempoJugadoSegundos = tiempoJugadoSegundos;
     }
 
     public String getBiografia() { return biografia; }

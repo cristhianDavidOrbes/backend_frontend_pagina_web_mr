@@ -113,9 +113,16 @@ class ProgresoServicioTest {
                 usuarioServicio,
                 descripcionNivelServicio);
 
-        ProgresoUsuarioDTO nivel1 = servicio.guardarProgreso(usuario, progreso(1, 60));
-        ProgresoUsuarioDTO nivel2 = servicio.guardarProgreso(usuario, progreso(2, 130));
-        ProgresoUsuarioDTO repeticionMejor = servicio.guardarProgreso(usuario, progreso(1, 80));
+        GuardarProgresoRequest primeraPartida = progreso(1, 60);
+        primeraPartida.setTiempoJugadoSegundos(120);
+        GuardarProgresoRequest segundaPartida = progreso(2, 130);
+        segundaPartida.setTiempoJugadoSegundos(270);
+        GuardarProgresoRequest repeticionAnterior = progreso(1, 80);
+        repeticionAnterior.setTiempoJugadoSegundos(180);
+
+        ProgresoUsuarioDTO nivel1 = servicio.guardarProgreso(usuario, primeraPartida);
+        ProgresoUsuarioDTO nivel2 = servicio.guardarProgreso(usuario, segundaPartida);
+        ProgresoUsuarioDTO repeticionMejor = servicio.guardarProgreso(usuario, repeticionAnterior);
         ProgresoUsuarioDTO repeticionPeor = servicio.guardarProgreso(usuario, progreso(1, 50));
 
         assertEquals(60, nivel1.getPuntajeTotal());
@@ -126,6 +133,10 @@ class ProgresoServicioTest {
         assertEquals(80, puntajeNivel(repeticionPeor, 1));
         assertEquals(130, puntajeNivel(repeticionPeor, 2));
         assertEquals(1, intentosNivel(repeticionPeor, 1));
+        assertEquals(120, nivel1.getTiempoJugadoSegundos());
+        assertEquals(270, nivel2.getTiempoJugadoSegundos());
+        assertEquals(270, repeticionMejor.getTiempoJugadoSegundos());
+        assertEquals(270, repeticionPeor.getTiempoJugadoSegundos());
     }
 
     @Test

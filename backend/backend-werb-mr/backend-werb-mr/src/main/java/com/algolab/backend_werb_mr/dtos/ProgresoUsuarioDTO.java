@@ -14,6 +14,7 @@ public class ProgresoUsuarioDTO {
     private Boolean rutaVrCompletada;
     private Boolean rutaWebCompletada;
     private String categoria;
+    private Integer tiempoJugadoSegundos;
 
     public ProgresoUsuarioDTO() {
     }
@@ -126,5 +127,10 @@ public class ProgresoUsuarioDTO {
 
     public void setCategoria(String categoria) {
         this.categoria = categoria;
+    }
+
+    public Integer getTiempoJugadoSegundos() { return tiempoJugadoSegundos; }
+    public void setTiempoJugadoSegundos(Integer tiempoJugadoSegundos) {
+        this.tiempoJugadoSegundos = tiempoJugadoSegundos;
     }
 }

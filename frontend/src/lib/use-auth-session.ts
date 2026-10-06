@@ -11,6 +11,7 @@ export type UsuarioSesion = {
   rol: "ESTUDIANTE" | "DOCENTE" | "ADMINISTRADOR";
   nivelActual: number;
   puntaje: number;
+  tiempoJugadoSegundos?: number;
   nombreUsuario?: string;
   biografia?: string;
   institucion?: string;

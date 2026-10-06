@@ -44,6 +44,9 @@ public class Usuario {
     @Column(nullable = false, columnDefinition = "integer default 0")
     private Integer puntaje = 0;
 
+    @Column(name = "tiempo_jugado_segundos", nullable = false, columnDefinition = "integer default 0")
+    private Integer tiempoJugadoSegundos = 0;
+
     @Column(length = 300)
     private String biografia;
 
@@ -94,6 +97,10 @@ public class Usuario {
 
         if (puntaje == null) {
             puntaje = 0;
+        }
+
+        if (tiempoJugadoSegundos == null) {
+            tiempoJugadoSegundos = 0;
         }
 
         if (avatar == null || avatar.isBlank()) {
@@ -175,6 +182,14 @@ public class Usuario {
 
     public void setPuntaje(Integer puntaje) {
         this.puntaje = puntaje;
+    }
+
+    public Integer getTiempoJugadoSegundos() {
+        return tiempoJugadoSegundos == null ? 0 : tiempoJugadoSegundos;
+    }
+
+    public void setTiempoJugadoSegundos(Integer tiempoJugadoSegundos) {
+        this.tiempoJugadoSegundos = tiempoJugadoSegundos;
     }
 
     public String getBiografia() {

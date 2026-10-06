@@ -132,6 +132,11 @@ public class ProgresoServicio implements IProgresoServicio {
         int puntajeTotal = puntajePrincipal + puntajeOop;
         usuario.setPuntaje(puntajeTotal);
 
+        if (request.getTiempoJugadoSegundos() != null) {
+            usuario.setTiempoJugadoSegundos(Math.max(usuario.getTiempoJugadoSegundos(),
+                    request.getTiempoJugadoSegundos()));
+        }
+
         if (completadoNuevo) {
             actualizarNivelActual(usuario, request.getNivel());
         }
@@ -173,6 +178,10 @@ public class ProgresoServicio implements IProgresoServicio {
         }
         if (request.getCompletado() == null) {
             request.setCompletado(false);
+        }
+        if (request.getTiempoJugadoSegundos() != null &&
+                (request.getTiempoJugadoSegundos() < 0 || request.getTiempoJugadoSegundos() > 31_536_000)) {
+            throw new IllegalArgumentException("El tiempo jugado debe estar entre 0 y 31536000 segundos");
         }
     }
 
@@ -265,7 +274,7 @@ public class ProgresoServicio implements IProgresoServicio {
                 ? "Fullstack"
                 : (rutaVrCompletada || rutaWebCompletada ? "Senior" : "Junior");
 
-        return new ProgresoUsuarioDTO(
+        ProgresoUsuarioDTO respuesta = new ProgresoUsuarioDTO(
                 usuario.getId(),
                 usuario.getNivelActual(),
                 puntajePrincipal + puntajeOop,
@@ -277,5 +286,7 @@ public class ProgresoServicio implements IProgresoServicio {
                 rutaVrCompletada,
                 rutaWebCompletada,
                 categoria);
+        respuesta.setTiempoJugadoSegundos(usuario.getTiempoJugadoSegundos());
+        return respuesta;
     }
 }

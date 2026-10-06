@@ -223,8 +223,9 @@ export default function EstudiantePage() {
         </div>
       </section>
 
-      <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Metric icon={<Zap size={17} />} label="Puntaje total" value={progreso?.puntajeTotal ?? usuarioActivo.puntaje ?? 0} note="Experiencia acumulada" tone="emerald" />
+        <Metric icon={<TimerReset size={17} />} label="Tiempo jugado" value={formatearTiempo(progreso?.tiempoJugadoSegundos ?? usuarioActivo.tiempoJugadoSegundos ?? 0)} note="Tiempo acumulado en el juego" tone="cyan" />
         <Metric icon={<BrainCircuit size={17} />} label="Dominio promedio" value={`${promedio}%`} note={reportes.length ? `${reportes.length} diagnósticos disponibles` : "Completa tu primer nivel"} tone="violet" />
         <Metric icon={<CheckCircle2 size={17} />} label="Niveles superados" value={`${completados}/6`} note={`${porcentajeRuta}% de la ruta`} tone="cyan" />
         <Metric icon={<Trophy size={17} />} label="Ranking" value={posicion ? `#${posicion}` : "—"} note={`${ranking?.total ?? 0} estudiantes`} tone="amber" />
@@ -361,6 +362,14 @@ export default function EstudiantePage() {
 function primerNombre(nombre?: string) {
   const limpio = nombre?.trim();
   return limpio ? limpio.split(/\s+/)[0] : "estudiante";
+}
+
+function formatearTiempo(segundos: number) {
+  const total = Math.max(0, Math.floor(segundos));
+  const horas = Math.floor(total / 3600);
+  const minutos = Math.floor((total % 3600) / 60);
+  const restantes = total % 60;
+  return [horas, minutos, restantes].map((valor) => String(valor).padStart(2, "0")).join(":");
 }
 
 function Metric({ icon, label, value, note, tone }: { icon: ReactNode; label: string; value: string | number; note: string; tone: string }) {
