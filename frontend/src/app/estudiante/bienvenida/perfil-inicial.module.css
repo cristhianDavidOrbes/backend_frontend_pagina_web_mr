@@ -1,33 +1,20 @@
-.page { width: min(100%, 820px); margin: 0 auto; padding: clamp(.5rem, 2vw, 2rem) 0 4rem; }
-.header { max-width: 650px; }
-.eyebrow { color: #b8d7bb; font-size: .78rem; font-weight: 750; letter-spacing: .04em; }
-.header h1 { margin: .65rem 0 .8rem; color: #f4f1e8; font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 670; letter-spacing: -.05em; line-height: 1.1; }
-.header p { color: #b9c7bb; font-size: .93rem; line-height: 1.65; }
-.progress { display: flex; align-items: center; gap: 1rem; margin: 2.2rem 0 1.4rem; color: #82998a; font-size: .8rem; }
-.progress span { display: flex; align-items: center; gap: .55rem; white-space: nowrap; }
-.progress b { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #536b58; border-radius: 50%; font-size: .75rem; }
-.progress i { width: min(8vw, 60px); height: 1px; background: #405747; }
-.progress .current { color: #f0eee5; font-weight: 750; }
-.progress .current b, .progress .done b { border-color: #b9d7bb; color: #173425; background: #b9d7bb; }
-.card { overflow: hidden; border: 1px solid #3a5140; border-radius: 16px; background: #15251b; box-shadow: 0 18px 45px rgba(0,0,0,.12); }
-.cardHeader { padding: clamp(1.35rem, 3vw, 2rem); border-bottom: 1px solid #334737; }
-.cardHeader > span { color: #c8ad85; font-size: .75rem; font-weight: 750; }
-.cardHeader h2 { margin: .4rem 0 .4rem; color: #f5f2e8; font-size: 1.5rem; letter-spacing: -.035em; }
-.cardHeader p { color: #aabdad; font-size: .86rem; }
-.form { display: grid; gap: 1.3rem; padding: clamp(1.35rem, 3vw, 2rem); }
-.form label { display: grid; gap: .5rem; color: #e2e9df; font-size: .8rem; font-weight: 650; }
-.form label em { color: #8fa595; font-style: normal; font-weight: 400; }
-.form input, .form textarea { width: 100%; min-height: 48px; padding: .7rem .85rem; border: 1px solid #496052; border-radius: 8px; outline: none; color: #f5f4eb; background: #0d1b14; font-size: .9rem; font-weight: 400; }
-.form input:focus, .form textarea:focus { border-color: #aed0b0; box-shadow: 0 0 0 3px rgba(174,208,176,.12); }
-.form input::placeholder, .form textarea::placeholder { color: #849b89; }
-.form textarea { resize: vertical; }
-.form small { color: #9bac9e; font-size: .74rem; font-weight: 400; line-height: 1.45; }
-.error { margin: 1.2rem 2rem 0; padding: .8rem 1rem; border: 1px solid #976959; border-radius: 8px; color: #ffddd1; background: #412b27; font-size: .84rem; }
-.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding-top: .2rem; }
-.primary { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; min-height: 46px; padding: .6rem 1.2rem; border-radius: 8px; color: #173425; background: #bfddbd; font-size: .85rem; font-weight: 750; }
-.primary:hover { background: #d6ead2; }
-.primary:disabled { opacity: .55; cursor: wait; }
-.back, .skip { display: inline-flex; align-items: center; gap: .4rem; min-height: 42px; color: #bed2bf; font-size: .83rem; }
-.back:hover, .skip:hover { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
-.note { margin-top: 1.25rem; color: #8fa596; font-size: .78rem; }
-.note strong { color: #bed6bf; }
+.page { width: min(100%, 640px); margin: 0 auto; padding: clamp(1rem, 4vw, 3rem) 0 4rem; }
+.progress { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin: 0 0 2rem; padding: 0; list-style: none; color: rgb(var(--text-3)); font-size: .9rem; font-weight: 600; }
+.progress li { display: flex; align-items: center; gap: .5rem; }
+.progress b { display: grid; width: 26px; height: 26px; place-items: center; border: 1.5px solid var(--line-strong); border-radius: 50%; font-size: .8rem; }
+.progress .current { color: rgb(var(--text)); }
+.progress .current b { border-color: rgb(var(--action)); color: rgb(var(--on-action)); background: rgb(var(--action)); }
+.progress .done { color: rgb(var(--text-2)); }
+.progress .done b { border-color: rgb(var(--action) / .6); color: rgb(var(--action)); }
+.header h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); letter-spacing: -.04em; }
+.header p { margin-top: .75rem; color: rgb(var(--text-2)); line-height: 1.6; }
+.card { margin-top: 1.75rem; padding: clamp(1.25rem, 3.5vw, 2rem); overflow: hidden; }
+.form { display: grid; gap: 1.2rem; }
+.form h2 { font-size: 1.3rem; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; padding-top: .25rem; }
+.note { margin-top: 1.25rem; color: rgb(var(--text-3)); font-size: .9rem; }
+.note strong { color: rgb(var(--text-2)); }
+
+.form { margin-top: 0; }
+.actions { justify-content: center; }
+.actions :global(.btn-primary) { flex: 1; }
