@@ -162,7 +162,7 @@
   font-weight: 900;
 }
 .path-node.is-bloqueado .path-node-badge { color: rgb(var(--text)); background: rgb(var(--surface-3)); }
-.path-label { position: relative; display: grid; justify-items: center; padding: .3rem .8rem; border-radius: 14px; color: rgb(var(--text)); background: rgb(var(--bg) / .82); backdrop-filter: blur(8px); font-size: 1.02rem; font-weight: 900; text-align: center; line-height: 1.2; }
+.path-label { position: relative; display: grid; justify-items: center; max-width: 150px; padding: .3rem .8rem; border-radius: 14px; color: rgb(var(--text)); background: rgb(var(--bg) / .82); backdrop-filter: blur(8px); font-size: 1.02rem; font-weight: 900; text-align: center; line-height: 1.2; }
 .path-label small { color: rgb(var(--text-3)); font-size: .8rem; font-weight: 800; }
 .path-ping { position: absolute; top: 0; left: 50%; width: 118px; height: 108px; margin-left: -59px; border-radius: 50%; border: 3px solid rgb(var(--action)); animation: ping 1.8s var(--ease-out) infinite; pointer-events: none; }
 .path-bubble {
