@@ -40,6 +40,15 @@ producción.
 Apagar el servidor al terminar descarta la base efímera. El lanzador auxiliar
 está en `src/test`, por lo que no se incluye en el JAR publicado.
 
+El cierre normal debe dejar que Spring cierre Tomcat, JPA y Hikari. Para sesiones
+sin consola interactiva, `VerificationShutdown.java` y `verification-shutdown.mf`
+permiten un cierre JVM con sus shutdown hooks mediante JDK Attach. El cliente y
+el agente rechazan cualquier proceso cuyo `sun.java.command` no sea exactamente
+el lanzador `ReleaseVerificationServer`. Antes de usarlo hay que verificar que
+el PID corresponde al listener local de 18080; después, confirmar que el proceso
+y el listener desaparecieron. Este auxiliar no sirve para cerrar el backend de
+producción ni otros servicios.
+
 ## Límites de la evidencia
 
 Las latencias corresponden a la máquina local y a H2. No acreditan capacidad de
