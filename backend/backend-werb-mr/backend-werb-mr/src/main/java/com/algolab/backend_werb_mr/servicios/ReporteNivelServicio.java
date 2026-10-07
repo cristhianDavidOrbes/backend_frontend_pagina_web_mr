@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,8 @@ public class ReporteNivelServicio {
     private final ConfiguracionTutorNivelServicio configuracionTutor;
     private final IProgresoNivelRepositorio progresos;
     private final IUsuarioRepositorio usuarios;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public ReporteNivelServicio(IReporteNivelRepositorio repositorio,
             ConfiguracionTutorNivelServicio configuracionTutor) {
@@ -43,13 +47,20 @@ public class ReporteNivelServicio {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ReporteNivelDTO sincronizarConfirmado(Long usuarioId, Integer nivel) {
-        Usuario usuario = usuarios.findById(usuarioId).orElseThrow();
+        Usuario usuario = BloqueoUsuario.recargar(entityManager, usuarios.findById(usuarioId).orElseThrow());
         ProgresoNivel progreso = progresos.findByUsuarioAndNivel(usuario, nivel).orElseThrow();
-        return sincronizarDesdeProgreso(usuario, progreso);
+        return sincronizarBloqueado(usuario, progreso);
     }
 
     @Transactional
     public ReporteNivelDTO sincronizarDesdeProgreso(Usuario usuario, ProgresoNivel progreso) {
+        Usuario vigente = BloqueoUsuario.recargar(entityManager, usuario);
+        ProgresoNivel confirmado = progresos == null ? progreso
+                : progresos.findByUsuarioAndNivel(vigente, progreso.getNivel()).orElseThrow();
+        return sincronizarBloqueado(vigente, confirmado);
+    }
+
+    private ReporteNivelDTO sincronizarBloqueado(Usuario usuario, ProgresoNivel progreso) {
         Optional<ReporteNivel> existente = repositorio.findByUsuarioAndNivel(usuario, progreso.getNivel());
 
         int puntaje = Math.max(0, progreso.getPuntaje());
@@ -91,11 +102,12 @@ public class ReporteNivelServicio {
 
     @Transactional
     public ReporteNivelDTO actualizarConIa(Usuario usuario, Integer nivel, ActualizarReporteIaRequest request) {
+        Usuario vigente = BloqueoUsuario.recargar(entityManager, usuario);
         // Repara un reporte base pendiente, utilizando únicamente progreso
         // real confirmado, nunca las métricas aportadas por el informe de IA.
-        if (progresos != null) progresos.findByUsuarioAndNivel(usuario, nivel)
-                .ifPresent(progreso -> sincronizarDesdeProgreso(usuario, progreso));
-        ReporteNivel reporte = repositorio.findByUsuarioAndNivel(usuario, nivel)
+        if (progresos != null) progresos.findByUsuarioAndNivel(vigente, nivel)
+                .ifPresent(progreso -> sincronizarBloqueado(vigente, progreso));
+        ReporteNivel reporte = repositorio.findByUsuarioAndNivel(vigente, nivel)
                 .orElseThrow(() -> new IllegalArgumentException("Primero debe guardarse el progreso del nivel"));
 
         validarVersionMetricas(reporte, request);
@@ -135,9 +147,10 @@ public class ReporteNivelServicio {
 
     @Transactional
     public List<ReporteNivelDTO> listarUsuario(Usuario usuario) {
-        if (progresos != null) progresos.findByUsuarioOrderByNivelAsc(usuario)
-                .forEach(progreso -> sincronizarDesdeProgreso(usuario, progreso));
-        return repositorio.findByUsuarioOrderByNivelAsc(usuario).stream()
+        Usuario vigente = BloqueoUsuario.recargar(entityManager, usuario);
+        if (progresos != null) progresos.findByUsuarioOrderByNivelAsc(vigente)
+                .forEach(progreso -> sincronizarBloqueado(vigente, progreso));
+        return repositorio.findByUsuarioOrderByNivelAsc(vigente).stream()
                 .map(ReporteNivelDTO::desdeModelo).toList();
     }
 

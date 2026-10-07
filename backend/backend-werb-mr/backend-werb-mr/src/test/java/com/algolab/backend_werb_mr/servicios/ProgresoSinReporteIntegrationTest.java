@@ -29,7 +29,7 @@ class ProgresoSinReporteIntegrationTest {
         assertEquals(277, progreso.guardarProgreso(usuario,
                 ProgresoPersistenciaIntegrationTest.resultado(2, 190, 100, 163)).getPuntajeTotal());
         assertTrue(registros.findByUsuarioAndNivel(usuario, 2).orElseThrow().getCompletado());
-        verify(reportes).sincronizarConfirmado(usuario.getId(), 1);
-        verify(reportes).sincronizarConfirmado(usuario.getId(), 2);
+        verify(reportes, timeout(3000)).sincronizarConfirmado(usuario.getId(), 1);
+        verify(reportes, timeout(3000)).sincronizarConfirmado(usuario.getId(), 2);
     }
 }

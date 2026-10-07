@@ -17,10 +17,14 @@ const fecha = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short",
 export default function EstudianteReportesPage() {
   const reduce = useReducedMotion();
   const { hydrated, token, usuario } = useAuthSession();
-  const [reportes, setReportes] = useState<ReporteNivel[]>([]);
+  const [reportesRecibidos, setReportes] = useState<ReporteNivel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filtro, setFiltro] = useState<number>(0);
+  const reportes = useMemo(
+    () => reportesRecibidos.filter((reporte) => reporte.usuarioId === usuario?.id),
+    [reportesRecibidos, usuario?.id],
+  );
 
   useEffect(() => {
     if (!hydrated || !token) return;

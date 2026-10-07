@@ -2,6 +2,7 @@ import { CONTRASENA_DEMO } from "./servidor-demo.mjs";
 import { iniciarDemo } from "./iniciar-demo.mjs";
 
 const resultados = [];
+const sesiones = [];
 function comprobar(nombre, ok, detalle = "") {
   resultados.push(ok);
   console.log(`${ok ? "✓" : "✗"} ${nombre}${detalle ? ` — ${detalle}` : ""}`);
@@ -56,6 +57,7 @@ try {
     const sesion = await json(login);
     comprobar("Inicia sesión", login.ok && sesion.exitoso && Boolean(sesion.token), `HTTP ${login.status}`);
     comprobar(`Rol ${perfil.rol}`, sesion.usuario?.rol === perfil.rol, sesion.usuario?.rol ?? "sin usuario");
+    sesiones.push(sesion);
     for (const ruta of perfil.api) {
       const respuesta = await fetch(web + ruta, { headers: { Authorization: `Bearer ${sesion.token}` } });
       comprobar(`Petición ${ruta}`, respuesta.ok, `HTTP ${respuesta.status}`);
@@ -65,10 +67,29 @@ try {
       comprobar(`Página ${ruta}`, respuesta.status === 200, `HTTP ${respuesta.status}`);
     }
   }
+
+  console.log("\nAislamiento de sesiones y errores a través del servidor Next local (backend simulado)");
+  const paralelo = await Promise.all(Array.from({ length: 100 }, async (_, indice) => {
+    const sesion = sesiones[indice % sesiones.length];
+    const respuesta = await fetch(`${web}/api/me`, {
+      headers: { Authorization: `Bearer ${sesion.token}` },
+    });
+    const perfil = await json(respuesta);
+    return respuesta.ok && perfil.id === sesion.usuario.id && perfil.rol === sesion.usuario.rol;
+  }));
+  comprobar("100 peticiones simultáneas de cuatro sesiones conservan su identidad", paralelo.every(Boolean));
+
+  const sinSesion = await fetch(`${web}/api/me`);
+  comprobar("La API conserva HTTP 401 sin sesión", sinSesion.status === 401);
+  const estudiante = sesiones.find((sesion) => sesion.usuario.rol === "ESTUDIANTE");
+  for (const ruta of ["/api/usuarios", "/api/reportes?todos=1"]) {
+    const respuesta = await fetch(web + ruta, { headers: { Authorization: `Bearer ${estudiante.token}` } });
+    comprobar(`El proxy conserva HTTP 403 al estudiante en ${ruta}`, respuesta.status === 403);
+  }
 } catch (error) {
   comprobar("La prueba terminó sin errores inesperados", false, error.message);
 } finally {
-  demo.cerrar();
+  await demo.cerrar();
 }
 
 const fallos = resultados.filter((ok) => !ok).length;

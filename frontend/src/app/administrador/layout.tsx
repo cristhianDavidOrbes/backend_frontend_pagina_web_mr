@@ -44,7 +44,7 @@ export default function AdministradorLayout({ children }: { children: React.Reac
     };
   }, [hydrated, token, router, retryKey]);
 
-  const perfilActivo = usuarioActual?.rol === "ADMINISTRADOR" ? usuarioActual : usuario;
+  const perfilActivo = usuarioActual ?? usuario;
   const accesoDenegado = perfilActivo && perfilActivo.rol !== "ADMINISTRADOR";
 
   if (!hydrated || !token || (loading && !perfilActivo)) {

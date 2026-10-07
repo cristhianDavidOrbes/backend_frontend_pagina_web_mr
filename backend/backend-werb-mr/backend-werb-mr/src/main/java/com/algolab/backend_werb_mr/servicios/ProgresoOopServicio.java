@@ -6,6 +6,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +41,8 @@ public class ProgresoOopServicio implements IProgresoOopServicio {
     private final IProgresoOopRepositorio progresoOopRepositorio;
     private final IProgresoNivelRepositorio progresoNivelRepositorio;
     private final IUsuarioServicio usuarioServicio;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     public ProgresoOopServicio(
@@ -67,12 +71,14 @@ public class ProgresoOopServicio implements IProgresoOopServicio {
     @Override
     @Transactional
     public ProgresoOopUsuarioDTO guardarProgreso(Usuario usuario, GuardarProgresoOopRequest request) {
-        logger.info("Guardando progreso OOP del usuario {} en nivel {}", usuario.getId(), request.getNivel());
+        usuario = BloqueoUsuario.recargar(entityManager, usuario);
         validarProgreso(usuario, request);
+        logger.info("Guardando progreso OOP del usuario {} en nivel {}", usuario.getId(), request.getNivel());
 
         ProgresoOop progreso = progresoOopRepositorio
                 .findByUsuarioAndNivel(usuario, request.getNivel())
-                .orElseGet(() -> crearProgreso(usuario, request.getNivel()));
+                .orElse(null);
+        if (progreso == null) progreso = crearProgreso(usuario, request.getNivel());
 
         boolean yaCompletado = Boolean.TRUE.equals(progreso.getCompletado());
         boolean completadoNuevo = Boolean.TRUE.equals(request.getCompletado());

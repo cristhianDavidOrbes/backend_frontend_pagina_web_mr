@@ -8,6 +8,7 @@ import { AvatarDisplay } from "@/components/avatar-display";
 import { EASE_OUT, Reveal } from "@/components/reveal";
 import { Dialog, EmptyState, Notice, PageHead, Spinner } from "@/components/ui";
 import { apiRequest } from "@/lib/client-api";
+import { startVisibleRefresh } from "@/lib/visible-refresh";
 import type { PerfilPublico, Ranking, RankingItem } from "@/lib/types";
 import { useAuthSession } from "@/lib/use-auth-session";
 
@@ -38,12 +39,17 @@ export default function EstudianteRankingPage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-    apiRequest<Ranking>("/api/ranking", token)
-      .then(setRanking)
+    let cancelado = false;
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(() => apiRequest<Ranking>("/api/ranking", token, {
+      cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]),
+    })
+      .then((data) => { if (!cancelado) { setRanking(data); setError(""); } })
       .catch((reason: unknown) => {
-        setError(reason instanceof Error ? reason.message : "No pudimos cargar el ranking.");
+        if (!cancelado) setError(reason instanceof Error ? reason.message : "No pudimos cargar el ranking.");
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelado) setLoading(false); }), 30_000);
+    return () => { cancelado = true; stop(); controller.abort(); };
   }, [hydrated, token]);
 
   const miPosicion = useMemo(

@@ -49,9 +49,9 @@ export default function DocenteLayout({ children }: { children: React.ReactNode 
     };
   }, [hydrated, token, router, retryKey]);
 
-  const usuarioActivo = sesion?.rol === "DOCENTE" ? sesion : usuario;
+  const usuarioActivo = sesion ?? usuario;
 
-  if (!hydrated || !token || (loading && !usuarioActivo)) {
+  if (!hydrated || !token || (loading && !usuarioActivo) || (usuarioActivo && usuarioActivo.rol !== "DOCENTE")) {
     return (
       <main className="shell-state">
         <div className="loading-card">Cargando tu grupo…</div>

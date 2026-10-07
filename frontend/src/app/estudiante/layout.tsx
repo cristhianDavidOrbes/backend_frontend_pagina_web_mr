@@ -65,9 +65,9 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
 
   // La sesión local se actualiza al guardar el perfil; el estado de /api/me
   // solo se leía una vez y dejaba el nombre y el avatar del menú desactualizados.
-  const activo = sesion?.rol === "ESTUDIANTE" ? sesion : usuario;
+  const activo = sesion ?? usuario;
 
-  if (validando && !activo) {
+  if ((validando && !activo) || (activo && activo.rol !== "ESTUDIANTE")) {
     return (
       <main className="shell-state">
         <div className="loading-card">Cargando tu espacio…</div>

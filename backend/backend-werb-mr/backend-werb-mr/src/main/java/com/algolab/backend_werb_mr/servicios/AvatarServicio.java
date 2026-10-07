@@ -7,6 +7,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -40,6 +42,8 @@ public class AvatarServicio {
 
     private final IAvatarUsuarioRepositorio avatarRepositorio;
     private final IUsuarioServicio usuarioServicio;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public AvatarServicio(IAvatarUsuarioRepositorio avatarRepositorio, IUsuarioServicio usuarioServicio) {
         this.avatarRepositorio = avatarRepositorio;
@@ -103,8 +107,10 @@ public class AvatarServicio {
         }
         ImagenNormalizada imagen = normalizarBytes(entrada);
         String etag = calcularSha256(imagen.contenido());
+        usuario = BloqueoUsuario.recargar(entityManager, usuario);
         AvatarUsuario avatar = avatarRepositorio.findById(usuario.getId())
-                .orElseGet(() -> new AvatarUsuario(usuario));
+                .orElse(null);
+        if (avatar == null) avatar = new AvatarUsuario(usuario);
 
         avatar.setUsuarioId(usuario.getId());
         avatar.setContenido(imagen.contenido());
@@ -131,6 +137,7 @@ public class AvatarServicio {
         if (usuario == null || usuario.getId() == null) {
             return;
         }
+        usuario = BloqueoUsuario.recargar(entityManager, usuario);
         avatarRepositorio.findById(usuario.getId()).ifPresent(avatarRepositorio::delete);
         usuario.setAvatarVersion(null);
         usuarioServicio.actualizar(usuario);

@@ -49,14 +49,15 @@ function mensajeDeError(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-async function consultarConfiguracion(token: string) {
-  return apiRequest<Configuracion2fa>("/api/auth/2fa/configuracion", token);
+async function consultarConfiguracion(token: string, signal?: AbortSignal) {
+  return apiRequest<Configuracion2fa>("/api/auth/2fa/configuracion", token, { signal });
 }
 
 export function TwoFactorSettings({ token }: Props) {
   const [config, setConfig] = useState<Configuracion2fa | null>(null);
   const [cargando, setCargando] = useState(true);
   const [reintentos, setReintentos] = useState(0);
+  const [ultimaCarga, setUltimaCarga] = useState({ token: "", reintentos: -1 });
   const [mensaje, setMensaje] = useState<{ tipo: "exito" | "error"; texto: string } | null>(null);
 
   // Modales
@@ -90,9 +91,9 @@ export function TwoFactorSettings({ token }: Props) {
 
   useEffect(() => {
     let cancelado = false;
-    setCargando(true);
+    const controller = new AbortController();
 
-    consultarConfiguracion(token)
+    consultarConfiguracion(token, AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]))
       .then((data) => {
         if (!cancelado) {
           setConfig(data);
@@ -105,11 +106,15 @@ export function TwoFactorSettings({ token }: Props) {
         }
       })
       .finally(() => {
-        if (!cancelado) setCargando(false);
+        if (!cancelado) {
+          setUltimaCarga({ token, reintentos });
+          setCargando(false);
+        }
       });
 
     return () => {
       cancelado = true;
+      controller.abort();
     };
   }, [token, reintentos]);
 
@@ -263,7 +268,7 @@ export function TwoFactorSettings({ token }: Props) {
     }
   }
 
-  if (cargando) {
+  if (cargando || ultimaCarga.token !== token || ultimaCarga.reintentos !== reintentos) {
     return (
       <div className="flex items-center justify-center py-12 text-xs text-slate-400">
         <Loader2 className="mr-2 h-4 w-4 animate-spin text-emerald-400" />

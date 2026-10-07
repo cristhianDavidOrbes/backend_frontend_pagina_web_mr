@@ -4,6 +4,7 @@ import { Layers3, Pencil, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { apiRequest } from "@/lib/client-api";
+import { startVisibleRefresh } from "@/lib/visible-refresh";
 
 type Nivel = {
   id: number;
@@ -45,19 +46,24 @@ export default function AdministradorNivelesPage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-
-    async function cargarDatos() {
-      try {
-        const data = await apiRequest<Nivel[]>("/api/niveles", token as string);
+    let cancelado = false, falloCarga = false;
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(() => apiRequest<Nivel[]>("/api/niveles", token, {
+      cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]),
+    })
+      .then((data) => {
+        if (cancelado) return;
         setNiveles(data);
-      } catch (error) {
+        if (falloCarga) setMensaje("");
+        falloCarga = false;
+      })
+      .catch((error: unknown) => {
+        if (cancelado) return;
+        falloCarga = true;
         setMensaje(error instanceof Error ? error.message : "Error al cargar niveles.");
-      } finally {
-        setDatosCargados(true);
-      }
-    }
-
-    void cargarDatos();
+      })
+      .finally(() => { if (!cancelado) setDatosCargados(true); }), 30_000);
+    return () => { cancelado = true; stop(); controller.abort(); };
   }, [hydrated, token]);
 
   async function guardarNivel(event: FormEvent<HTMLFormElement>) {

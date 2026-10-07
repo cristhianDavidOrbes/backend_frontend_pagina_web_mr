@@ -318,8 +318,7 @@ public class UsuarioControlador {
         // Operación intencionalmente idempotente: repetirla desde otra gafa o
         // tras una reconexión nunca revierte el estado ni crea efectos laterales.
         if (!usuario.isTutorialCompletado()) {
-            usuario.setTutorialCompletado(true);
-            usuario = usuarioServicio.actualizar(usuario);
+            usuario = usuarioServicio.marcarTutorialCompletado(usuario);
         }
 
         return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(usuario));
@@ -364,7 +363,7 @@ public class UsuarioControlador {
         usuario.setPrograma(limitarLongitud(request.getPrograma(), 120));
         usuario.setAvatar(avatar == null ? usuario.getAvatar() : avatar);
 
-        return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(usuarioServicio.actualizar(usuario)));
+        return ResponseEntity.ok(UsuarioSesionDTO.desdeUsuario(usuarioServicio.actualizarPerfil(usuario)));
     }
 
     @GetMapping("/{id}")
@@ -514,7 +513,9 @@ public class UsuarioControlador {
             usuario.setRol(rol);
         }
 
-        Usuario usuarioActualizado = usuarioServicio.actualizar(usuario);
+        Usuario usuarioActualizado = usuarioServicio.actualizarFicha(usuario,
+                tieneRol(authentication, Rol.ADMINISTRADOR) && limpiar(request.getRol()) != null,
+                request.getNivelActual() != null, request.getPuntaje() != null);
         return ResponseEntity.ok(UsuarioRespuestaDTO.desdeUsuario(usuarioActualizado));
     }
 
@@ -552,7 +553,8 @@ public class UsuarioControlador {
             return errorProgreso;
         }
 
-        Usuario usuarioActualizado = usuarioServicio.actualizar(usuario);
+        Usuario usuarioActualizado = usuarioServicio.corregirProgreso(usuario,
+                request.getNivelActual() != null, request.getPuntaje() != null);
         return ResponseEntity.ok(UsuarioRespuestaDTO.desdeUsuario(usuarioActualizado));
     }
 
@@ -574,7 +576,8 @@ public class UsuarioControlador {
                     "mensaje", "No puede eliminar su propia cuenta de administrador"));
         }
 
-        usuarioServicio.eliminarPorId(id);
+        if (datosUsuarioServicio != null) datosUsuarioServicio.borrarCuenta(id);
+        else usuarioServicio.eliminarPorId(id);
         return ResponseEntity.noContent().build();
     }
 

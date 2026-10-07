@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/client-api";
+import { startVisibleRefresh } from "@/lib/visible-refresh";
 import type { ProgresoUsuario, ReporteNivel, UsuarioSesion } from "@/lib/types";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { AvatarDisplay } from "@/components/avatar-display";
@@ -12,30 +13,48 @@ export default function DocenteEstudiantesPage() {
   const [estudiantes, setEstudiantes] = useState<UsuarioSesion[]>([]);
   const [reportes, setReportes] = useState<ReporteNivel[]>([]);
   const [seleccionado, setSeleccionado] = useState<UsuarioSesion | null>(null);
-  const [progreso, setProgreso] = useState<ProgresoUsuario | null>(null);
+  const [progresoRecibido, setProgreso] = useState<ProgresoUsuario | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const seleccionadoId = seleccionado?.id;
+  const progreso = progresoRecibido?.usuarioId === seleccionadoId ? progresoRecibido : null;
 
   useEffect(() => {
     if (!hydrated || !token) return;
-    Promise.all([
-      apiRequest<UsuarioSesion[]>("/api/usuarios", token),
-      apiRequest<ReporteNivel[]>("/api/reportes?todos=1", token),
-    ]).then(([usuariosData, reportesData]) => {
-      const alumnos = usuariosData.filter((item) => item.rol === "ESTUDIANTE");
-      setEstudiantes(alumnos);
-      setReportes(reportesData);
-      if (alumnos.length) setSeleccionado(alumnos[0]);
-    }).catch((reason: Error) => setError(reason.message)).finally(() => setLoading(false));
+    let cancelado = false;
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(async () => {
+      const options = { cache: "no-store" as const, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]) };
+      const [usuarios, informes] = await Promise.allSettled([
+        apiRequest<UsuarioSesion[]>("/api/usuarios", token, options),
+        apiRequest<ReporteNivel[]>("/api/reportes?todos=1", token, options),
+      ]);
+      if (cancelado) return;
+      if (usuarios.status === "fulfilled") {
+        const alumnos = usuarios.value.filter((item) => item.rol === "ESTUDIANTE");
+        setEstudiantes(alumnos);
+        setSeleccionado((actual) => alumnos.find((alumno) => alumno.id === actual?.id) ?? alumnos[0] ?? null);
+      }
+      if (informes.status === "fulfilled") setReportes(informes.value);
+      const fallo = [usuarios, informes].find((result) => result.status === "rejected");
+      setError(fallo?.status === "rejected" ? (fallo.reason instanceof Error ? fallo.reason.message : "No se pudo actualizar el grupo.") : "");
+      setLoading(false);
+    }, 30_000);
+    return () => { cancelado = true; stop(); controller.abort(); };
   }, [hydrated, token]);
 
   useEffect(() => {
-    if (!seleccionado || !token) return;
-    apiRequest<ProgresoUsuario>(`/api/progreso?usuarioId=${seleccionado.id}`, token)
-      .then(setProgreso)
-      .catch(() => setProgreso(null));
-  }, [seleccionado, token]);
+    if (!seleccionadoId || !token) return;
+    let cancelado = false;
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(() => apiRequest<ProgresoUsuario>(`/api/progreso?usuarioId=${seleccionadoId}`, token, {
+      cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]),
+    })
+      .then((data) => { if (!cancelado) setProgreso(data); })
+      .catch((reason: unknown) => { if (!cancelado) setError(reason instanceof Error ? reason.message : "No se pudo actualizar el progreso del estudiante."); }), 30_000);
+    return () => { cancelado = true; stop(); controller.abort(); };
+  }, [seleccionadoId, token]);
 
   const visibles = useMemo(() => {
     const query = busqueda.trim().toLowerCase();

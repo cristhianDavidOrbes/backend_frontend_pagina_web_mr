@@ -57,6 +57,14 @@ const listas: Array<{ campo: ListaCampo; titulo: string; ayuda: string }> = [
 
 const inputClass = "field-input text-sm";
 
+async function consultarTutor(token: string, signal?: AbortSignal) {
+  const [reglas, niveles] = await Promise.all([
+    apiRequest<PoliticaTutor>("/api/configuracion-tutor/reglas-sistema", token, { signal }),
+    apiRequest<ConfiguracionTutor[]>("/api/configuracion-tutor/niveles", token, { signal }),
+  ]);
+  return { reglas, niveles: [...niveles].sort((a, b) => a.nivel - b.nivel) };
+}
+
 function segundosATiempo(segundos: number) {
   const minutos = Math.floor(segundos / 60);
   const resto = segundos % 60;
@@ -78,11 +86,7 @@ export default function AdministradorTutorIaPage() {
     setCargando(true);
     setMensaje("");
     try {
-      const [reglas, niveles] = await Promise.all([
-        apiRequest<PoliticaTutor>("/api/configuracion-tutor/reglas-sistema", token),
-        apiRequest<ConfiguracionTutor[]>("/api/configuracion-tutor/niveles", token),
-      ]);
-      const ordenados = [...niveles].sort((a, b) => a.nivel - b.nivel);
+      const { reglas, niveles: ordenados } = await consultarTutor(token);
       setPolitica(reglas);
       setConfiguraciones(ordenados);
       const seleccionado = ordenados.find((item) => item.nivel === nivelActivo) ?? ordenados[0];
@@ -99,9 +103,25 @@ export default function AdministradorTutorIaPage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-    void cargar();
-    // La selección inicial se resuelve con los datos recibidos del backend.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelado = false;
+    const controller = new AbortController();
+    consultarTutor(token, AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]))
+      .then(({ reglas, niveles }) => {
+        if (cancelado) return;
+        setPolitica(reglas);
+        setConfiguraciones(niveles);
+        setMensaje("");
+        const primero = niveles[0];
+        if (primero) {
+          setNivelActivo(primero.nivel);
+          setBorrador(structuredClone(primero));
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelado) setMensaje(error instanceof Error ? error.message : "No se pudo cargar la configuración del tutor.");
+      })
+      .finally(() => { if (!cancelado) setCargando(false); });
+    return () => { cancelado = true; controller.abort(); };
   }, [hydrated, token]);
 
   const configuracionActiva = useMemo(
@@ -144,8 +164,19 @@ export default function AdministradorTutorIaPage() {
     }
   }
 
-  if (cargando || !borrador) {
+  if (cargando) {
     return <div className="loading-card mt-5">Cargando reglas, evidencias y parámetros del tutor…</div>;
+  }
+
+  if (!borrador) {
+    return (
+      <section className="panel-card mt-5 p-5 sm:p-6" role="alert">
+        <p>{mensaje || "No hay configuración del tutor disponible."}</p>
+        <button className="secondary-button mt-4" onClick={() => void cargar()} type="button">
+          <RefreshCw size={15} /> Reintentar
+        </button>
+      </section>
+    );
   }
 
   const exito = /guardada/i.test(mensaje);

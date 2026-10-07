@@ -20,6 +20,21 @@ public interface IUsuarioServicio {
 
     Usuario actualizar(Usuario usuario);
 
+    default Usuario actualizarPerfil(Usuario usuario) { return actualizar(usuario); }
+
+    default Usuario marcarTutorialCompletado(Usuario usuario) {
+        usuario.setTutorialCompletado(true);
+        return actualizar(usuario);
+    }
+
+    default Usuario actualizarFicha(Usuario usuario, boolean incluirRol, boolean incluirNivel, boolean incluirPuntaje) {
+        return actualizar(usuario);
+    }
+
+    default Usuario corregirProgreso(Usuario usuario, boolean incluirNivel, boolean incluirPuntaje) {
+        return actualizar(usuario);
+    }
+
     void eliminarPorId(Long id);
 
     Optional<Usuario> buscarPorCorreo(String correo);

@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:code-runner": "node scripts/verify-code-runner-isolation.mjs",
-    "test:compiler-errors": "node --experimental-strip-types scripts/verify-compiler-errors.mjs"
+    "test:compiler-errors": "node --import ./scripts/node-typescript-register.mjs --experimental-strip-types scripts/verify-compiler-errors.mjs",
+    "test:release-api": "node scripts/verify-release-api.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
@@ -19,7 +20,7 @@
     "framer-motion": "^13.1.0",
     "geist": "^1.7.2",
     "lucide-react": "^1.31.0",
-    "next": "^16.3.1",
+    "next": "16.3.6",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -32,7 +33,7 @@
     "@types/three": "^0.185.4",
     "autoprefixer": "^10.5.0",
     "eslint": "^9",
-    "eslint-config-next": "^16.3.1",
+    "eslint-config-next": "16.3.6",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"

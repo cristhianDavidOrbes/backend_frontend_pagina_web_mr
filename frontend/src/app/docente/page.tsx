@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/client-api";
+import { startVisibleRefresh } from "@/lib/visible-refresh";
 import type { Nivel, ReporteNivel, UsuarioSesion } from "@/lib/types";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { AvatarDisplay } from "@/components/avatar-display";
@@ -27,15 +28,24 @@ export default function DocentePage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-    Promise.all([
-      apiRequest<UsuarioSesion[]>("/api/usuarios", token),
-      apiRequest<ReporteNivel[]>("/api/reportes?todos=1", token),
-      apiRequest<Nivel[]>("/api/niveles", token),
-    ]).then(([usuariosData, reportesData, nivelesData]) => {
-      setEstudiantes(usuariosData.filter((item) => item.rol === "ESTUDIANTE"));
-      setReportes(reportesData);
-      setNiveles(nivelesData);
-    }).catch((reason: Error) => setError(reason.message)).finally(() => setLoading(false));
+    let cancelado = false;
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(async () => {
+      const options = { cache: "no-store" as const, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]) };
+      const [usuarios, informes, ruta] = await Promise.allSettled([
+        apiRequest<UsuarioSesion[]>("/api/usuarios", token, options),
+        apiRequest<ReporteNivel[]>("/api/reportes?todos=1", token, options),
+        apiRequest<Nivel[]>("/api/niveles", token, options),
+      ]);
+      if (cancelado) return;
+      if (usuarios.status === "fulfilled") setEstudiantes(usuarios.value.filter((item) => item.rol === "ESTUDIANTE"));
+      if (informes.status === "fulfilled") setReportes(informes.value);
+      if (ruta.status === "fulfilled") setNiveles(ruta.value);
+      const fallo = [usuarios, informes, ruta].find((result) => result.status === "rejected");
+      setError(fallo?.status === "rejected" ? (fallo.reason instanceof Error ? fallo.reason.message : "No se pudieron actualizar las métricas.") : "");
+      setLoading(false);
+    }, 30_000);
+    return () => { cancelado = true; stop(); controller.abort(); };
   }, [hydrated, token]);
 
   const completados = reportes.filter((item) => item.completado).length;

@@ -5,6 +5,7 @@ import { Activity, BookOpen, GraduationCap, ShieldCheck, UserCog, Users } from "
 import { useEffect, useState } from "react";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { apiRequest } from "@/lib/client-api";
+import { startVisibleRefresh } from "@/lib/visible-refresh";
 
 type Rol = "ESTUDIANTE" | "DOCENTE" | "ADMINISTRADOR";
 
@@ -38,24 +39,22 @@ export default function AdministradorPage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-
-    async function cargarDatosIniciales() {
-      try {
-        const [usuariosDatos, nivelesDatos] = await Promise.all([
-          apiRequest<Usuario[]>("/api/usuarios", token as string),
-          apiRequest<Nivel[]>("/api/niveles", token as string),
-        ]);
-
-        setUsuarios(usuariosDatos);
-        setNiveles(nivelesDatos);
-      } catch (error) {
-        setMensaje(error instanceof Error ? error.message : "Error al cargar datos.");
-      } finally {
-        setDatosCargados(true);
-      }
-    }
-
-    void cargarDatosIniciales();
+    let cancelado = false;
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(async () => {
+      const options = { cache: "no-store" as const, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]) };
+      const [personas, ruta] = await Promise.allSettled([
+        apiRequest<Usuario[]>("/api/usuarios", token, options),
+        apiRequest<Nivel[]>("/api/niveles", token, options),
+      ]);
+      if (cancelado) return;
+      if (personas.status === "fulfilled") setUsuarios(personas.value);
+      if (ruta.status === "fulfilled") setNiveles(ruta.value);
+      const fallo = [personas, ruta].find((result) => result.status === "rejected");
+      setMensaje(fallo?.status === "rejected" ? (fallo.reason instanceof Error ? fallo.reason.message : "No se pudieron actualizar los datos.") : "");
+      setDatosCargados(true);
+    }, 30_000);
+    return () => { cancelado = true; stop(); controller.abort(); };
   }, [hydrated, token]);
 
   const estudiantes = usuarios.filter((usuario) => usuario.rol === "ESTUDIANTE").length;

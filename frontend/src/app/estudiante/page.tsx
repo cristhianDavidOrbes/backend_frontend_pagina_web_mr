@@ -31,12 +31,17 @@ type EstadoNivel = "completado" | "actual" | "disponible" | "bloqueado";
 export default function EstudiantePage() {
   const reduce = useReducedMotion();
   const { hydrated, token, usuario: sesion } = useAuthSession();
-  const [progreso, setProgreso] = useState<ProgresoUsuario | null>(null);
-  const [reportes, setReportes] = useState<ReporteNivel[]>([]);
+  const [progresoRecibido, setProgreso] = useState<ProgresoUsuario | null>(null);
+  const [reportesRecibidos, setReportes] = useState<ReporteNivel[]>([]);
   const [niveles, setNiveles] = useState<Nivel[]>([]);
   const [ranking, setRanking] = useState<Ranking | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const progreso = progresoRecibido?.usuarioId === sesion?.id ? progresoRecibido : null;
+  const reportes = useMemo(
+    () => reportesRecibidos.filter((reporte) => reporte.usuarioId === sesion?.id),
+    [reportesRecibidos, sesion?.id],
+  );
 
   useEffect(() => {
     if (!hydrated || !token) return;

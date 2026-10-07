@@ -1,0 +1,290 @@
+{
+  "test": "HTTP real Java/Spring/H2; datos sintéticos; no producción; no generación LLM",
+  "runId": "e2e-1791370537528-d27e8a",
+  "passed": true,
+  "assertions": 906,
+  "participants": 20,
+  "concurrentActors": 10,
+  "maximumInFlight": 17,
+  "persistedSyntheticAccounts": 19,
+  "requests": 291,
+  "unexpectedErrors": 0,
+  "elapsedSeconds": 1.47,
+  "latency": {
+    "count": 291,
+    "medianMs": 20,
+    "p95Ms": 72,
+    "maximumMs": 103
+  },
+  "byRoute": {
+    "POST /api/usuarios/iniciar-sesion": {
+      "count": 24,
+      "medianMs": 69,
+      "p95Ms": 80,
+      "maximumMs": 103
+    },
+    "GET /api/progreso/me": {
+      "count": 48,
+      "medianMs": 13,
+      "p95Ms": 27,
+      "maximumMs": 29
+    },
+    "GET /api/usuarios": {
+      "count": 1,
+      "medianMs": 4,
+      "p95Ms": 4,
+      "maximumMs": 4
+    },
+    "GET /api/configuracion-tutor/niveles": {
+      "count": 2,
+      "medianMs": 6,
+      "p95Ms": 9,
+      "maximumMs": 9
+    },
+    "POST /api/usuarios/registrar": {
+      "count": 21,
+      "medianMs": 71,
+      "p95Ms": 76,
+      "maximumMs": 78
+    },
+    "POST /api/progreso": {
+      "count": 102,
+      "medianMs": 22,
+      "p95Ms": 31,
+      "maximumMs": 38
+    },
+    "GET /api/reportes-nivel/me": {
+      "count": 41,
+      "medianMs": 21,
+      "p95Ms": 35,
+      "maximumMs": 40
+    },
+    "PUT /api/reportes-nivel/:id/ia": {
+      "count": 22,
+      "medianMs": 18,
+      "p95Ms": 21,
+      "maximumMs": 21
+    },
+    "GET /api/usuarios/me": {
+      "count": 20,
+      "medianMs": 9,
+      "p95Ms": 13,
+      "maximumMs": 13
+    },
+    "GET /api/progreso/usuario/:id": {
+      "count": 2,
+      "medianMs": 5,
+      "p95Ms": 5,
+      "maximumMs": 5
+    },
+    "GET /api/reportes-nivel/usuario/:id": {
+      "count": 2,
+      "medianMs": 6,
+      "p95Ms": 11,
+      "maximumMs": 11
+    },
+    "PUT /api/usuarios/:id": {
+      "count": 2,
+      "medianMs": 8,
+      "p95Ms": 9,
+      "maximumMs": 9
+    },
+    "GET /api/reportes-nivel": {
+      "count": 2,
+      "medianMs": 4,
+      "p95Ms": 12,
+      "maximumMs": 12
+    },
+    "DELETE /api/usuarios/:id": {
+      "count": 1,
+      "medianMs": 11,
+      "p95Ms": 11,
+      "maximumMs": 11
+    },
+    "GET /api/ranking": {
+      "count": 1,
+      "medianMs": 5,
+      "p95Ms": 5,
+      "maximumMs": 5
+    }
+  },
+  "statusCounts": {
+    "200": 258,
+    "201": 20,
+    "204": 1,
+    "400": 1,
+    "401": 4,
+    "403": 6,
+    "409": 1
+  },
+  "accounts": [
+    {
+      "label": "participante-01",
+      "usuarioId": 27,
+      "puntaje": 640,
+      "tiempoJugadoSegundos": 500,
+      "niveles": 4,
+      "informes": 4,
+      "mejoradoDuranteVerificacion": true
+    },
+    {
+      "label": "participante-02",
+      "usuarioId": 26,
+      "puntaje": 618,
+      "tiempoJugadoSegundos": 454,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-03",
+      "usuarioId": 25,
+      "puntaje": 619,
+      "tiempoJugadoSegundos": 455,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-04",
+      "usuarioId": 24,
+      "puntaje": 620,
+      "tiempoJugadoSegundos": 456,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-05",
+      "usuarioId": 28,
+      "puntaje": 621,
+      "tiempoJugadoSegundos": 457,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-06",
+      "usuarioId": 29,
+      "puntaje": 622,
+      "tiempoJugadoSegundos": 458,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-07",
+      "usuarioId": 30,
+      "puntaje": 623,
+      "tiempoJugadoSegundos": 459,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-08",
+      "usuarioId": 31,
+      "puntaje": 624,
+      "tiempoJugadoSegundos": 460,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-09",
+      "usuarioId": 32,
+      "puntaje": 625,
+      "tiempoJugadoSegundos": 461,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-10",
+      "usuarioId": 34,
+      "puntaje": 626,
+      "tiempoJugadoSegundos": 462,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-11",
+      "usuarioId": 33,
+      "puntaje": 617,
+      "tiempoJugadoSegundos": 463,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-12",
+      "usuarioId": 35,
+      "puntaje": 618,
+      "tiempoJugadoSegundos": 464,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-13",
+      "usuarioId": 36,
+      "puntaje": 619,
+      "tiempoJugadoSegundos": 465,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-14",
+      "usuarioId": 37,
+      "puntaje": 620,
+      "tiempoJugadoSegundos": 466,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-15",
+      "usuarioId": 38,
+      "puntaje": 621,
+      "tiempoJugadoSegundos": 467,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-16",
+      "usuarioId": 39,
+      "puntaje": 622,
+      "tiempoJugadoSegundos": 468,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-17",
+      "usuarioId": 40,
+      "puntaje": 623,
+      "tiempoJugadoSegundos": 469,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-18",
+      "usuarioId": 41,
+      "puntaje": 624,
+      "tiempoJugadoSegundos": 470,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-19",
+      "usuarioId": 42,
+      "puntaje": 625,
+      "tiempoJugadoSegundos": 471,
+      "niveles": 4,
+      "informes": 4
+    },
+    {
+      "label": "participante-20",
+      "usuarioId": 43,
+      "puntaje": 626,
+      "tiempoJugadoSegundos": 472,
+      "niveles": 4,
+      "informes": 4,
+      "eliminadoTrasVerificacion": true
+    }
+  ],
+  "failures": [],
+  "limitations": [
+    "H2 y hardware local no acreditan capacidad de PostgreSQL/Render.",
+    "Los contenidos de informe son sintéticos: esta prueba no invoca Ollama ni ElevenLabs.",
+    "No demuestra disponibilidad permanente de red ni experiencia en el dispositivo Quest."
+  ]
+}

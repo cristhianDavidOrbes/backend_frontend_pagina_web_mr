@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 
 import { CONTRASENA_DEMO, CUENTAS_DEMO, crearServidorDemo } from "./servidor-demo.mjs";
 import { buscarPuerto, esperarRespuesta } from "./utilidades.mjs";
@@ -16,25 +17,36 @@ export async function iniciarDemo({ silencioso = false } = {}) {
   });
 
   const windows = process.platform === "win32";
-  const next = spawn("npx", ["next", "dev", "-p", String(puertoWeb)], {
+  const nextCli = createRequire(import.meta.url).resolve("next/dist/bin/next");
+  const next = spawn(process.execPath, [nextCli, "dev", "-p", String(puertoWeb)], {
     stdio: silencioso ? "ignore" : "inherit",
-    shell: windows,
     detached: !windows,
     env: { ...process.env, API_BASE_URL: api, NEXT_DIST_DIR: ".next/demo", NEXT_TELEMETRY_DISABLED: "1" },
   });
 
+  let cierre;
   function cerrar() {
-    servidor.close();
-    if (!next.pid) return;
-    if (windows) {
-      spawn("taskkill", ["/pid", String(next.pid), "/T", "/F"], { stdio: "ignore" });
-    } else {
-      try {
-        process.kill(-next.pid, "SIGTERM");
-      } catch {
-        next.kill("SIGTERM");
+    cierre ??= (async () => {
+      const cerrarServidor = new Promise((resolve) => servidor.close(resolve));
+      servidor.closeAllConnections();
+      if (next.pid) {
+        if (windows) {
+          await new Promise((resolve) => {
+            const terminar = spawn("taskkill", ["/pid", String(next.pid), "/T", "/F"], { stdio: "ignore" });
+            terminar.once("close", resolve);
+            terminar.once("error", resolve);
+          });
+        } else {
+          try {
+            process.kill(-next.pid, "SIGTERM");
+          } catch {
+            next.kill("SIGTERM");
+          }
+        }
       }
-    }
+      await cerrarServidor;
+    })();
+    return cierre;
   }
 
   const terminoAntes = new Promise((_, reject) =>
@@ -44,7 +56,7 @@ export async function iniciarDemo({ silencioso = false } = {}) {
     await esperarRespuesta(`${api}/api/ranking`);
     await Promise.race([esperarRespuesta(`${web}/iniciar-sesion`), terminoAntes]);
   } catch (error) {
-    cerrar();
+    await cerrar();
     throw error;
   }
   terminoAntes.catch(() => {});
@@ -67,8 +79,8 @@ if (comoScript) {
   for (const cuenta of CUENTAS_DEMO) console.log(`  ${cuenta.rol.padEnd(36)} ${cuenta.correo}`);
   console.log("\n  Ctrl+C para salir.\n");
 
-  const salir = () => {
-    demo.cerrar();
+  const salir = async () => {
+    await demo.cerrar();
     process.exit(0);
   };
   demo.next.on("exit", salir);

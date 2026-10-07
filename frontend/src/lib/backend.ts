@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 const DEFAULT_API_BASE_URL = "https://algolab-backend-7j0h.onrender.com";
+const BACKEND_TIMEOUT_MS = 85_000;
 
 type ProxyOptions = {
   request: Request;
@@ -22,20 +23,27 @@ function authorizationHeaders(request: Request): Headers {
   return headers;
 }
 
+function backendSignal(request: Request) {
+  // El cliente espera 90 s: responder antes y cancelar también al salir de la
+  // página evita dejar conexiones huérfanas cuando muchos usuarios consultan.
+  return AbortSignal.any([request.signal, AbortSignal.timeout(BACKEND_TIMEOUT_MS)]);
+}
+
 async function respuestaJson(respuesta: Response) {
   const texto = await respuesta.text();
   if (respuesta.status === 204 || !texto) {
-    return new Response(null, { status: respuesta.status });
+    return new Response(null, { status: respuesta.status, headers: { "Cache-Control": "private, no-store" } });
   }
 
   let datos: unknown;
   try {
     datos = JSON.parse(texto);
   } catch {
-    datos = { mensaje: respuesta.ok ? texto : (texto || `Error HTTP ${respuesta.status}`) };
+    if (respuesta.ok) throw new Error("El backend devolvió una respuesta no válida en lugar de datos JSON.");
+    datos = { mensaje: texto || `Error HTTP ${respuesta.status}` };
   }
 
-  return NextResponse.json(datos, { status: respuesta.status });
+  return NextResponse.json(datos, { status: respuesta.status, headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function proxyBackend({ request, path, method }: ProxyOptions) {
@@ -59,9 +67,10 @@ export async function proxyBackend({ request, path, method }: ProxyOptions) {
       headers,
       body: method === "GET" || method === "DELETE" ? undefined : await request.text(),
       cache: "no-store",
+      signal: backendSignal(request),
     });
 
-    return respuestaJson(respuesta);
+    return await respuestaJson(respuesta);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Error de red";
     return NextResponse.json(
@@ -79,14 +88,16 @@ export async function proxyBackendAvatar(request: Request, method: "POST" | "PUT
   try {
     const headers = authorizationHeaders(request);
     const contentType = request.headers.get("content-type") || "";
+    const signal = backendSignal(request);
 
     if (method === "DELETE") {
       const respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/me/avatar`, {
         method: "DELETE",
         headers,
         cache: "no-store",
+        signal,
       });
-      return respuestaJson(respuesta);
+      return await respuestaJson(respuesta);
     }
 
     let payload: string | FormData;
@@ -119,6 +130,7 @@ export async function proxyBackendAvatar(request: Request, method: "POST" | "PUT
       headers,
       body: payload,
       cache: "no-store",
+      signal,
     });
 
     // Compatibilidad temporal con cualquier backend intermedio que solo
@@ -129,10 +141,11 @@ export async function proxyBackendAvatar(request: Request, method: "POST" | "PUT
         headers,
         body: payload,
         cache: "no-store",
+        signal,
       });
     }
 
-    return respuestaJson(respuesta);
+    return await respuestaJson(respuesta);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Error de red";
     return NextResponse.json({ mensaje: `No se pudo conectar con el backend (${msg})` }, { status: 502 });
@@ -149,6 +162,7 @@ export async function proxyBackendAvatarPublico(
     const respuesta = await fetch(`${apiBaseUrl()}/api/usuarios/${usuarioId}/avatar${suffix}`, {
       headers: authorizationHeaders(request),
       cache: "no-store",
+      signal: backendSignal(request),
     });
 
     if (!respuesta.ok) {

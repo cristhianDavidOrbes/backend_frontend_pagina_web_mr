@@ -33,7 +33,18 @@ export async function apiRequest<T>(path: string, token: string, init?: RequestI
     throw new Error("No se pudo conectar con el servidor. Comprueba Internet y vuelve a intentarlo.");
   }
 
-  const text = await response.text();
+  let text: string;
+  try {
+    text = await response.text();
+  } catch {
+    throw new Error("La respuesta se interrumpió. Comprueba Internet y vuelve a intentarlo.");
+  }
+
+  // Una respuesta tardía de otra cuenta no debe cerrar ni modificar la sesión
+  // nueva, incluso si pertenece a una petición que devolvió HTTP 200.
+  if (token && typeof window !== "undefined" && window.localStorage.getItem("token") !== token) {
+    throw new ApiRequestError("La sesión cambió mientras se procesaba la petición.", 409);
+  }
   let data: unknown = null;
   if (text) {
     try {

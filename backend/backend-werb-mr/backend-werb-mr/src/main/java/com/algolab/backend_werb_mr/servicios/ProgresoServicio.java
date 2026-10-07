@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 
 import org.slf4j.Logger;
@@ -112,9 +111,7 @@ public class ProgresoServicio implements IProgresoServicio {
     public ProgresoUsuarioDTO guardarProgreso(Usuario usuario, GuardarProgresoRequest request) {
         // Serializar actualizaciones de la misma cuenta (gafas, web o reintento)
         // y calcular totales sobre el usuario vigente, no un perfil desasociado.
-        if (entityManager != null && usuario != null && usuario.getId() != null) {
-            usuario = entityManager.find(Usuario.class, usuario.getId(), LockModeType.PESSIMISTIC_WRITE);
-        }
+        usuario = BloqueoUsuario.recargar(entityManager, usuario);
         validarProgresoRecibido(usuario, request);
         logger.info("Guardando progreso del usuario {} en nivel {}", usuario.getId(), request.getNivel());
 

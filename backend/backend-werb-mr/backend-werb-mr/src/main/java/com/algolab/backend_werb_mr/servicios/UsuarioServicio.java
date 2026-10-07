@@ -2,9 +2,12 @@ package com.algolab.backend_werb_mr.servicios;
 
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.modelos.Rol;
@@ -16,6 +19,8 @@ import com.algolab.backend_werb_mr.seguridad.NumeroCelular;
 public class UsuarioServicio implements IUsuarioServicio {
     private final Repositorio repositorio;
     private final PasswordEncoder passwordEncoder;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public UsuarioServicio(Repositorio repositorio, PasswordEncoder passwordEncoder) {
         this.repositorio = repositorio;
@@ -83,6 +88,59 @@ public class UsuarioServicio implements IUsuarioServicio {
             usuario.setCorreo(correo);
         }
         return repositorio.actualizar(usuario);
+    }
+
+    @Override
+    @Transactional
+    public Usuario actualizarPerfil(Usuario datos) {
+        // Capturar la intención antes de refresh: con OpenEntityManagerInView,
+        // datos y el perfil recargado pueden ser la misma instancia JPA.
+        String nombre = datos.getNombre();
+        String nombreUsuario = datos.getNombreUsuario();
+        String biografia = datos.getBiografia();
+        String institucion = datos.getInstitucion();
+        String programa = datos.getPrograma();
+        String avatar = datos.getAvatar();
+        Usuario vigente = BloqueoUsuario.recargar(entityManager, datos);
+        vigente.setNombre(nombre); vigente.setNombreUsuario(nombreUsuario);
+        vigente.setBiografia(biografia); vigente.setInstitucion(institucion);
+        vigente.setPrograma(programa); vigente.setAvatar(avatar);
+        return actualizar(vigente);
+    }
+
+    @Override
+    @Transactional
+    public Usuario marcarTutorialCompletado(Usuario usuario) {
+        Usuario vigente = BloqueoUsuario.recargar(entityManager, usuario);
+        vigente.setTutorialCompletado(true);
+        return actualizar(vigente);
+    }
+
+    @Override
+    @Transactional
+    public Usuario actualizarFicha(Usuario datos, boolean incluirRol, boolean incluirNivel, boolean incluirPuntaje) {
+        String nombre = datos.getNombre();
+        String correo = datos.getCorreo();
+        Rol rol = datos.getRol();
+        Integer nivel = datos.getNivelActual();
+        Integer puntaje = datos.getPuntaje();
+        Usuario vigente = BloqueoUsuario.recargar(entityManager, datos);
+        vigente.setNombre(nombre); vigente.setCorreo(correo);
+        if (incluirRol) vigente.setRol(rol);
+        if (incluirNivel) vigente.setNivelActual(nivel);
+        if (incluirPuntaje) vigente.setPuntaje(puntaje);
+        return actualizar(vigente);
+    }
+
+    @Override
+    @Transactional
+    public Usuario corregirProgreso(Usuario datos, boolean incluirNivel, boolean incluirPuntaje) {
+        Integer nivel = datos.getNivelActual();
+        Integer puntaje = datos.getPuntaje();
+        Usuario vigente = BloqueoUsuario.recargar(entityManager, datos);
+        if (incluirNivel) vigente.setNivelActual(nivel);
+        if (incluirPuntaje) vigente.setPuntaje(puntaje);
+        return actualizar(vigente);
     }
 
     @Override

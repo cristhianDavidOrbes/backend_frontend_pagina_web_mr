@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { apiRequest } from "@/lib/client-api";
+import { startVisibleRefresh } from "@/lib/visible-refresh";
 import type { ReporteNivel } from "@/lib/types";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { Search } from "lucide-react";
@@ -15,10 +16,15 @@ export default function DocenteReportesPage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-    apiRequest<ReporteNivel[]>("/api/reportes?todos=1", token)
-      .then(setReportes)
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
+    let cancelado = false;
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(() => apiRequest<ReporteNivel[]>("/api/reportes?todos=1", token, {
+      cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]),
+    })
+      .then((data) => { if (!cancelado) { setReportes(data); setError(""); } })
+      .catch((err: unknown) => { if (!cancelado) setError(err instanceof Error ? err.message : "No se pudieron actualizar los reportes."); })
+      .finally(() => { if (!cancelado) setLoading(false); }), 30_000);
+    return () => { cancelado = true; stop(); controller.abort(); };
   }, [hydrated, token]);
 
   const reportesFiltrados = useMemo(() => {

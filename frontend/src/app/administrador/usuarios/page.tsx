@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { EASE_OUT, Swap } from "@/components/reveal";
 import { AnimatedNotice, Dialog, EmptyState, PageHead, Segmented, Spinner, type Tone } from "@/components/ui";
 import { apiRequest } from "@/lib/client-api";
+import { startVisibleRefresh } from "@/lib/visible-refresh";
 import { useAuthSession } from "@/lib/use-auth-session";
 
 type Rol = "ESTUDIANTE" | "DOCENTE" | "ADMINISTRADOR";
@@ -64,21 +65,26 @@ export default function AdministradorUsuariosPage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-    async function cargarDatos() {
-      setDatosCargados(false);
-      setErrorCarga(false);
-      setMensaje({ texto: "", tono: "info" });
-      try {
-        const data = await apiRequest<Usuario[]>("/api/usuarios", token as string);
+    let cancelado = false, falloCarga = false;
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(() => apiRequest<Usuario[]>("/api/usuarios", token, {
+      cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]),
+    })
+      .then((data) => {
+        if (cancelado) return;
         setUsuarios(data);
-      } catch (error) {
+        setErrorCarga(false);
+        if (falloCarga) setMensaje({ texto: "", tono: "info" });
+        falloCarga = false;
+      })
+      .catch((error: unknown) => {
+        if (cancelado) return;
+        falloCarga = true;
         setErrorCarga(true);
         setMensaje({ texto: error instanceof Error ? error.message : "No se pudieron cargar los usuarios.", tono: "error" });
-      } finally {
-        setDatosCargados(true);
-      }
-    }
-    void cargarDatos();
+      })
+      .finally(() => { if (!cancelado) setDatosCargados(true); }), 30_000);
+    return () => { cancelado = true; stop(); controller.abort(); };
   }, [hydrated, token, reintentos]);
 
   const ocupado = guardando || borrando;

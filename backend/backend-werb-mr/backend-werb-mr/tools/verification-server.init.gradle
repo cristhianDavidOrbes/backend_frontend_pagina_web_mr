@@ -1,0 +1,13 @@
+// Solo comprobación local: usa H2 del runtime de pruebas, nunca el runtime publicado.
+allprojects {
+    afterEvaluate {
+        if (plugins.hasPlugin('java')) {
+            tasks.register('runReleaseVerification', JavaExec) {
+                dependsOn testClasses
+                classpath = sourceSets.test.runtimeClasspath
+                mainClass = 'com.algolab.backend_werb_mr.verification.ReleaseVerificationServer'
+                jvmArgs '-Dspring.devtools.restart.enabled=false'
+            }
+        }
+    }
+}
