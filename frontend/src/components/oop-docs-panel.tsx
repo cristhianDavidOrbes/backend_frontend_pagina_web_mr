@@ -3,6 +3,7 @@
 import type { MiniNivel, LenguajeOOP } from "@/lib/oop-niveles";
 import { BookOpen, Sparkles, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { LanguageIcon } from "@/components/language-icon";
 
 type Props = {
   nivel: MiniNivel;
@@ -111,7 +112,7 @@ export function OopDocsPanel({
         {/* Example */}
         <div className="oop-section">
           <h3 className="oop-section-title">
-            💻 Ejemplo en {lenguaje === "python" ? "Python 🐍" : "Java ☕"}
+            <LanguageIcon lenguaje={lenguaje} size={14} /> Ejemplo en {lenguaje === "python" ? "Python" : "Java"}
           </h3>
           <CodeBlock code={ejemploCodigo} />
         </div>

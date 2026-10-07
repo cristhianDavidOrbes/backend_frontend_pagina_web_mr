@@ -38,6 +38,7 @@ import {
   type OopSyncItem,
   type OopSyncPayload,
 } from "@/lib/oop-sync-queue";
+import { LanguageIcon } from "@/components/language-icon";
 import styles from "../programar-poo.module.css";
 
 const STORAGE_KEY = "oop_progreso";
@@ -906,14 +907,14 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                 onClick={() => cambiarLenguaje("python")}
                 title="Programar en Python"
               >
-                🐍 Python
+                <LanguageIcon lenguaje="python" size={14} /> Python
               </button>
               <button
                 className={`oop-lang-tab-mini ${lenguaje === "java" ? "active" : ""}`}
                 onClick={() => cambiarLenguaje("java")}
                 title="Programar en Java"
               >
-                ☕ Java
+                <LanguageIcon lenguaje="java" size={14} /> Java
               </button>
             </div>
 

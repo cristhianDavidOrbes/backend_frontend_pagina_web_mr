@@ -12,6 +12,7 @@ import {
 import { OOP_NIVELES, type MiniNivel } from "@/lib/oop-niveles";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { apiRequest } from "@/lib/client-api";
+import { LanguageIcon } from "@/components/language-icon";
 import styles from "./programar-poo.module.css";
 
 const STORAGE_KEY = "oop_progreso";
@@ -239,7 +240,7 @@ export default function CodigoPage() {
                   onClick={() => cambiarLenguaje("python")}
                   title="Aprender en Python"
                 >
-                  <span aria-hidden="true">🐍</span> Python
+                  <LanguageIcon lenguaje="python" size={15} /> Python
                 </button>
                 <button
                   type="button"
@@ -247,7 +248,7 @@ export default function CodigoPage() {
                   onClick={() => cambiarLenguaje("java")}
                   title="Aprender en Java"
                 >
-                  <span aria-hidden="true">☕</span> Java
+                  <LanguageIcon lenguaje="java" size={15} /> Java
                 </button>
               </div>
             </div>
