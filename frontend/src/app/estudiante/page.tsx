@@ -21,7 +21,8 @@ import { LevelObject } from "@/components/level-object";
 import { Reveal, Stagger, StaggerItem } from "@/components/reveal";
 import { Notice, ProgressBar, Stat } from "@/components/ui";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
-import { PUNTAJE_MAXIMO_NIVEL, RUTA_MR, TOTAL_NIVELES_MR, esNivelDeRuta, nivelActualEnRuta, nivelRuta } from "@/lib/ruta-mr";
+import { puntajeMaximoNivel, RUTA_MR, TOTAL_NIVELES_MR, esNivelDeRuta, nivelActualEnRuta, nivelRuta } from "@/lib/ruta-mr";
+import { startVisibleRefresh } from "@/lib/visible-refresh";
 import type { Nivel, ProgresoNivel, ProgresoUsuario, Ranking, ReporteNivel } from "@/lib/types";
 import { useAuthSession } from "@/lib/use-auth-session";
 
@@ -40,10 +41,12 @@ export default function EstudiantePage() {
   useEffect(() => {
     if (!hydrated || !token) return;
     let cancelado = false;
-    const opciones = { signal: AbortSignal.timeout(45_000) };
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(async () => {
+    const opciones = { cache: "no-store" as const, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]) };
 
-    apiRequest<ProgresoUsuario>("/api/progreso", token, opciones)
-      .then((avance) => { if (!cancelado) setProgreso(avance); })
+    const avance = apiRequest<ProgresoUsuario>("/api/progreso", token, opciones)
+      .then((avance) => { if (!cancelado) { setProgreso(avance); setError(""); } })
       .catch((reason: unknown) => {
         if (cancelado) return;
         if (reason instanceof ApiRequestError && reason.status === 401) return;
@@ -51,17 +54,19 @@ export default function EstudiantePage() {
       })
       .finally(() => { if (!cancelado) setLoading(false); });
 
-    apiRequest<ReporteNivel[]>("/api/reportes", token, opciones)
+    const diagnosticos = apiRequest<ReporteNivel[]>("/api/reportes", token, opciones)
       .then((datos) => { if (!cancelado) setReportes(Array.isArray(datos) ? datos : []); })
       .catch(() => { /* El panel sigue disponible aunque los diagnósticos tarden. */ });
-    apiRequest<Nivel[]>("/api/niveles", token, opciones)
+    const descripciones = apiRequest<Nivel[]>("/api/niveles", token, opciones)
       .then((datos) => { if (!cancelado) setNiveles([...datos].sort((a, b) => a.nivel - b.nivel)); })
       .catch(() => { /* Se conserva la descripción local de los niveles. */ });
-    apiRequest<Ranking>("/api/ranking", token, opciones)
+    const posiciones = apiRequest<Ranking>("/api/ranking", token, opciones)
       .then((datos) => { if (!cancelado) setRanking(datos); })
       .catch(() => { /* El ranking no bloquea el laboratorio. */ });
+    await Promise.allSettled([avance, diagnosticos, descripciones, posiciones]);
+    });
 
-    return () => { cancelado = true; };
+    return () => { cancelado = true; stop(); controller.abort(); };
   }, [hydrated, token]);
 
   const usuario = sesion;
@@ -88,7 +93,7 @@ export default function EstudiantePage() {
   const logros = [
     { id: "primero", icon: Star, titulo: "Primer nivel superado", logrado: completados >= 1 },
     { id: "diagnostico", icon: BrainCircuit, titulo: "Primer diagnóstico del tutor", logrado: reportesRuta.length >= 1 },
-    { id: "perfecto", icon: Award, titulo: "Puntaje perfecto en un nivel", logrado: [...resultados.values()].some((r) => r.completado && r.puntaje >= PUNTAJE_MAXIMO_NIVEL) },
+    { id: "perfecto", icon: Award, titulo: "Puntaje perfecto en un nivel", logrado: [...resultados.values()].some((r) => r.completado && r.puntaje >= puntajeMaximoNivel(r.nivel)) },
     { id: "ruta", icon: Medal, titulo: "Ruta de realidad mixta completa", logrado: rutaCompleta },
   ];
 
@@ -138,7 +143,7 @@ export default function EstudiantePage() {
                 <>
                   <span className={`badge ${e === "completado" ? "badge-action" : e === "actual" ? "badge-info" : ""}`}>{etiquetaEstado(e as EstadoNivel)}</span>
                   <strong>{info?.nombre || nivel.concepto}</strong>
-                  <p>{r?.completado ? `Mejor puntaje: ${r.puntaje}/${PUNTAJE_MAXIMO_NIVEL} · ${r.intentos} intento${r.intentos === 1 ? "" : "s"}` : e === "bloqueado" ? "Supera el nivel anterior para desbloquearlo." : nivel.enGafas}</p>
+                  <p>{r?.completado ? `Mejor puntaje: ${r.puntaje}/${puntajeMaximoNivel(nivel.nivel)} · ${r.intentos} intento${r.intentos === 1 ? "" : "s"}` : e === "bloqueado" ? "Supera el nivel anterior para desbloquearlo." : nivel.enGafas}</p>
                   {r?.completado ? <Link className="btn btn-secondary btn-sm btn-block" href="/estudiante/reportes" transitionTypes={["nav-forward"]}>Ver qué aprendí</Link> : null}
                 </>
               );

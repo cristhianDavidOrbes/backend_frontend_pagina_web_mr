@@ -6,6 +6,9 @@
  */
 export const TOTAL_NIVELES_MR = 4;
 export const PUNTAJE_MAXIMO_NIVEL = 100;
+export function puntajeMaximoNivel(nivel: number): number {
+  return ({ 1: 120, 2: 240, 3: 100, 4: 255 } as Record<number, number>)[nivel] ?? PUNTAJE_MAXIMO_NIVEL;
+}
 
 export type ObjetoNivel = "puerta" | "vehiculo" | "robot" | "biblioteca";
 

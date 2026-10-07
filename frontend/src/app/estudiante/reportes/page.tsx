@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/client-api";
 import { RUTA_MR } from "@/lib/ruta-mr";
 import type { ReporteNivel } from "@/lib/types";
 import { useAuthSession } from "@/lib/use-auth-session";
+import { startVisibleRefresh } from "@/lib/visible-refresh";
 
 const fecha = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" });
 
@@ -23,16 +24,22 @@ export default function EstudianteReportesPage() {
 
   useEffect(() => {
     if (!hydrated || !token) return;
-    apiRequest<ReporteNivel[]>("/api/reportes", token)
+    let cancelado = false;
+    const controller = new AbortController();
+    const stop = startVisibleRefresh(() => apiRequest<ReporteNivel[]>("/api/reportes", token, {
+      cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]),
+    })
       .then((data) => {
+        if (cancelado) return;
         setReportes(Array.isArray(data) ? data : []);
         setError("");
       })
       .catch((err: unknown) => {
-        setReportes([]);
+        if (cancelado) return;
         setError(err instanceof Error ? err.message : "No se pudieron cargar tus recomendaciones.");
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelado) setLoading(false); }));
+    return () => { cancelado = true; stop(); controller.abort(); };
   }, [hydrated, token]);
 
   const visibles = useMemo(
