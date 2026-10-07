@@ -49,7 +49,10 @@ export function ProfileEditor({ usuario, token, onSaved }: Props) {
   const [eliminarAvatarAlGuardar, setEliminarAvatarAlGuardar] = useState(false);
 
   const [prevUsuario, setPrevUsuario] = useState(usuario);
-  if (usuario !== prevUsuario) {
+  // Solo se reinicia el formulario si los datos cambiaron de verdad: la
+  // sincronización con /api/me crea un objeto nuevo con el mismo contenido y
+  // borraba lo que el usuario estaba escribiendo.
+  if (usuario !== prevUsuario && JSON.stringify(usuario) !== JSON.stringify(prevUsuario)) {
     setPrevUsuario(usuario);
     setForm(usuario);
     setTieneAvatarPersonalizado(Boolean(usuario.avatarUrl));

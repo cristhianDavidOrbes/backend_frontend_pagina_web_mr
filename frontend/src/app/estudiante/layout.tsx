@@ -63,7 +63,9 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
     );
   }
 
-  const activo = usuario || (sesion?.rol === "ESTUDIANTE" ? sesion : null);
+  // La sesión local se actualiza al guardar el perfil; el estado de /api/me
+  // solo se leía una vez y dejaba el nombre y el avatar del menú desactualizados.
+  const activo = sesion?.rol === "ESTUDIANTE" ? sesion : usuario;
 
   if (validando && !activo) {
     return (
