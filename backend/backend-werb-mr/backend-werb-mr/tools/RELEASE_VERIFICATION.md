@@ -55,3 +55,28 @@ Las latencias corresponden a la máquina local y a H2. No acreditan capacidad de
 Render/PostgreSQL ni disponibilidad permanente de internet, Ollama, ElevenLabs
 o las gafas. Los resultados no justifican una garantía de funcionamiento del
 100 % ni sustituyen una prueba de despliegue y dispositivo reales.
+
+## Credencial técnica de lectura para IA (7 de octubre de 2026)
+
+`ALGOLAB_IA_SERVICE_KEY` es opcional y debe tener 32 caracteres como mínimo.
+Se configura como secreto del servicio Render existente, sin reemplazar otras
+variables, y con el mismo valor privado en `BACKEND_IA_SERVICE_KEY` de FastAPI.
+No se incluye en Git, frontend, APK, logs, respuestas ni solicitudes a Ollama.
+Vacía o demasiado corta, la autenticación técnica queda desactivada.
+
+La cabecera `X-AlgoLab-IA-Key` permite exclusivamente:
+
+- `GET /api/niveles`.
+- `GET /api/configuracion-tutor/niveles/{numero positivo}`.
+
+Se compara en tiempo constante y solo otorga `ROLE_SERVICIO_IA`. No crea una
+cuenta ni concede permisos de administrador. No permite leer cuentas/resultados
+ni escribir configuración, progreso o informes. Las sesiones humanas conservan
+su JWT y los informes continúan perteneciendo al estudiante autenticado.
+
+Verificación local: `gradlew test bootJar` terminó correctamente; 119 casos
+declarados, 118 ejecutados sin fallos y una prueba SMTP externa omitida. Las
+nueve pruebas nuevas comprueban claves inválidas, headers duplicados, límites
+de rutas/métodos, aislamiento entre solicitudes y rechazo de operaciones de
+escritura con la clave técnica. La evidencia del despliegue debe comprobarse
+por separado en el servicio Render existente.

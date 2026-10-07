@@ -2,6 +2,7 @@ package com.algolab.backend_werb_mr.seguridad;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -16,7 +17,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SeguridadConfiguracion {
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFiltro jwtFiltro) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFiltro jwtFiltro,
+            IaServicioFiltro iaServicioFiltro) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -50,7 +52,15 @@ public class SeguridadConfiguracion {
                         .requestMatchers("/api/configuracion-tutor/**").hasRole("ADMINISTRADOR")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFiltro, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(iaServicioFiltro, JwtFiltro.class)
                 .build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<IaServicioFiltro> registroIaServicioFiltro(IaServicioFiltro filtro) {
+        FilterRegistrationBean<IaServicioFiltro> registro = new FilterRegistrationBean<>(filtro);
+        registro.setEnabled(false); // Solo se ejecuta dentro de la cadena de seguridad.
+        return registro;
     }
 
     @Bean
