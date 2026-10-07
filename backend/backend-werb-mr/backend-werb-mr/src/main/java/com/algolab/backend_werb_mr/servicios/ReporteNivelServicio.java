@@ -6,6 +6,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.algolab.backend_werb_mr.dtos.ActualizarReporteIaRequest;
@@ -14,16 +16,36 @@ import com.algolab.backend_werb_mr.modelos.ProgresoNivel;
 import com.algolab.backend_werb_mr.modelos.ReporteNivel;
 import com.algolab.backend_werb_mr.modelos.Usuario;
 import com.algolab.backend_werb_mr.repositorio.IReporteNivelRepositorio;
+import com.algolab.backend_werb_mr.repositorio.IProgresoNivelRepositorio;
+import com.algolab.backend_werb_mr.repositorio.IUsuarioRepositorio;
 
 @Service
 public class ReporteNivelServicio {
     private final IReporteNivelRepositorio repositorio;
     private final ConfiguracionTutorNivelServicio configuracionTutor;
+    private final IProgresoNivelRepositorio progresos;
+    private final IUsuarioRepositorio usuarios;
 
     public ReporteNivelServicio(IReporteNivelRepositorio repositorio,
             ConfiguracionTutorNivelServicio configuracionTutor) {
+        this(repositorio, configuracionTutor, null, null);
+    }
+
+    @Autowired
+    public ReporteNivelServicio(IReporteNivelRepositorio repositorio,
+            ConfiguracionTutorNivelServicio configuracionTutor,
+            IProgresoNivelRepositorio progresos, IUsuarioRepositorio usuarios) {
         this.repositorio = repositorio;
         this.configuracionTutor = configuracionTutor;
+        this.progresos = progresos;
+        this.usuarios = usuarios;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ReporteNivelDTO sincronizarConfirmado(Long usuarioId, Integer nivel) {
+        Usuario usuario = usuarios.findById(usuarioId).orElseThrow();
+        ProgresoNivel progreso = progresos.findByUsuarioAndNivel(usuario, nivel).orElseThrow();
+        return sincronizarDesdeProgreso(usuario, progreso);
     }
 
     @Transactional
@@ -42,7 +64,6 @@ public class ReporteNivelServicio {
         // Unity puede reenviar el mismo progreso al cerrar o recuperar conexión.
         // Una sincronización idéntica no debe borrar un informe ya enriquecido por IA.
         if (existente.isPresent()
-                && Boolean.TRUE.equals(existente.get().getGeneradoPorIa())
                 && mismasMetricas(existente.get(), puntaje, tiempoRestante, intentos, completado)) {
             return ReporteNivelDTO.desdeModelo(existente.get());
         }
@@ -70,6 +91,10 @@ public class ReporteNivelServicio {
 
     @Transactional
     public ReporteNivelDTO actualizarConIa(Usuario usuario, Integer nivel, ActualizarReporteIaRequest request) {
+        // Repara un reporte base pendiente, utilizando únicamente progreso
+        // real confirmado, nunca las métricas aportadas por el informe de IA.
+        if (progresos != null) progresos.findByUsuarioAndNivel(usuario, nivel)
+                .ifPresent(progreso -> sincronizarDesdeProgreso(usuario, progreso));
         ReporteNivel reporte = repositorio.findByUsuarioAndNivel(usuario, nivel)
                 .orElseThrow(() -> new IllegalArgumentException("Primero debe guardarse el progreso del nivel"));
 
@@ -108,8 +133,10 @@ public class ReporteNivelServicio {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ReporteNivelDTO> listarUsuario(Usuario usuario) {
+        if (progresos != null) progresos.findByUsuarioOrderByNivelAsc(usuario)
+                .forEach(progreso -> sincronizarDesdeProgreso(usuario, progreso));
         return repositorio.findByUsuarioOrderByNivelAsc(usuario).stream()
                 .map(ReporteNivelDTO::desdeModelo).toList();
     }

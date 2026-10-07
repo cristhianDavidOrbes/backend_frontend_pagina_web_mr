@@ -46,6 +46,7 @@ public class DatosInicialesConfiguracion {
                     });
 
             configuracionesTutorIniciales().forEach(configuracionTutorServicio::crearSiNoExiste);
+            configuracionTutorServicio.actualizarLimiteHistoricoNivelUno();
         };
     }
 
@@ -53,7 +54,7 @@ public class DatosInicialesConfiguracion {
         return List.of(
                 config(1, "Clases y objetos", "Identidad, estado e instanciación",
                         "Ayudar a reconocer una clase como plantilla y cada objeto como una instancia con estado propio.",
-                        80, 300,
+                        120, 300,
                         List.of("tema", "práctica de puerta"),
                         List.of("Identificar atributos de la puerta", "Abrir y cerrar mediante métodos", "Distinguir clase de instancia"),
                         List.of("Confundir atributo con método", "Modificar el estado sin usar una acción", "Tratar dos instancias como el mismo objeto"),

@@ -37,7 +37,7 @@ class ProgresoServicioTest {
         Usuario usuario = new Usuario(10L, "Grace", "grace@test.com", Rol.ESTUDIANTE, "123456");
 
         List<ProgresoNivel> ningunVr = List.of(progresoVr(usuario, 1, false));
-        List<ProgresoNivel> todosVr = java.util.stream.IntStream.rangeClosed(1, 6)
+        List<ProgresoNivel> todosVr = java.util.stream.IntStream.rangeClosed(1, 4)
                 .mapToObj(nivel -> progresoVr(usuario, nivel, true))
                 .toList();
         List<ProgresoOop> ningunWeb = List.of(progresoWeb(usuario, 1, false));
@@ -68,7 +68,7 @@ class ProgresoServicioTest {
         assertFalse(junior.getRutaWebCompletada());
 
         assertEquals("Senior", seniorVr.getCategoria());
-        assertEquals(6, seniorVr.getNivelesVrCompletados());
+        assertEquals(4, seniorVr.getNivelesVrCompletados());
         assertTrue(seniorVr.getRutaVrCompletada());
         assertFalse(seniorVr.getRutaWebCompletada());
 
@@ -149,9 +149,9 @@ class ProgresoServicioTest {
                 progresoRepositorio, usuarioServicio, descripcionNivelServicio);
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> servicio.guardarProgreso(usuario, progreso(1, 81)));
+                () -> servicio.guardarProgreso(usuario, progreso(1, 121)));
 
-        assertEquals("El puntaje del nivel 1 debe estar entre 0 y 80", error.getMessage());
+        assertEquals("El puntaje del nivel 1 debe estar entre 0 y 120", error.getMessage());
     }
 
     @Test

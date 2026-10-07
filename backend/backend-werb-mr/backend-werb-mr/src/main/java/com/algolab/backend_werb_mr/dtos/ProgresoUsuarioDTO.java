@@ -21,7 +21,7 @@ public class ProgresoUsuarioDTO {
 
     public ProgresoUsuarioDTO(Long usuarioId, Integer nivelActual, Integer puntajeTotal,
             List<ProgresoNivelDTO> niveles) {
-        this(usuarioId, nivelActual, puntajeTotal, niveles, 0, 6, 0, 8, false, false, "Junior");
+        this(usuarioId, nivelActual, puntajeTotal, niveles, 0, 4, 0, 8, false, false, "Junior");
     }
 
     public ProgresoUsuarioDTO(Long usuarioId, Integer nivelActual, Integer puntajeTotal,

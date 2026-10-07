@@ -4,10 +4,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.PersistenceContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,17 +27,17 @@ import com.algolab.backend_werb_mr.repositorio.IProgresoNivelRepositorio;
 @Service
 public class ProgresoServicio implements IProgresoServicio {
     private static final Logger logger = LoggerFactory.getLogger(ProgresoServicio.class);
-    private static final int TOTAL_NIVELES_VR = 6;
+    private static final int TOTAL_NIVELES_VR = 4;
     private static final int TOTAL_NIVELES_WEB = 8;
     private static final Map<Integer, Integer> PUNTAJE_MAXIMO_POR_NIVEL = Map.of(
-            1, 80,
+            1, 120,
             2, 240,
             3, 100,
             4, 255,
             5, 300,
             6, 300);
     private static final Map<Integer, Integer> TIEMPO_MAXIMO_POR_NIVEL = Map.of(
-            1, 80,
+            1, 120,
             2, 240,
             3, 300,
             4, 300,
@@ -44,20 +48,29 @@ public class ProgresoServicio implements IProgresoServicio {
     private final IProgresoNivelRepositorio progresoNivelRepositorio;
     private final IUsuarioServicio usuarioServicio;
     private final IDescripcionNivelServicio descripcionNivelServicio;
-    private final ReporteNivelServicio reporteNivelServicio;
+    private final ApplicationEventPublisher eventos;
+    @PersistenceContext
+    private EntityManager entityManager;
     private final com.algolab.backend_werb_mr.repositorio.IProgresoOopRepositorio progresoOopRepositorio;
 
-    @Autowired
     public ProgresoServicio(
             IProgresoNivelRepositorio progresoNivelRepositorio,
             IUsuarioServicio usuarioServicio,
             IDescripcionNivelServicio descripcionNivelServicio,
             ReporteNivelServicio reporteNivelServicio,
             com.algolab.backend_werb_mr.repositorio.IProgresoOopRepositorio progresoOopRepositorio) {
+        this(progresoNivelRepositorio, usuarioServicio, descripcionNivelServicio, progresoOopRepositorio, null);
+    }
+
+    @Autowired
+    public ProgresoServicio(IProgresoNivelRepositorio progresoNivelRepositorio,
+            IUsuarioServicio usuarioServicio, IDescripcionNivelServicio descripcionNivelServicio,
+            com.algolab.backend_werb_mr.repositorio.IProgresoOopRepositorio progresoOopRepositorio,
+            ApplicationEventPublisher eventos) {
         this.progresoNivelRepositorio = progresoNivelRepositorio;
         this.usuarioServicio = usuarioServicio;
         this.descripcionNivelServicio = descripcionNivelServicio;
-        this.reporteNivelServicio = reporteNivelServicio;
+        this.eventos = eventos;
         this.progresoOopRepositorio = progresoOopRepositorio;
     }
 
@@ -65,7 +78,7 @@ public class ProgresoServicio implements IProgresoServicio {
             IProgresoNivelRepositorio progresoNivelRepositorio,
             IUsuarioServicio usuarioServicio,
             IDescripcionNivelServicio descripcionNivelServicio) {
-        this(progresoNivelRepositorio, usuarioServicio, descripcionNivelServicio, null, null);
+        this(progresoNivelRepositorio, usuarioServicio, descripcionNivelServicio, null, (ApplicationEventPublisher) null);
     }
 
     @Override
@@ -97,6 +110,11 @@ public class ProgresoServicio implements IProgresoServicio {
     @Override
     @Transactional
     public ProgresoUsuarioDTO guardarProgreso(Usuario usuario, GuardarProgresoRequest request) {
+        // Serializar actualizaciones de la misma cuenta (gafas, web o reintento)
+        // y calcular totales sobre el usuario vigente, no un perfil desasociado.
+        if (entityManager != null && usuario != null && usuario.getId() != null) {
+            usuario = entityManager.find(Usuario.class, usuario.getId(), LockModeType.PESSIMISTIC_WRITE);
+        }
         validarProgresoRecibido(usuario, request);
         logger.info("Guardando progreso del usuario {} en nivel {}", usuario.getId(), request.getNivel());
 
@@ -109,8 +127,8 @@ public class ProgresoServicio implements IProgresoServicio {
                 .orElse(false);
         validarPrerequisito(usuario, request, yaCompletado);
 
-        ProgresoNivel progreso = progresoExistente
-                .orElseGet(() -> crearProgreso(usuario, request.getNivel()));
+        ProgresoNivel progreso = progresoExistente.orElse(null);
+        if (progreso == null) progreso = crearProgreso(usuario, request.getNivel());
 
         boolean completadoNuevo = Boolean.TRUE.equals(request.getCompletado());
 
@@ -142,9 +160,9 @@ public class ProgresoServicio implements IProgresoServicio {
         }
 
         usuarioServicio.actualizar(usuario);
-        if (reporteNivelServicio != null) {
-            reporteNivelServicio.sincronizarDesdeProgreso(usuario, progreso);
-        }
+        // El informe se prepara después del COMMIT: un fallo de IA o de la
+        // tabla de reportes nunca revierte una práctica ya superada.
+        if (eventos != null) eventos.publishEvent(new ProgresoConfirmado(usuario.getId(), progreso.getNivel()));
         return construirRespuesta(usuario, progresos);
     }
 
@@ -230,10 +248,10 @@ public class ProgresoServicio implements IProgresoServicio {
         int nivelSiguiente = nivelCompletado + 1;
         int maximoNivel = descripcionNivelServicio.listar().stream()
                 .map(DescripcionNivel::getNivel)
-                .filter(nivel -> nivel != null && nivel >= 1)
+                .filter(nivel -> nivel != null && nivel >= 1 && nivel <= TOTAL_NIVELES_VR)
                 .mapToInt(Integer::intValue)
                 .max()
-                .orElse(nivelSiguiente);
+                .orElse(TOTAL_NIVELES_VR);
 
         int nuevoNivelActual = Math.min(nivelSiguiente, maximoNivel);
 

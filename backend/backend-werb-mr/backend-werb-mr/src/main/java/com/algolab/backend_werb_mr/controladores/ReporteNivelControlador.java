@@ -44,7 +44,7 @@ public class ReporteNivelControlador {
             return ResponseEntity.ok(reporteServicio.listarUsuario(usuario));
         } catch (Exception ex) {
             log.error("Error al obtener reportes propios para el usuario {}: {}", usuario.getCorreo(), ex.getMessage(), ex);
-            return ResponseEntity.ok(List.of());
+            return informeNoDisponible();
         }
     }
 
@@ -57,7 +57,7 @@ public class ReporteNivelControlador {
             return ResponseEntity.ok(reporteServicio.listarTodos());
         } catch (Exception ex) {
             log.error("Error al listar todos los reportes: {}", ex.getMessage(), ex);
-            return ResponseEntity.ok(List.of());
+            return informeNoDisponible();
         }
     }
 
@@ -73,7 +73,7 @@ public class ReporteNivelControlador {
             return ResponseEntity.ok(reporteServicio.listarUsuario(solicitado));
         } catch (Exception ex) {
             log.error("Error al obtener reportes para el usuario con id {}: {}", usuarioId, ex.getMessage(), ex);
-            return ResponseEntity.ok(List.of());
+            return informeNoDisponible();
         }
     }
 
@@ -106,5 +106,10 @@ public class ReporteNivelControlador {
 
     private ResponseEntity<Map<String, String>> noAutorizado() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("mensaje", "Usuario autenticado no encontrado"));
+    }
+
+    private ResponseEntity<Map<String, String>> informeNoDisponible() {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                "mensaje", "No se pudieron consultar los informes. Tus resultados se conservan; vuelve a intentarlo."));
     }
 }

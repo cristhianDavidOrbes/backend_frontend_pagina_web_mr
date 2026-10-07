@@ -63,5 +63,14 @@ public class ConfiguracionTutorNivelServicio {
         }
     }
 
+    @Transactional
+    public void actualizarLimiteHistoricoNivelUno() {
+        repositorio.findByNivel(1).filter(config -> Integer.valueOf(80).equals(config.getPuntajeMaximo()))
+                .ifPresent(config -> {
+                    config.setPuntajeMaximo(120);
+                    repositorio.save(config);
+                });
+    }
+
     private static boolean vacio(String valor) { return valor == null || valor.isBlank(); }
 }
