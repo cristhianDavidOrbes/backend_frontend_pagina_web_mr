@@ -1,24 +1,30 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
+import { Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Crown, Medal, Trophy, X } from "lucide-react";
 
 import { AvatarDisplay } from "@/components/avatar-display";
+import { EASE_OUT, Reveal } from "@/components/reveal";
+import { Dialog, EmptyState, Notice, PageHead, Spinner } from "@/components/ui";
 import { apiRequest } from "@/lib/client-api";
-import type { PerfilPublico, Ranking } from "@/lib/types";
+import type { PerfilPublico, Ranking, RankingItem } from "@/lib/types";
 import { useAuthSession } from "@/lib/use-auth-session";
 
+const MEDALLAS = ["#f3c74f", "#c9d4d1", "#d39563"];
+
 export default function EstudianteRankingPage() {
+  const reduce = useReducedMotion();
   const { hydrated, token, usuario } = useAuthSession();
   const [ranking, setRanking] = useState<Ranking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [perfil, setPerfil] = useState<PerfilPublico | null>(null);
-  const [cargandoPerfil, setCargandoPerfil] = useState(false);
+  const [cargandoPerfil, setCargandoPerfil] = useState<number | null>(null);
 
   async function abrirPerfil(id: number) {
     if (!token) return;
-    setCargandoPerfil(true);
+    setCargandoPerfil(id);
     setError("");
     try {
       const datos = await apiRequest<PerfilPublico>(`/api/usuarios/${id}/publico`, token);
@@ -26,13 +32,12 @@ export default function EstudianteRankingPage() {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "No se pudo abrir el perfil.");
     } finally {
-      setCargandoPerfil(false);
+      setCargandoPerfil(null);
     }
   }
 
   useEffect(() => {
     if (!hydrated || !token) return;
-
     apiRequest<Ranking>("/api/ranking", token)
       .then(setRanking)
       .catch((reason: unknown) => {
@@ -47,71 +52,106 @@ export default function EstudianteRankingPage() {
   );
 
   if (!usuario) return null;
-  if (loading) return <div className="loading-card">Organizando la clasificación…</div>;
+
+  const estudiantes = ranking?.estudiantes ?? [];
+  const podio = estudiantes.filter((e) => e.posicion <= 3).sort((a, b) => a.posicion - b.posicion);
+
+  const fila = (item: RankingItem, index: number) => {
+    const esActual = item.usuarioId === usuario.id;
+    const medalla = item.posicion <= 3 ? MEDALLAS[item.posicion - 1] : null;
+    return (
+      <motion.li
+        animate={{ opacity: 1, y: 0 }}
+        className={`rank-row ${esActual ? "is-me" : ""}`}
+        initial={{ opacity: 0, y: reduce ? 0 : 10 }}
+        key={item.usuarioId}
+        transition={{ duration: 0.35, delay: Math.min(index, 12) * 0.035, ease: EASE_OUT }}
+      >
+        <span className="rank-pos" style={medalla ? { color: "#1d1600", background: medalla } : undefined}>{item.posicion}</span>
+        <button
+          aria-label={`Ver el perfil público de ${item.nombre}`}
+          className="rank-person"
+          disabled={cargandoPerfil !== null}
+          onClick={() => void abrirPerfil(item.usuarioId)}
+          type="button"
+        >
+          <AvatarDisplay decorative usuario={item} />
+          <span className="min-w-0">
+            <strong>{item.nombre}{esActual ? " (tú)" : ""}</strong>
+            <small>@{item.nombreUsuario || `estudiante-${item.usuarioId}`}</small>
+          </span>
+          {cargandoPerfil === item.usuarioId ? <Spinner /> : null}
+        </button>
+        <span className="rank-level">Nivel {Math.min(item.nivelActual, 4)}</span>
+        <strong className="rank-points num">{item.puntaje}<small> pts</small></strong>
+      </motion.li>
+    );
+  };
 
   return (
-    <div className="space-y-5">
-      {error ? <div className="alert-error">{error}</div> : null}
-
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[radial-gradient(circle_at_82%_0%,rgba(251,191,36,.18),transparent_34%),linear-gradient(135deg,rgba(10,28,25,.98),rgba(7,17,22,.98))] p-5 shadow-[0_24px_70px_rgba(0,0,0,.28)] sm:p-7">
-        <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <div>
-            <p className="section-kicker flex items-center gap-2 text-amber-200"><Crown size={14} /> Clasificación AlgoLab</p>
-            <h2 className="mt-3 max-w-2xl text-3xl font-bold tracking-[-.045em] text-white sm:text-4xl">Cada reto completado impulsa tu posición.</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300/75 sm:text-base">Compara tu avance con otros estudiantes. El puntaje de las prácticas y los niveles superados actualizan esta tabla.</p>
+    <div className="space-y-6">
+      <PageHead
+        actions={
+          <div className="rank-me">
+            <span>Tu posición</span>
+            <strong>{miPosicion ? `#${miPosicion.posicion}` : "—"}</strong>
+            <small>de {ranking?.total ?? 0}</small>
           </div>
-          <div className="rounded-2xl border border-amber-300/20 bg-amber-300/[.08] px-5 py-4 text-center">
-            <span className="block font-mono text-[10px] uppercase tracking-[.18em] text-amber-200/75">Tu posición</span>
-            <strong className="mt-1 block text-4xl font-black text-amber-200">{miPosicion ? `#${miPosicion.posicion}` : "—"}</strong>
-            <small className="text-xs text-slate-400">de {ranking?.total ?? 0} estudiantes</small>
-          </div>
-        </div>
-      </section>
+        }
+        description="Se ordena por puntaje. Cada nivel cuenta tu mejor resultado, así que repetir una práctica solo suma si mejoras."
+        title="Ranking"
+      />
 
-      <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#081614]/90">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-6">
-          <div>
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-white"><Trophy className="text-amber-300" size={19} /> Ranking general</h3>
-            <p className="mt-1 text-xs text-slate-400">Ordenado por el puntaje acumulado en AlgoLab.</p>
-          </div>
-          <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[.07] px-3 py-1 font-mono text-[10px] uppercase tracking-[.14em] text-emerald-200">Actualizado</span>
-        </header>
+      {error ? <Notice tone="error">{error}</Notice> : null}
+      {loading ? <div className="loading-card">Cargando la clasificación…</div> : null}
 
-        {ranking?.estudiantes.length ? (
-          <ol className="divide-y divide-white/[.07]">
-            {ranking.estudiantes.map((item) => {
-              const esActual = item.usuarioId === usuario.id;
-              const top = item.posicion <= 3;
-              return (
-                <li className={`grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 transition sm:grid-cols-[58px_minmax(0,1fr)_110px_110px] sm:px-6 ${esActual ? "bg-emerald-300/[.09] shadow-[inset_3px_0_0_#34d399]" : "hover:bg-white/[.025]"}`} key={item.usuarioId}>
-                  <span className={`grid h-9 w-9 place-items-center rounded-xl font-mono text-sm font-bold ${top ? "border border-amber-300/25 bg-amber-300/10 text-amber-200" : "bg-white/[.04] text-slate-400"}`}>
-                    {top ? <Medal size={17} /> : item.posicion}
-                  </span>
-                  <button className="flex min-w-0 items-center gap-3 text-left hover:opacity-80 focus-visible:rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300" disabled={cargandoPerfil} onClick={() => void abrirPerfil(item.usuarioId)} type="button">
-                    <AvatarDisplay className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 text-sm font-bold text-white [&>img]:object-cover" usuario={item} />
-                    <span className="min-w-0"><strong className="block truncate text-sm text-white sm:text-base">{item.nombre}{esActual ? " (Tú)" : ""}</strong><span className="block truncate text-xs text-slate-500">@{item.nombreUsuario || `estudiante-${item.usuarioId}`}</span></span>
-                  </button>
-                  <div className="hidden text-center sm:block"><span className="block text-[10px] uppercase tracking-wider text-slate-500">Nivel</span><strong className="text-sm text-cyan-200">{item.nivelActual}</strong></div>
-                  <div className="text-right"><span className="hidden text-[10px] uppercase tracking-wider text-slate-500 sm:block">Puntos</span><strong className="font-mono text-sm text-emerald-200 sm:text-base">{item.puntaje}</strong></div>
-                </li>
-              );
-            })}
-          </ol>
-        ) : !error ? (
-          <div className="empty-state m-5"><Trophy className="mx-auto mb-3 opacity-40" size={36} /><p>El ranking aparecerá cuando existan puntajes registrados.</p></div>
+      {podio.length >= 3 ? (
+        <Reveal as="section" className="podium" label="Primeros tres puestos">
+          {[podio[1], podio[0], podio[2]].map((item, i) => (
+            <motion.button
+              animate={{ opacity: 1, y: 0 }}
+              className={`podium-step podium-${item.posicion}`}
+              initial={{ opacity: 0, y: reduce ? 0 : 30 }}
+              key={item.usuarioId}
+              onClick={() => void abrirPerfil(item.usuarioId)}
+              transition={{ duration: 0.6, delay: [0.15, 0, 0.3][i], ease: EASE_OUT }}
+              type="button"
+            >
+              <AvatarDisplay decorative usuario={item} />
+              <strong>{item.nombre.split(" ")[0]}</strong>
+              <span className="num">{item.puntaje} pts</span>
+              <span className="podium-block" style={{ background: MEDALLAS[item.posicion - 1] }}>{item.posicion}</span>
+            </motion.button>
+          ))}
+        </Reveal>
+      ) : null}
+
+      <section className="card overflow-hidden">
+        {estudiantes.length ? (
+          <ol className="rank-list">{estudiantes.map(fila)}</ol>
+        ) : !loading && !error ? (
+          <div className="p-5">
+            <EmptyState icon={<Trophy size={30} />} title="Todavía no hay puntajes">
+              El ranking aparecerá cuando los estudiantes completen prácticas en las gafas.
+            </EmptyState>
+          </div>
         ) : null}
       </section>
 
-      {perfil && <div className="fixed inset-0 z-[100] grid place-items-center bg-black/75 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setPerfil(null); }} role="presentation">
-        <section aria-labelledby="perfil-publico-titulo" aria-modal="true" className="w-full max-w-md rounded-3xl border border-emerald-300/20 bg-[#0b1b19] p-6 shadow-2xl" role="dialog">
-          <div className="flex justify-end"><button aria-label="Cerrar perfil" onClick={() => setPerfil(null)} type="button"><X size={20} /></button></div>
-          <AvatarDisplay className="relative mx-auto grid h-24 w-24 place-items-center overflow-hidden rounded-full border-2 border-emerald-300/30 text-3xl font-bold text-white [&>img]:object-cover" usuario={perfil} />
-          <h3 className="mt-4 text-center text-2xl font-bold text-white" id="perfil-publico-titulo">{perfil.nombre}</h3>
-          <p className="mt-1 text-center text-sm text-slate-400">@{perfil.nombreUsuario || `estudiante-${perfil.id}`}</p>
-          <div className="mt-6 grid grid-cols-2 gap-3 text-center"><div className="rounded-xl bg-white/5 p-4"><span className="block text-xs text-slate-400">Nivel</span><strong className="text-xl text-cyan-200">{perfil.nivelActual}</strong></div><div className="rounded-xl bg-white/5 p-4"><span className="block text-xs text-slate-400">Puntos</span><strong className="text-xl text-emerald-200">{perfil.puntaje}</strong></div></div>
-          <p className="mt-5 text-center text-xs text-slate-500">Solo se muestra información pública de aprendizaje; el correo y otros datos privados no se comparten.</p>
-        </section>
-      </div>}
+      <Dialog onClose={() => setPerfil(null)} open={Boolean(perfil)} title="Perfil público" width={420}>
+        {perfil ? (
+          <div className="grid justify-items-center text-center">
+            <AvatarDisplay className="!h-24 !w-24 text-3xl" usuario={perfil} />
+            <h3 className="title-md mt-4">{perfil.nombre}</h3>
+            <p className="subtle text-sm">@{perfil.nombreUsuario || `estudiante-${perfil.id}`}</p>
+            <div className="mt-5 grid w-full grid-cols-2 gap-3">
+              <div className="stat"><span className="stat-label">Nivel</span><strong className="stat-value text-info">{Math.min(perfil.nivelActual, 4)}</strong></div>
+              <div className="stat"><span className="stat-label">Puntos</span><strong className="stat-value text-action">{perfil.puntaje}</strong></div>
+            </div>
+            <p className="subtle mt-5 text-sm">Solo se muestra información pública de aprendizaje. El correo y otros datos privados no se comparten.</p>
+          </div>
+        ) : null}
+      </Dialog>
     </div>
   );
 }
