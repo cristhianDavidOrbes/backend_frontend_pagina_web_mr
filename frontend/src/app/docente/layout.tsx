@@ -38,7 +38,7 @@ export default function DocenteLayout({ children }: { children: React.ReactNode 
           router.replace("/iniciar-sesion?expirado=1");
           return;
         }
-        setError(reason instanceof Error ? reason.message : "No pudimos sincronizar el observatorio.");
+        setError(reason instanceof Error ? reason.message : "No pudimos cargar los datos del grupo.");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -53,20 +53,20 @@ export default function DocenteLayout({ children }: { children: React.ReactNode 
 
   if (!hydrated || !token || (loading && !usuarioActivo)) {
     return (
-      <main className="app-surface grid min-h-screen place-items-center p-6">
-        <div className="loading-card">Preparando el observatorio…</div>
+      <main className="shell-state">
+        <div className="loading-card">Cargando tu grupo…</div>
       </main>
     );
   }
 
   if (!usuarioActivo) {
     return (
-      <main className="app-surface grid min-h-screen place-items-center p-6">
-        <section className="panel-card max-w-lg p-7 text-center">
-          <h1 className="text-xl font-semibold text-white">No pudimos abrir el observatorio</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-400">{error || "Comprueba tu conexión e inténtalo nuevamente."}</p>
+      <main className="shell-state">
+        <section className="card card-pad">
+          <h1 className="text-xl">No pudimos abrir el espacio docente</h1>
+          <p className="muted mt-2">{error || "Comprueba tu conexión e inténtalo nuevamente."}</p>
           <button
-            className="primary-button mt-5"
+            className="btn btn-primary mt-5"
             onClick={() => {
               setLoading(true);
               setError("");
@@ -74,7 +74,7 @@ export default function DocenteLayout({ children }: { children: React.ReactNode 
             }}
             type="button"
           >
-            Reintentar sincronización
+            Reintentar
           </button>
         </section>
       </main>
@@ -82,12 +82,12 @@ export default function DocenteLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <AppShell eyebrow="Observatorio docente" title="Pulso del grupo" usuario={usuarioActivo}>
+    <AppShell usuario={usuarioActivo}>
       {error ? (
-        <div className="alert-error mb-5 flex flex-wrap items-center justify-between gap-3" role="alert">
-          <span>{error} Se muestran los últimos datos guardados.</span>
+        <div className="notice notice-warning mb-5 flex-wrap" role="alert">
+          <span className="flex-1">{error} Se muestran los últimos datos guardados.</span>
           <button
-            className="font-semibold underline underline-offset-4"
+            className="btn btn-secondary btn-sm"
             onClick={() => {
               setLoading(true);
               setError("");

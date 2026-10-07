@@ -1,6 +1,7 @@
 "use client";
 
 import { ProfileEditor } from "@/components/profile-editor";
+import { PageHead } from "@/components/ui";
 import { saveAuthUser, useAuthSession } from "@/lib/use-auth-session";
 
 export default function DocentePerfilPage() {
@@ -8,30 +9,22 @@ export default function DocentePerfilPage() {
 
   if (!hydrated || !token || !usuario) {
     return (
-      <div className="loading-card mx-auto mt-10 max-w-md">
+      <div className="loading-card">
         Cargando perfil docente…
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Mi perfil</h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Mantén actualizados tus datos de contacto y tu presentación en AlgoLab.
-        </p>
-      </div>
-
+    <div>
+      <PageHead description="Mantén actualizados tus datos y tu presentación en AlgoLab." title="Mi perfil" />
       <ProfileEditor
-        defaultOpen={true}
-        onSaved={(nuevoUsuario) => {
-          saveAuthUser(nuevoUsuario);
+        onSaved={(user) => {
+          saveAuthUser(user);
         }}
         token={token}
         usuario={usuario}
       />
-
     </div>
   );
 }

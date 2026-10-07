@@ -36,16 +36,17 @@ export default function DocenteReportesPage() {
           <h2 className="text-2xl font-semibold">Todos los reportes</h2>
           <p className="text-sm text-slate-400">Revisa la evidencia de todo tu grupo</p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input 
-            type="text" 
-            placeholder="Buscar por estudiante o nivel..." 
-            className="field-input pl-10"
+        <label className="input-with-icon w-full sm:w-72">
+          <Search size={17} />
+          <span className="sr-only">Buscar reportes</span>
+          <input
+            type="text"
+            placeholder="Buscar por estudiante o nivel..."
+            className="field-input"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
-        </div>
+        </label>
       </div>
       
       {error && <div className="alert-error">{error}</div>}

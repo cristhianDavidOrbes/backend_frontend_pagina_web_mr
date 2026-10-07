@@ -8,9 +8,6 @@ import { ShieldCheck, UserCog } from "lucide-react";
 import { useAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 
-const buttonClass =
-  "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-45";
-
 export default function AdministradorLayout({ children }: { children: React.ReactNode }) {
   const { hydrated, token, usuario: usuarioActual } = useAuthSession();
   const [usuario, setUsuario] = useState<UsuarioSesion | null>(usuarioActual?.rol === "ADMINISTRADOR" ? usuarioActual : null);
@@ -36,7 +33,7 @@ export default function AdministradorLayout({ children }: { children: React.Reac
           router.replace("/iniciar-sesion?expirado=1");
           return;
         }
-        setError(reason instanceof Error ? reason.message : "No pudimos sincronizar el centro de control.");
+        setError(reason instanceof Error ? reason.message : "No pudimos cargar la administración.");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -52,20 +49,20 @@ export default function AdministradorLayout({ children }: { children: React.Reac
 
   if (!hydrated || !token || (loading && !perfilActivo)) {
     return (
-      <main className="app-surface grid min-h-screen place-items-center p-6">
-        <div className="loading-card">Sincronizando permisos y telemetría…</div>
+      <main className="shell-state">
+        <div className="loading-card">Verificando permisos…</div>
       </main>
     );
   }
 
   if (!perfilActivo) {
     return (
-      <main className="app-surface grid min-h-screen place-items-center p-6">
-        <section className="panel-card max-w-lg p-7 text-center">
-          <h1 className="text-xl font-semibold text-white">No pudimos abrir el centro de control</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-400">{error || "Comprueba tu conexión e inténtalo nuevamente."}</p>
+      <main className="shell-state">
+        <section className="card card-pad">
+          <h1 className="text-xl">No pudimos abrir la administración</h1>
+          <p className="muted mt-2">{error || "Comprueba tu conexión e inténtalo nuevamente."}</p>
           <button
-            className="primary-button mt-5"
+            className="btn btn-primary mt-5"
             onClick={() => {
               setLoading(true);
               setError("");
@@ -73,7 +70,7 @@ export default function AdministradorLayout({ children }: { children: React.Reac
             }}
             type="button"
           >
-            Reintentar sincronización
+            Reintentar
           </button>
         </section>
       </main>
@@ -81,12 +78,12 @@ export default function AdministradorLayout({ children }: { children: React.Reac
   }
 
   return (
-    <AppShell eyebrow="Núcleo administrativo" title="Centro de mando" usuario={perfilActivo}>
+    <AppShell usuario={perfilActivo}>
       {error ? (
-        <div className="alert-error mb-5 flex flex-wrap items-center justify-between gap-3" role="alert">
-          <span>{error} Se muestran los últimos datos guardados.</span>
+        <div className="notice notice-warning mb-5 flex-wrap" role="alert">
+          <span className="flex-1">{error} Se muestran los últimos datos guardados.</span>
           <button
-            className="font-semibold underline underline-offset-4"
+            className="btn btn-secondary btn-sm"
             onClick={() => {
               setLoading(true);
               setError("");
@@ -99,24 +96,15 @@ export default function AdministradorLayout({ children }: { children: React.Reac
         </div>
       ) : null}
       {accesoDenegado ? (
-        <section className="panel-card grid min-h-72 place-items-center overflow-hidden p-8 text-center">
-          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-rose-500/10 blur-3xl" />
-          <div className="relative max-w-lg">
-            <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-rose-300/20 bg-rose-400/10 text-rose-200">
-              <ShieldCheck size={30} />
-            </span>
-            <p className="section-kicker mt-5">Permiso insuficiente</p>
-            <h2 className="mt-2 text-2xl font-semibold">Este núcleo está reservado al equipo administrador.</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-400">
-              Cambia a una cuenta con privilegios administrativos para gestionar usuarios y niveles.
-            </p>
-            <Link
-              className={`${buttonClass} mt-5 bg-emerald-300 text-slate-950 hover:bg-emerald-200`}
-              href="/iniciar-sesion"
-            >
-              <UserCog size={16} /> Cambiar usuario
-            </Link>
-          </div>
+        <section className="card card-pad mx-auto mt-10 grid max-w-lg justify-items-center gap-3 text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-danger/10 text-danger">
+            <ShieldCheck size={28} />
+          </span>
+          <h1 className="title-lg mt-2">Esta sección es solo para administración</h1>
+          <p className="muted">Inicia sesión con una cuenta de administrador para gestionar usuarios y niveles.</p>
+          <Link className="btn btn-primary mt-3" href="/iniciar-sesion">
+            <UserCog size={17} /> Cambiar de cuenta
+          </Link>
         </section>
       ) : (
         children

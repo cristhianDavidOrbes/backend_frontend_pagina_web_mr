@@ -200,6 +200,29 @@ En Windows, si PowerShell bloquea `npm`, usar:
 npm.cmd run dev
 ```
 
+Modo demostración (sin backend real, con perfiles de prueba):
+
+```powershell
+npm.cmd run demo
+```
+
+Levanta un backend simulado en memoria y la web; la consola indica la dirección a abrir (normalmente `http://localhost:3000`, o el siguiente puerto libre si ya tienes `npm run dev` abierto). Puede convivir con `npm run dev` porque usa su propia carpeta de compilación (`.next/demo`). Contraseña de todas las cuentas: `Demo1234`.
+
+| Perfil | Correo |
+|---|---|
+| Estudiante con progreso | `estudiante.demo@campusucc.edu.co` |
+| Estudiante sin perfil (ve la bienvenida) | `nuevo.demo@campusucc.edu.co` |
+| Docente | `docente.demo@campusucc.edu.co` |
+| Administrador | `admin.demo@campusucc.edu.co` |
+
+Los cambios (ediciones, borrados, registros) se pierden al cerrar el comando.
+
+Comprobar que la demostración carga (inicia sesión con cada perfil, llama a sus peticiones y abre sus páginas):
+
+```powershell
+npm.cmd run test:demo
+```
+
 Validar lint:
 
 ```powershell

@@ -12,6 +12,7 @@ import {
 import { OOP_NIVELES, type MiniNivel } from "@/lib/oop-niveles";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { apiRequest } from "@/lib/client-api";
+import { LanguageIcon } from "@/components/language-icon";
 import styles from "./programar-poo.module.css";
 
 const STORAGE_KEY = "oop_progreso";
@@ -209,7 +210,7 @@ export default function CodigoPage() {
     <main className={`oop-main ${styles.routePage}`}>
       <header className={styles.compactRouteHeader}>
         <div>
-          <span className={styles.optionalBadge}>COMPLEMENTO OPCIONAL</span>
+          <span className={styles.optionalBadge}>Complemento opcional · independiente de la ruta en gafas</span>
           <h1>
             <span className={styles.desktopTitle}>Programar POO</span>
             <span className={styles.mobileTitle}>POO</span>
@@ -227,11 +228,11 @@ export default function CodigoPage() {
         <div className={styles.missionCopy}>
           <div className={styles.missionTopRow}>
             <span className={styles.liveBadge}>
-              <span aria-hidden="true" /> {rutaCompleta ? "RUTA DOMINADA" : "MISIÓN ACTIVA"}
+              <span aria-hidden="true" /> {rutaCompleta ? "Todos los retos completados" : "Siguiente reto"}
             </span>
 
             <div className={styles.languageOrb} aria-label="Lenguaje de aprendizaje">
-              <span className={styles.languageOrbLabel}>LENGUAJE</span>
+              <span className={styles.languageOrbLabel}>Lenguaje</span>
               <div className={styles.languageOrbButtons}>
                 <button
                   type="button"
@@ -239,7 +240,7 @@ export default function CodigoPage() {
                   onClick={() => cambiarLenguaje("python")}
                   title="Aprender en Python"
                 >
-                  <span aria-hidden="true">🐍</span> Python
+                  <LanguageIcon lenguaje="python" size={15} /> Python
                 </button>
                 <button
                   type="button"
@@ -247,7 +248,7 @@ export default function CodigoPage() {
                   onClick={() => cambiarLenguaje("java")}
                   title="Aprender en Java"
                 >
-                  <span aria-hidden="true">☕</span> Java
+                  <LanguageIcon lenguaje="java" size={15} /> Java
                 </button>
               </div>
             </div>
@@ -285,7 +286,7 @@ export default function CodigoPage() {
       {rutaCompleta ? (
         <section className="oop-konami-reward" aria-label="Recompensa secreta de Programar POO">
           <div>
-            <span className="oop-konami-crown">🏆 TROFEO DE MAESTRÍA POO</span>
+            <span className="oop-konami-crown">Trofeo de maestría POO</span>
             <h2>Desbloqueaste el secreto mejor guardado de AlgoLab</h2>
             <p>
               Esta recompensa solo aparece al completar los ocho subniveles. Memoriza la secuencia y pruébala

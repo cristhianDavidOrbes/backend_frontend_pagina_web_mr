@@ -57,52 +57,47 @@ export default function EstudianteLayout({ children }: { children: React.ReactNo
 
   if (!hydrated || !token) {
     return (
-      <main className="app-surface grid min-h-screen place-items-center p-6">
-        <div className="loading-card max-w-md text-center">
-          <p>Redirigiendo a inicio de sesión…</p>
-        </div>
+      <main className="shell-state">
+        <div className="loading-card">Redirigiendo a inicio de sesión…</div>
       </main>
     );
   }
 
-  const activo = usuario || (sesion?.rol === "ESTUDIANTE" ? sesion : null);
+  // La sesión local se actualiza al guardar el perfil; el estado de /api/me
+  // solo se leía una vez y dejaba el nombre y el avatar del menú desactualizados.
+  const activo = sesion?.rol === "ESTUDIANTE" ? sesion : usuario;
 
   if (validando && !activo) {
     return (
-      <main className="app-surface grid min-h-screen place-items-center p-6">
-        <div className="loading-card max-w-md text-center">
-          <p>Sincronizando tu cabina…</p>
-        </div>
+      <main className="shell-state">
+        <div className="loading-card">Cargando tu espacio…</div>
       </main>
     );
   }
 
   if (!activo) {
     return (
-      <main className="app-surface grid min-h-screen place-items-center p-6">
-        <div className="loading-card max-w-md text-center" role="alert">
-          <p>{errorSincronizacion || "Sesión no disponible."}</p>
+      <main className="shell-state">
+        <section className="card card-pad" role="alert">
+          <h1 className="text-xl">No pudimos abrir tu espacio</h1>
+          <p className="muted mt-2">{errorSincronizacion || "Sesión no disponible."}</p>
           <button
-            type="button"
+            className="btn btn-primary mt-5"
             onClick={() => {
               clearAuthSession();
               router.replace("/iniciar-sesion");
             }}
-            className="mt-4 rounded-xl bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200"
+            type="button"
           >
             Ir a inicio de sesión
           </button>
-        </div>
+        </section>
       </main>
     );
   }
 
   return (
-    <AppShell 
-      eyebrow="Cabina del estudiante" 
-      title={`Hola, ${activo.nombre.split(" ")[0]}`} 
-      usuario={activo}
-    >
+    <AppShell usuario={activo}>
       {children}
     </AppShell>
   );
