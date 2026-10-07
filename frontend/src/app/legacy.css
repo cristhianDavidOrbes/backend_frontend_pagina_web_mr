@@ -6115,3 +6115,7 @@
 
 .landing-shell .role-card:hover,
 .landing-shell .experience-step:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgb(0 0 0 / 12%); }
+
+/* Transición: las pantallas antiguas viven dentro del nuevo marco de trabajo. */
+.app-surface { background: transparent; }
+.app-surface::before { display: none; }
