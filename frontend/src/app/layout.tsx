@@ -7,6 +7,7 @@ import "./legacy.css";
 import "./globals.css";
 import "./landing.css";
 import "./shell.css";
+import "./code-lab.css";
 
 // Fuentes autoalojadas: la compilación no depende de Google Fonts.
 // Nunito: terminaciones redondeadas, cercana y muy legible (enfoque tipo Duolingo).
