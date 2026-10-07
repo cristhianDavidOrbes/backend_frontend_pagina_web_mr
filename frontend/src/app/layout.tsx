@@ -1,22 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { GlassPointer } from "@/components/glass-pointer";
+import "./legacy.css";
 import "./globals.css";
-import "./design-refresh.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+// Fuentes autoalojadas: la compilación no depende de Google Fonts.
+// Nunito: terminaciones redondeadas, cercana y muy legible (enfoque tipo Duolingo).
+const nunito = localFont({
+  variable: "--font-nunito",
+  display: "swap",
+  weight: "200 1000",
+  src: "./fonts/nunito-latin-wght-normal.woff2",
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://algolab-navy.vercel.app";
 
 export const viewport: Viewport = {
-  themeColor: "#050c0a",
+  themeColor: "#071b17",
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
@@ -107,7 +109,7 @@ export default function RootLayout({
     <html
       lang="es"
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${GeistSans.variable} ${GeistMono.variable} ${nunito.variable} h-full antialiased`}
     >
       <head>
         <script
@@ -115,7 +117,11 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <a className="skip-link" href="#contenido">Saltar al contenido</a>
+        {children}
+        <GlassPointer />
+      </body>
     </html>
   );
 }
