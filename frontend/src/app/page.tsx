@@ -13,6 +13,7 @@ import { EASE_OUT, Reveal, Stagger, StaggerItem } from "@/components/reveal";
 import type { RobotSignal } from "@/components/robot-stage";
 import { PUNTAJE_MAXIMO_NIVEL } from "@/lib/ruta-mr";
 import { useAuthSession } from "@/lib/use-auth-session";
+import { BrandMark } from "@/components/brand-mark";
 
 class FeatureBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -80,7 +81,7 @@ export default function Home() {
         <div className="landing-nav-pill glass">
           <Shared name="brand">
             <Link aria-label="AlgoLab, inicio" className="brand" href="/">
-              <span className="brand-mark">A</span>
+              <BrandMark />
               <span className="brand-name">AlgoLab</span>
             </Link>
           </Shared>
@@ -256,7 +257,7 @@ export default function Home() {
       </main>
 
       <footer className="landing-footer container-x">
-        <span className="brand"><span className="brand-mark">A</span><span className="brand-name">AlgoLab</span></span>
+        <span className="brand"><BrandMark /><span className="brand-name">AlgoLab</span></span>
         <p>Programación orientada a objetos en realidad mixta · UCC Pasto · © 2026</p>
       </footer>
     </div>

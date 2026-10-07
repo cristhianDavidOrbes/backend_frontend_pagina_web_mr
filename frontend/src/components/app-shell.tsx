@@ -26,6 +26,7 @@ import {
 
 import { AvatarDisplay } from "@/components/avatar-display";
 import { clearAuthSession, type UsuarioSesion } from "@/lib/use-auth-session";
+import { BrandMark } from "@/components/brand-mark";
 
 type NavLink = { href: string; label: string; icon: LucideIcon; exact?: boolean };
 type RoleConfig = { label: string; links: NavLink[] };
@@ -166,7 +167,7 @@ export function AppShell({ usuario, children }: Props) {
     <div className="shell-nav">
       <div className="shell-nav-top">
         <Link aria-label="AlgoLab, inicio" className="brand shell-brand" href="/" onClick={() => setMobileMenuOpen(false)}>
-          <span className="brand-mark">A</span>
+          <BrandMark />
           {!compact ? <span className="brand-name">AlgoLab</span> : null}
         </Link>
         {!compact ? <p className="shell-role">{config.label}</p> : null}
@@ -233,7 +234,7 @@ export function AppShell({ usuario, children }: Props) {
           <Menu size={22} />
         </button>
         <Link aria-label="AlgoLab, inicio" className="brand" href="/">
-          <span className="brand-mark">A</span>
+          <BrandMark />
           <span className="brand-name">AlgoLab</span>
         </Link>
         {usuario ? <AvatarDisplay decorative usuario={usuario} /> : <span className="w-10" />}

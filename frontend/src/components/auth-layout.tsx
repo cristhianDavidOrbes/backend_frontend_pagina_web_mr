@@ -9,6 +9,7 @@ import styles from "@/app/auth-pages.module.css";
 import { Shared } from "@/components/page-transition";
 import { ProgressBar } from "@/components/ui";
 import type { RobotSignal } from "@/components/robot-stage";
+import { BrandMark } from "@/components/brand-mark";
 
 const RobotStage = dynamic(() => import("@/components/robot-stage").then((m) => m.RobotStage), {
   ssr: false,
@@ -42,7 +43,7 @@ export function AuthLayout({
       <header className={styles.topbar}>
         <Shared name="brand">
           <Link aria-label="AlgoLab, inicio" className="brand" href="/" transitionTypes={["nav-back"]}>
-            <span className="brand-mark">A</span>
+            <BrandMark />
             <span className="brand-name">AlgoLab</span>
           </Link>
         </Shared>
