@@ -5,6 +5,7 @@ import { GeistMono } from "geist/font/mono";
 import { GlassPointer } from "@/components/glass-pointer";
 import "./legacy.css";
 import "./globals.css";
+import "./landing.css";
 
 // Fuentes autoalojadas: la compilación no depende de Google Fonts.
 // Nunito: terminaciones redondeadas, cercana y muy legible (enfoque tipo Duolingo).

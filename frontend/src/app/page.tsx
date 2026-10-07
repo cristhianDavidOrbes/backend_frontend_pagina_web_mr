@@ -2,380 +2,263 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { Component, type ReactNode } from "react";
-import {
-  ArrowRight,
-  BrainCircuit,
-  Check,
-  Gamepad2,
-  GraduationCap,
-  MousePointer2,
-  ScanLine,
-  ShieldCheck,
-  Sparkles,
-  Bot,
-} from "lucide-react";
-import { FloatLayer, Reveal } from "@/components/reveal";
+import { motion, useReducedMotion } from "framer-motion";
+import { Component, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, Eye, GraduationCap, Hand, Lightbulb, ShieldCheck, Sparkles, Glasses } from "lucide-react";
+
+import { LearningPath } from "@/components/learning-path";
+import { LevelObject } from "@/components/level-object";
+import { Shared } from "@/components/page-transition";
+import { EASE_OUT, Reveal, Stagger, StaggerItem } from "@/components/reveal";
+import type { RobotSignal } from "@/components/robot-stage";
+import { PUNTAJE_MAXIMO_NIVEL } from "@/lib/ruta-mr";
 import { useAuthSession } from "@/lib/use-auth-session";
 
-function LandingModuleFallback({ label }: { label: string }) {
-  return (
-    <div className="landing-module-loader" role="status" aria-live="polite">
-      <Bot size={28} aria-hidden="true" />
-      <span>{label}</span>
-      <i aria-hidden="true" />
-    </div>
-  );
-}
-
-class LandingFeatureBoundary extends Component<
-  { children: ReactNode; fallbackLabel: string },
-  { failed: boolean }
-> {
-  constructor(props: { children: ReactNode; fallbackLabel: string }) {
+class FeatureBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { failed: false };
   }
-
   static getDerivedStateFromError() {
     return { failed: true };
   }
-
   render() {
-    return this.state.failed
-      ? <LandingModuleFallback label={this.props.fallbackLabel} />
-      : this.props.children;
+    return this.state.failed ? null : this.props.children;
   }
 }
 
-const RobotStage = dynamic(
-  () => import("@/components/robot-stage").then((module) => module.RobotStage),
-  { ssr: false, loading: () => <LandingModuleFallback label="Cargando robot 3D" /> },
-);
-
-const LevelsCarousel = dynamic(
-  () => import("@/components/levels-carousel").then((module) => module.LevelsCarousel),
-  { ssr: false, loading: () => <LandingModuleFallback label="Cargando misiones" /> },
-);
+const RobotStage = dynamic(() => import("@/components/robot-stage").then((m) => m.RobotStage), {
+  ssr: false,
+  loading: () => <div className="robot-stage robot-stage-checking" />,
+});
 
 const pasos = [
-  {
-    numero: "01",
-    titulo: "Escanea tu espacio",
-    texto: "AlgoLab reconoce tu habitación y sitúa el laboratorio en tu mesa o suelo de forma segura.",
-    icon: ScanLine,
-  },
-  {
-    numero: "02",
-    titulo: "Toca la idea en 3D",
-    texto: "Apunta, agarra, gira y activa objetos con física real usando tus controladores Meta Quest.",
-    icon: Gamepad2,
-  },
-  {
-    numero: "03",
-    titulo: "Comprende la lógica viva",
-    texto: "El diagrama UML cambia al instante con cada acción física para unir concepto y consecuencia.",
-    icon: BrainCircuit,
-  },
-];
+  { icon: Hand, color: "action", titulo: "Toca", texto: "Manipulas objetos en tu propio espacio." },
+  { icon: Eye, color: "info", titulo: "Observa", texto: "Cada acción cambia algo que puedes ver." },
+  { icon: Lightbulb, color: "progress", titulo: "Entiende", texto: "Una frase corta te explica el porqué." },
+] as const;
+
+const chat = [
+  { de: "robot", texto: "¡Bien! Usaste Cargar en vez de tocar la batería." },
+  { de: "robot", texto: "Para reforzar: ¿por qué el límite vive dentro del robot?" },
+  { de: "tu", texto: "¡Para que nadie lo rompa desde afuera!" },
+] as const;
 
 export default function Home() {
+  const reduce = useReducedMotion();
   const { hydrated, token, usuario } = useAuthSession();
-  const sessionUser = token ? usuario : null;
-  const portalHref = sessionUser
-    ? sessionUser.rol === "DOCENTE"
-      ? "/docente"
-      : sessionUser.rol === "ADMINISTRADOR"
-        ? "/administrador"
-        : "/estudiante"
-    : "/iniciar-sesion";
-  const portalLabel = sessionUser
-    ? sessionUser.rol === "DOCENTE"
-      ? "Volver al observatorio"
-      : sessionUser.rol === "ADMINISTRADOR"
-        ? "Volver al centro de control"
-        : "Volver a mi ruta"
-    : "Ingresar";
-  const compactPortalLabel = sessionUser
-    ? sessionUser.rol === "DOCENTE"
-      ? "Observatorio"
-      : sessionUser.rol === "ADMINISTRADOR"
-        ? "Control"
-        : "Mi ruta"
-    : "Ingresar";
+  const sesion = hydrated && token ? usuario : null;
+  const [senal, setSenal] = useState<RobotSignal | null>(null);
+  const senalId = useRef(0);
+
+  const portal = sesion
+    ? sesion.rol === "DOCENTE"
+      ? { href: "/docente", label: "Ir a mi grupo" }
+      : sesion.rol === "ADMINISTRADOR"
+        ? { href: "/administrador", label: "Ir a administración" }
+        : { href: "/estudiante", label: "Continuar mi ruta" }
+    : null;
+
+  function reaccionar(kind: RobotSignal["kind"]) {
+    senalId.current += 1;
+    setSenal({ kind, id: senalId.current });
+  }
+
+  const ctaPrincipal = portal ? (
+    <Link className="btn btn-primary btn-xl" href={portal.href} transitionTypes={["nav-forward"]}>
+      {portal.label} <ArrowRight className="icon-shift" size={20} />
+    </Link>
+  ) : (
+    <Link className="btn btn-primary btn-xl" href="/registrarse" transitionTypes={["nav-forward"]}>
+      Crear cuenta gratis
+    </Link>
+  );
 
   return (
-    <main className="landing-shell min-h-screen overflow-x-clip text-slate-100">
-      <div className="ambient-orb ambient-orb-one" />
-      <div className="ambient-orb ambient-orb-two" />
-
-      {/* Top Navbar */}
-      <header className="landing-nav-bar">
-        <div className="landing-nav">
-          <Link className="brand-lockup" href="/" aria-label="AlgoLab, inicio">
-            <span className="brand-mark">A</span>
-            <span className="brand-copy">
-              <strong>AlgoLab</strong>
-              <small>Laboratorio de realidad mixta</small>
-            </span>
-          </Link>
-          <nav aria-label="Navegación principal">
-            <a className="nav-anchor" href="#experiencia">Experiencia</a>
-            <a className="nav-anchor" href="#niveles">Niveles</a>
-            <a className="nav-anchor" href="#taller">Taller</a>
-            <a className="nav-anchor" href="#roles">Comunidad</a>
+    <div className="landing">
+      <header className="landing-nav">
+        <div className="landing-nav-pill glass">
+          <Shared name="brand">
+            <Link aria-label="AlgoLab, inicio" className="brand" href="/">
+              <span className="brand-mark">A</span>
+              <span className="brand-name">AlgoLab</span>
+            </Link>
+          </Shared>
+          <nav aria-label="Secciones" className="landing-links">
+            <a href="#como">Cómo funciona</a>
+            <a href="#ruta">Ruta</a>
+            <a href="#tutor">Tutor</a>
           </nav>
-          <div className="landing-actions">
-            {hydrated && sessionUser ? (
-              <div className="landing-user-cluster" aria-label={`Sesión iniciada como ${sessionUser.nombre}`}>
-                <span className="landing-session-chip">
-                  <i aria-hidden="true" />
-                  <span>Sesión activa</span>
-                  <strong>{sessionUser.nombre.split(" ")[0]}</strong>
-                </span>
-                <Link className="primary-button inline-flex items-center" href={portalHref}>
-                  {compactPortalLabel} <ArrowRight size={16} />
-                </Link>
-              </div>
+          <div className="flex items-center gap-2">
+            {portal ? (
+              <Link className="btn btn-primary btn-sm" href={portal.href} transitionTypes={["nav-forward"]}>{portal.label}</Link>
             ) : (
               <>
-                <Link className="ghost-button" href="/iniciar-sesion">Ingresar</Link>
-                <Link className="primary-button hidden items-center sm:inline-flex" href="/registrarse">
-                  Crear cuenta <ArrowRight size={16} />
-                </Link>
+                <Link className="btn btn-ghost btn-sm hidden sm:inline-flex" href="/iniciar-sesion" transitionTypes={["nav-forward"]}>Ingresar</Link>
+                <Link className="btn btn-primary btn-sm" href="/registrarse" transitionTypes={["nav-forward"]}>Crear cuenta</Link>
               </>
             )}
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="landing-hero">
-        <Reveal className="hero-copy" direction="left">
-          <div className="landing-badge">
-            <span /> Realidad mixta + mentor IA
-          </div>
-          <h1>
-            Aprende POO <em>tocando las ideas.</em>
-          </h1>
-          <p>
-            Puertas para entender clases. Vehículos para construir objetos. Un robot para proteger su estado interno. AlgoLab convierte la programación orientada a objetos en un laboratorio interactivo que aparece en tu espacio real.
-          </p>
-          <div className="hero-actions">
-            <Link className="primary-button hero-primary" href={sessionUser ? portalHref : "/registrarse"}>
-              {sessionUser ? portalLabel : "Entrar al laboratorio"} <ArrowRight size={18} />
-            </Link>
-            <a className="play-link" href="#niveles">
-              <span><MousePointer2 size={16} /></span> Ver misiones interactivas
-            </a>
-          </div>
-          <div className="hero-proof">
-            <div><strong>4</strong><span>misiones progresivas</span></div>
-            <div><strong>3D</strong><span>objetos manipulables</span></div>
-            <div><strong>IA</strong><span>mentor pedagógico</span></div>
-          </div>
-        </Reveal>
+      <main id="contenido">
+        {/* Portada: mascota + mensaje + invitación */}
+        <section className="hero container-x">
+          <Reveal className="hero-mascot" direction="none">
+            <div className="hero-stage" onPointerEnter={() => reaccionar("attention")}>
+              <FeatureBoundary>
+                <RobotStage presence="hero" signal={senal} />
+              </FeatureBoundary>
+              <div className="stage-floor" />
+            </div>
+            <motion.button
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="speech glass hero-speech"
+              initial={{ opacity: 0, scale: reduce ? 1 : 0.8, y: reduce ? 0 : 10 }}
+              onClick={() => reaccionar("wave")}
+              transition={{ delay: 0.9, type: "spring", stiffness: 260, damping: 18 }}
+              type="button"
+            >
+              ¡Hola! Te enseño POO con objetos que puedes tocar.
+            </motion.button>
+          </Reveal>
 
-        <Reveal className="hero-lab" delay={0.14} direction="right">
-          <div className="stage-status"><span className="status-dot" /> TALLER // NIVEL 03</div>
-          <div className="stage-diagram">
-            <small>CLASE</small>
-            <strong>Robot</strong>
-            <span>− batería</span>
-            <span>− temperatura</span>
-            <div style={{ borderTop: "1px solid rgba(187,196,204,.35)", margin: ".35rem 0" }} />
-            <span>+ cargar()</span>
-            <span>+ enfriar()</span>
-          </div>
-          <div className="controller-ray" />
-          <LandingFeatureBoundary fallbackLabel="Vista ligera del robot disponible">
-            <RobotStage />
-          </LandingFeatureBoundary>
-          <div className="stage-platform"><i /><i /><i /></div>
-          <FloatLayer className="stage-callout" delay={0.4}>
-            <span>+ método público</span>
-            <strong>ENFRIAR()</strong>
-          </FloatLayer>
-          <div className="stage-hint">
-            <MousePointer2 size={15} /> Arrastra para inspeccionar el robot
-          </div>
-        </Reveal>
-      </section>
-
-      {/* Experience Section */}
-      <section className="experience-section" id="experiencia">
-        <Reveal className="section-heading">
-          <p className="section-kicker">No memorizas: experimentas</p>
-          <h2>Lo abstracto toma forma delante de ti.</h2>
-          <p>
-            Cada concepto se representa con una situación física tangible. Lo que haces con tus manos cambia el objeto 3D, el diagrama UML y la evidencia pedagógica al mismo tiempo.
-          </p>
-        </Reveal>
-        <div className="experience-steps">
-          {pasos.map((paso, index) => (
-            <Reveal className="experience-step" delay={index * 0.08} key={paso.numero}>
-              <div className="step-icon"><paso.icon size={24} /></div>
-              <span>PASO {paso.numero}</span>
-              <h3>{paso.titulo}</h3>
-              <p>{paso.texto}</p>
-              {index < pasos.length - 1 ? <ArrowRight className="step-arrow" size={20} /> : null}
+          <div className="hero-copy">
+            <Reveal>
+              <span className="badge badge-info"><Glasses size={15} /> Realidad mixta · Meta Quest</span>
             </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* Interactive Levels Showcase / Carousel Section */}
-      <section className="levels-section" id="niveles">
-        <Reveal className="section-heading mb-8">
-          <p className="section-kicker">Ruta de aprendizaje interactiva</p>
-          <h2>Cuatro niveles. Un mundo que evoluciona.</h2>
-          <p>
-            Explora cada misión, desde la comprensión de clases y objetos hasta la abstracción.
-          </p>
-        </Reveal>
-
-        <Reveal delay={0.1}>
-          <LandingFeatureBoundary fallbackLabel="Las misiones no pudieron cargarse ahora">
-            <LevelsCarousel />
-          </LandingFeatureBoundary>
-        </Reveal>
-      </section>
-
-      {/* Physical action to visible learning journey */}
-      <section className="workshop-story workshop-story-copy-only" id="taller">
-        <Reveal className="workshop-copy" direction="right">
-          <p className="section-kicker">Aprendizaje que puedes tocar</p>
-          <h2>Cada acción física revela una idea de POO.</h2>
-          <p>
-            En AlgoLab no memorizas una definición aislada: manipulas un objeto, observas cómo cambia su clase y recibes una explicación en el momento. Así conectas <strong>lo que haces</strong>, <strong>la lógica POO</strong> y <strong>el resultado</strong> en una sola experiencia.
-          </p>
-          <ul>
-            <li>
-              <Check size={18} />
-              <span>Objetos con física reactiva y respuesta inmediata</span>
-            </li>
-            <li>
-              <Check size={18} />
-              <span>Diagramas UML en tiempo real que señalan cada decisión</span>
-            </li>
-            <li>
-              <Check size={18} />
-              <span>Puntuación, tiempo y telemetría sincronizada con la web</span>
-            </li>
-          </ul>
-        </Reveal>
-      </section>
-
-      {/* AI Pedagogical Mentor Section */}
-      <section className="ai-section">
-        <Reveal className="ai-copy" direction="left">
-          <div className="ai-orb">
-            <BrainCircuit size={32} />
-            <i />
+            <Reveal delay={0.06}>
+              <h1 className="display-1 mt-5">
+                Aprende POO <span className="gradient-text">tocando las ideas.</span>
+              </h1>
+            </Reveal>
+            <Reveal delay={0.12}>
+              <p className="lead mt-5">Abres una puerta, armas un vehículo, reparas un robot. Así entiendes la programación orientada a objetos.</p>
+            </Reveal>
+            <Reveal className="hero-ctas" delay={0.18}>
+              {ctaPrincipal}
+              {!portal ? (
+                <Link className="btn btn-secondary btn-xl" href="/iniciar-sesion" transitionTypes={["nav-forward"]}>
+                  Ya tengo cuenta
+                </Link>
+              ) : null}
+            </Reveal>
           </div>
-          <p className="section-kicker">Mentor especializado en POO</p>
-          <h2>No entrega respuestas genéricas. Lee lo que hiciste.</h2>
-          <p>
-            Al finalizar cada nivel en las gafas, la inteligencia artificial analiza precisión, errores específicos, intentos y tiempo invertido. El estudiante recibe un diagnóstico formativo y el docente obtiene evidencia clara para guiarlo.
-          </p>
-          <div className="ai-tags">
-            <span>Enfocado 100% en POO</span>
-            <span>Evaluación por Nivel</span>
-            <span>Accionable y Pedagógico</span>
-          </div>
-        </Reveal>
+        </section>
 
-        <Reveal className="report-preview" direction="right">
-          <div className="report-head">
-            <span>REPORTE IA // NIVEL 03</span>
-            <strong>86%</strong>
-          </div>
-          <h3>Comprendiste la protección del estado</h3>
-          <p>
-            Elegiste métodos públicos para regular la temperatura y cargar la batería sin alterar directamente las propiedades privadas del robot.
-          </p>
-          <div className="report-row positive">
-            <span>FORTALEZA</span>
-            <p>Relacionas acciones físicas con las responsabilidades bien delimitadas de la clase.</p>
-          </div>
-          <div className="report-row growth">
-            <span>SIGUIENTE PASO</span>
-            <p>Explica por qué la validación de rango debe vivir dentro del setter o método interno.</p>
-          </div>
-          <small>
-            <Sparkles size={14} className="text-emerald-300" />
-            Generado automáticamente al finalizar la práctica en las gafas VR
-          </small>
-        </Reveal>
-      </section>
-
-      {/* Roles & Perspectives Section */}
-      <section className="roles-section" id="roles">
-        <Reveal className="section-heading">
-          <p className="section-kicker">Una sola experiencia, tres perspectivas</p>
-          <h2>Cada usuario ve lo que necesita para avanzar.</h2>
-        </Reveal>
-        <div className="role-grid">
-          <Reveal className="role-card role-student">
-            <Gamepad2 size={28} />
-            <span>ESTUDIANTE</span>
-            <h3>Una ruta que se siente como una misión interactiva.</h3>
-            <p>Niveles progresivos, objetos desbloqueables, ranking, avatar personalizado y diagnósticos de IA.</p>
-            <Link href={sessionUser ? portalHref : "/registrarse"}>
-              {sessionUser ? portalLabel : "Crear mi perfil"} <ArrowRight size={15} />
-            </Link>
+        {/* Cómo funciona */}
+        <section className="section container-x" id="como">
+          <Reveal className="section-head">
+            <h2 className="display-2">Así de simple.</h2>
           </Reveal>
+          <Stagger className="steps">
+            {pasos.map((paso, i) => (
+              <StaggerItem as="article" className={`step glass step-${paso.color}`} key={paso.titulo}>
+                <span className="step-icon"><paso.icon size={30} strokeWidth={2.4} /></span>
+                <span className="step-n">{i + 1}</span>
+                <h3>{paso.titulo}</h3>
+                <p>{paso.texto}</p>
+              </StaggerItem>
+            ))}
+          </Stagger>
+        </section>
 
-          <Reveal className="role-card role-teacher" delay={0.08}>
-            <GraduationCap size={28} />
-            <span>DOCENTE</span>
-            <h3>La evidencia detrás de cada interacción en las gafas.</h3>
-            <p>Dominio por nivel del grupo, alertas tempranas de estudiantes con dificultades y reportes detallados.</p>
-            <Link href={sessionUser ? portalHref : "/iniciar-sesion"}>
-              {sessionUser ? portalLabel : "Abrir observatorio"} <ArrowRight size={15} />
-            </Link>
+        {/* Ruta: camino de aprendizaje */}
+        <section className="section container-x route-section" id="ruta">
+          <Reveal className="section-head">
+            <h2 className="display-2">4 niveles. <span className="gradient-text">Un objeto por idea.</span></h2>
+            <p className="lead mt-4">Del plano al objeto, hasta la abstracción. Cada nivel vale {PUNTAJE_MAXIMO_NIVEL} puntos.</p>
           </Reveal>
+          <LearningPath
+            detalle={(nivel) => (
+              <>
+                <strong>{nivel.nombreObjeto}</strong>
+                <p>{nivel.resumen}</p>
+                {portal ? (
+                  <Link className="btn btn-primary btn-sm btn-block" href={portal.href}>Ir a mi ruta</Link>
+                ) : (
+                  <Link className="btn btn-primary btn-sm btn-block" href="/registrarse" transitionTypes={["nav-forward"]}>Crea tu cuenta para empezar</Link>
+                )}
+              </>
+            )}
+            estado={() => "invitado"}
+            meta={{ titulo: "¡Ruta completa!", logrado: false }}
+          />
+        </section>
 
-          <Reveal className="role-card role-admin" delay={0.16}>
-            <ShieldCheck size={28} />
-            <span>ADMINISTRACIÓN</span>
-            <h3>Control del ecosistema y gestión de contenidos.</h3>
-            <p>Gestión completa de usuarios, asignación de roles y constructor de niveles y experiencias pedagógicas.</p>
-            <Link href={sessionUser ? portalHref : "/iniciar-sesion"}>
-              {sessionUser ? portalLabel : "Gestionar plataforma"} <ArrowRight size={15} />
-            </Link>
+        {/* Tutor */}
+        <section className="section container-x tutor" id="tutor">
+          <Reveal className="tutor-copy">
+            <span className="badge badge-action"><Sparkles size={15} /> Tutor con IA</span>
+            <h2 className="display-2 mt-4">Te dice qué lograste y qué sigue.</h2>
+            <p className="lead mt-4">Lee tus intentos, tiempo y errores. Nada de respuestas genéricas.</p>
           </Reveal>
-        </div>
-      </section>
-
-      {/* Final Call to Action */}
-      <section className="final-cta">
-        <Reveal className="final-cta-inner">
-          <div>
-            <p className="section-kicker">La próxima idea está esperando</p>
-            <h2>Tu espacio físico puede convertirse en un laboratorio de programación.</h2>
-            <p>
-              Crea tu cuenta, personaliza tu avatar y continúa aprendiendo dentro y fuera de las gafas de realidad mixta.
-            </p>
+          <div className="chat glass">
+            {chat.map((m, i) => (
+              <motion.div
+                className={`chat-row ${m.de === "tu" ? "is-me" : ""}`}
+                initial={{ opacity: 0, y: reduce ? 0 : 14, scale: reduce ? 1 : 0.96 }}
+                key={i}
+                transition={{ delay: 0.15 + i * 0.45, duration: 0.45, ease: EASE_OUT }}
+                viewport={{ once: true, amount: 0.8 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              >
+                {m.de === "robot" ? <span className="chat-avatar"><LevelObject objeto="robot" size={40} /></span> : null}
+                <p className="chat-bubble">{m.texto}</p>
+              </motion.div>
+            ))}
+            <motion.div
+              className="chat-score"
+              initial={{ opacity: 0, scale: reduce ? 1 : 0.7 }}
+              transition={{ delay: 1.6, type: "spring", stiffness: 300, damping: 16 }}
+              viewport={{ once: true }}
+              whileInView={{ opacity: 1, scale: 1 }}
+            >
+              <span>Nivel 3 · Encapsulamiento</span>
+              <strong>86 <small>/ 100</small></strong>
+            </motion.div>
           </div>
-          <Link className="primary-button hero-primary" href={sessionUser ? portalHref : "/registrarse"}>
-            {sessionUser ? portalLabel : "Comenzar ahora"} <ArrowRight size={18} />
-          </Link>
-        </Reveal>
-      </section>
+        </section>
 
-      {/* Footer */}
-      <footer className="landing-footer">
-        <div className="brand-lockup">
-          <span className="brand-mark">A</span>
-          <span className="brand-copy">
-            <strong>AlgoLab</strong>
-            <small>Ideas que puedes tocar</small>
-          </span>
-        </div>
-        <p>Programación orientada a objetos · Realidad mixta Meta Quest · Inteligencia pedagógica</p>
-        <span>© 2026 AlgoLab</span>
+        {/* Roles */}
+        <section className="section container-x">
+          <Reveal className="section-head">
+            <h2 className="display-2">Para toda el aula.</h2>
+          </Reveal>
+          <Stagger className="roles">
+            <StaggerItem as="article" className="role glass">
+              <span className="role-icon role-action"><Glasses size={26} /></span>
+              <h3>Estudiantes</h3>
+              <p>Tu ruta, tus logros y tu siguiente paso.</p>
+            </StaggerItem>
+            <StaggerItem as="article" className="role glass">
+              <span className="role-icon role-info"><GraduationCap size={26} /></span>
+              <h3>Docentes</h3>
+              <p>Quién avanza y quién necesita apoyo.</p>
+            </StaggerItem>
+            <StaggerItem as="article" className="role glass">
+              <span className="role-icon role-progress"><ShieldCheck size={26} /></span>
+              <h3>Administración</h3>
+              <p>Usuarios, niveles y el tutor, en orden.</p>
+            </StaggerItem>
+          </Stagger>
+        </section>
+
+        {/* Invitación final */}
+        <section className="section container-x">
+          <Reveal className="final glass">
+            <h2 className="display-2">Tu habitación, <span className="gradient-text">tu laboratorio.</span></h2>
+            <p className="lead mt-4">Gratis. Tu progreso te sigue de la web a las gafas.</p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">{ctaPrincipal}</div>
+          </Reveal>
+        </section>
+      </main>
+
+      <footer className="landing-footer container-x">
+        <span className="brand"><span className="brand-mark">A</span><span className="brand-name">AlgoLab</span></span>
+        <p>Programación orientada a objetos en realidad mixta · UCC Pasto · © 2026</p>
       </footer>
-    </main>
+    </div>
   );
 }
