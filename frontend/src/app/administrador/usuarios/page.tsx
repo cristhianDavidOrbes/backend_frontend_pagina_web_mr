@@ -1,9 +1,13 @@
 "use client";
 
-import { Pencil, RotateCcw, Save, Search, Trash2, UserCog } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ArrowLeft, Check, Pencil, Search, Trash2, Users } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useAuthSession } from "@/lib/use-auth-session";
+
+import { EASE_OUT, Swap } from "@/components/reveal";
+import { AnimatedNotice, Dialog, EmptyState, PageHead, Segmented, Spinner, type Tone } from "@/components/ui";
 import { apiRequest } from "@/lib/client-api";
+import { useAuthSession } from "@/lib/use-auth-session";
 
 type Rol = "ESTUDIANTE" | "DOCENTE" | "ADMINISTRADOR";
 
@@ -17,7 +21,7 @@ type Usuario = {
 };
 
 type UsuarioForm = {
-  id: number | null;
+  id: number;
   nombre: string;
   correo: string;
   rol: Rol;
@@ -25,407 +29,293 @@ type UsuarioForm = {
   puntaje: string;
 };
 
-const inputClass = "field-input text-sm";
-const buttonClass =
-  "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-45";
+const ROLES: Record<Rol, string> = { ESTUDIANTE: "Estudiante", DOCENTE: "Docente", ADMINISTRADOR: "Administrador" };
 
-const usuarioInicial: UsuarioForm = {
-  id: null,
-  nombre: "",
-  correo: "",
-  rol: "ESTUDIANTE",
-  nivelActual: "1",
-  puntaje: "0",
-};
+function aFormulario(u: Usuario): UsuarioForm {
+  return { id: u.id, nombre: u.nombre, correo: u.correo, rol: u.rol, nivelActual: String(u.nivelActual ?? 1), puntaje: String(u.puntaje ?? 0) };
+}
 
 export default function AdministradorUsuariosPage() {
+  const reduce = useReducedMotion();
   const { hydrated, token, usuario: usuarioActual } = useAuthSession();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [busqueda, setBusqueda] = useState("");
-  const [mensaje, setMensaje] = useState("");
+  const [rolFiltro, setRolFiltro] = useState<Rol | "TODOS">("TODOS");
+  const [mensaje, setMensaje] = useState<{ texto: string; tono: Tone }>({ texto: "", tono: "info" });
   const [datosCargados, setDatosCargados] = useState(false);
   const [errorCarga, setErrorCarga] = useState(false);
   const [reintentos, setReintentos] = useState(0);
-  const [usuarioForm, setUsuarioForm] = useState<UsuarioForm>(usuarioInicial);
+
+  const [form, setForm] = useState<UsuarioForm | null>(null);
+  const [original, setOriginal] = useState<UsuarioForm | null>(null);
+  const [abierto, setAbierto] = useState(false);
+  const [vista, setVista] = useState<"editar" | "eliminar">("editar");
+  const [errorModal, setErrorModal] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [borrando, setBorrando] = useState(false);
 
   const usuariosFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
-
-    if (!texto) {
-      return usuarios;
-    }
-
-    return usuarios.filter((usuario) =>
-      `${usuario.nombre} ${usuario.correo} ${usuario.rol}`.toLowerCase().includes(texto),
-    );
-  }, [busqueda, usuarios]);
+    return usuarios.filter((u) => {
+      if (rolFiltro !== "TODOS" && u.rol !== rolFiltro) return false;
+      return !texto || `${u.nombre} ${u.correo} ${u.rol}`.toLowerCase().includes(texto);
+    });
+  }, [busqueda, usuarios, rolFiltro]);
 
   useEffect(() => {
     if (!hydrated || !token) return;
-
     async function cargarDatos() {
       setDatosCargados(false);
       setErrorCarga(false);
-      setMensaje("");
+      setMensaje({ texto: "", tono: "info" });
       try {
         const data = await apiRequest<Usuario[]>("/api/usuarios", token as string);
         setUsuarios(data);
       } catch (error) {
         setErrorCarga(true);
-        setMensaje(error instanceof Error ? error.message : "Error al cargar usuarios.");
+        setMensaje({ texto: error instanceof Error ? error.message : "No se pudieron cargar los usuarios.", tono: "error" });
       } finally {
         setDatosCargados(true);
       }
     }
-
     void cargarDatos();
   }, [hydrated, token, reintentos]);
 
+  const ocupado = guardando || borrando;
+  const esPropio = form !== null && usuarioActual?.id === form.id;
+  const cambios = form !== null && JSON.stringify(form) !== JSON.stringify(original);
+
+  function abrir(u: Usuario) {
+    const datos = aFormulario(u);
+    setForm(datos);
+    setOriginal(datos);
+    setVista("editar");
+    setErrorModal("");
+    setAbierto(true);
+  }
+
+  function cerrar() {
+    if (ocupado) return;
+    setAbierto(false);
+  }
+
   async function guardarUsuario(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMensaje("");
-
-    if (!usuarioForm.id) {
-      setMensaje("Selecciona un usuario para editarlo.");
+    if (!form) return;
+    if (esPropio && form.rol !== "ADMINISTRADOR") {
+      setErrorModal("No puedes quitarte tu propio rol de administrador.");
       return;
     }
-
-    if (usuarioActual?.id === usuarioForm.id && usuarioForm.rol !== "ADMINISTRADOR") {
-      setMensaje("No puedes quitarte tu propio rol de administrador.");
-      return;
-    }
-
+    setGuardando(true);
+    setErrorModal("");
     try {
-      const usuarioActualizado = await apiRequest<Usuario>(
-        `/api/usuarios/${usuarioForm.id}`,
-        token as string,
-        {
-          method: "PUT",
-          body: JSON.stringify({
-            nombre: usuarioForm.nombre,
-            correo: usuarioForm.correo,
-            rol: usuarioForm.rol,
-            nivelActual: Number(usuarioForm.nivelActual),
-            puntaje: Number(usuarioForm.puntaje),
-          }),
-        },
-      );
-
-      setUsuarios((actuales) =>
-        actuales.map((usuario) =>
-          usuario.id === usuarioActualizado.id ? usuarioActualizado : usuario,
-        ),
-      );
-      setUsuarioForm(usuarioInicial);
-      setMensaje("Usuario actualizado correctamente.");
-    } catch (error) {
-      setMensaje(error instanceof Error ? error.message : "No se pudo actualizar el usuario.");
-    }
-  }
-
-  async function eliminarUsuario(id: number) {
-    setMensaje("");
-
-    if (usuarioActual?.id === id) {
-      setMensaje("No puedes borrar tu propia cuenta de administrador.");
-      return;
-    }
-
-    try {
-      await apiRequest<null>(`/api/usuarios/${id}`, token as string, {
-        method: "DELETE",
+      const actualizado = await apiRequest<Usuario>(`/api/usuarios/${form.id}`, token as string, {
+        method: "PUT",
+        body: JSON.stringify({
+          nombre: form.nombre,
+          correo: form.correo,
+          rol: form.rol,
+          nivelActual: Number(form.nivelActual),
+          puntaje: Number(form.puntaje),
+        }),
       });
-
-      setUsuarios((actuales) => actuales.filter((usuario) => usuario.id !== id));
-      setMensaje("Usuario eliminado correctamente.");
+      setUsuarios((actuales) => actuales.map((u) => (u.id === actualizado.id ? actualizado : u)));
+      setMensaje({ texto: `Se guardaron los cambios de ${actualizado.nombre}.`, tono: "success" });
+      setAbierto(false);
     } catch (error) {
-      setMensaje(error instanceof Error ? error.message : "No se pudo eliminar el usuario.");
+      setErrorModal(error instanceof Error ? `No se guardó: ${error.message}` : "No se pudo actualizar el usuario.");
+    } finally {
+      setGuardando(false);
     }
   }
 
-  function editarUsuario(usuario: Usuario) {
-    setUsuarioForm({
-      id: usuario.id,
-      nombre: usuario.nombre,
-      correo: usuario.correo,
-      rol: usuario.rol,
-      nivelActual: String(usuario.nivelActual ?? 0),
-      puntaje: String(usuario.puntaje ?? 0),
-    });
+  async function eliminarUsuario() {
+    if (!form) return;
+    if (esPropio) {
+      setErrorModal("No puedes borrar tu propia cuenta de administrador.");
+      setVista("editar");
+      return;
+    }
+    setBorrando(true);
+    setErrorModal("");
+    try {
+      await apiRequest<null>(`/api/usuarios/${form.id}`, token as string, { method: "DELETE" });
+      setUsuarios((actuales) => actuales.filter((u) => u.id !== form.id));
+      setMensaje({ texto: `Se eliminó a ${original?.nombre ?? form.nombre}.`, tono: "success" });
+      setAbierto(false);
+    } catch (error) {
+      setErrorModal(error instanceof Error ? `No se eliminó: ${error.message}` : "No se pudo eliminar el usuario.");
+      setVista("editar");
+    } finally {
+      setBorrando(false);
+    }
   }
 
-  const mensajeExito = /correctamente/i.test(mensaje);
   const cargando = hydrated && Boolean(token) && !datosCargados;
+  const conteo = (rol: Rol) => usuarios.filter((u) => u.rol === rol).length;
 
   return (
-    <>
-      {mensaje ? (
-        <div
-          aria-live="polite"
-          className={`mb-5 flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${
-            mensajeExito
-              ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
-              : "border-amber-300/20 bg-amber-400/10 text-amber-100"
-          }`}
-        >
-          <span
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-              mensajeExito ? "bg-emerald-300" : "bg-amber-300"
-            }`}
+    <div>
+      <PageHead description="Busca a una persona y presiona Editar para cambiar su rol o su progreso." title="Usuarios" />
+      <AnimatedNotice
+        action={errorCarga ? <button className="btn btn-secondary btn-sm" onClick={() => setReintentos((n) => n + 1)} type="button">Reintentar</button> : undefined}
+        className="mb-5"
+        message={mensaje.texto}
+        onDismiss={() => setMensaje({ texto: "", tono: "info" })}
+        tone={mensaje.tono}
+      />
+
+      <section className="card overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b border-line/10 p-4">
+          <label className="input-with-icon min-w-[220px] flex-1">
+            <Search size={18} />
+            <span className="sr-only">Buscar usuarios</span>
+            <input className="field-input" onChange={(e) => setBusqueda(e.target.value)} placeholder="Nombre o correo" value={busqueda} />
+          </label>
+          <Segmented
+            label="Filtrar por rol"
+            onChange={setRolFiltro}
+            options={[
+              { value: "TODOS", label: `Todos ${usuarios.length}` },
+              { value: "ESTUDIANTE", label: `Estudiantes ${conteo("ESTUDIANTE")}` },
+              { value: "DOCENTE", label: `Docentes ${conteo("DOCENTE")}` },
+              { value: "ADMINISTRADOR", label: `Admin ${conteo("ADMINISTRADOR")}` },
+            ]}
+            size="sm"
+            value={rolFiltro}
           />
-          {mensaje}
-          {errorCarga ? (
-            <button
-              className="ml-auto shrink-0 rounded-lg border border-amber-300/30 px-3 py-1.5 font-semibold text-amber-100 hover:bg-amber-300/10"
-              type="button"
-              onClick={() => setReintentos((actual) => actual + 1)}
-            >
-              Reintentar
-            </button>
-          ) : null}
         </div>
-      ) : null}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(330px,.65fr)]">
-        <section className="panel-card min-w-0 overflow-hidden p-5 sm:p-6">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="section-kicker">Directorio sincronizado</p>
-              <h2 className="mt-2 text-xl font-semibold">Usuarios de AlgoLab</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Cambia roles, progreso o acceso sin salir de la consola.
-              </p>
-            </div>
-            <label className="relative w-full sm:w-72">
-              <span className="sr-only">Buscar usuarios</span>
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                size={16}
-              />
-              <input
-                className="field-input mt-0 pl-10 text-sm"
-                placeholder="Nombre, correo o rol"
-                value={busqueda}
-                onChange={(event) => setBusqueda(event.target.value)}
-              />
-            </label>
-          </div>
-
-          <div className="mt-5 overflow-x-auto rounded-2xl border border-white/[.07]">
-            <table className="w-full min-w-[820px] border-collapse text-left text-sm">
-              <thead className="bg-white/[.035] text-[11px] uppercase tracking-[.12em] text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">Identidad</th>
-                  <th className="px-4 py-3 font-semibold">Rol</th>
-                  <th className="px-4 py-3 font-semibold">Nivel</th>
-                  <th className="px-4 py-3 font-semibold">Puntaje</th>
-                  <th className="px-4 py-3 text-right font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usuariosFiltrados.map((usuario) => (
-                  <tr
-                    className="border-t border-white/[.06] transition hover:bg-emerald-300/[.035]"
-                    key={usuario.id}
+        <div className="overflow-x-auto">
+          <table className="table min-w-[640px]">
+            <thead>
+              <tr>
+                <th>Persona</th>
+                <th>Rol</th>
+                <th>Nivel</th>
+                <th>Puntaje</th>
+                <th className="text-right"><span className="sr-only">Editar</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <AnimatePresence initial={false}>
+                {usuariosFiltrados.map((u) => (
+                  <motion.tr
+                    animate={{ opacity: 1 }}
+                    aria-selected={abierto && form?.id === u.id}
+                    exit={{ opacity: 0, x: reduce ? 0 : -12 }}
+                    initial={{ opacity: 0 }}
+                    key={u.id}
+                    transition={{ duration: 0.25, ease: EASE_OUT }}
                   >
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-300/15 bg-emerald-300/[.07] font-mono text-xs font-bold text-emerald-200">
-                          {usuario.nombre.charAt(0).toUpperCase()}
-                        </span>
+                    <td>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="avatar-display avatar-orbita" aria-hidden="true">{u.nombre.charAt(0).toUpperCase()}</span>
                         <span className="min-w-0">
-                          <strong className="block truncate font-medium text-slate-100">
-                            {usuario.nombre}
-                          </strong>
-                          <small className="block truncate text-slate-500">{usuario.correo}</small>
+                          <strong className="block truncate font-extrabold">{u.nombre}{usuarioActual?.id === u.id ? " (tú)" : ""}</strong>
+                          <small className="subtle block truncate font-semibold">{u.correo}</small>
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5">
-                      <RoleBadge role={usuario.rol} />
+                    <td><RoleBadge role={u.rol} /></td>
+                    <td className="num font-bold">{u.nivelActual ?? 1}</td>
+                    <td className="num font-bold text-action">{u.puntaje ?? 0}</td>
+                    <td className="text-right">
+                      <button aria-label={`Editar a ${u.nombre}`} className="btn btn-secondary btn-sm" onClick={() => abrir(u)} type="button">
+                        <Pencil size={15} /> Editar
+                      </button>
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-slate-300">
-                      {usuario.nivelActual ?? 0}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono text-emerald-200">
-                      {usuario.puntaje ?? 0}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          aria-label={`Editar a ${usuario.nombre}`}
-                          className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-slate-300 transition hover:border-emerald-300/25 hover:bg-emerald-300/10 hover:text-emerald-200"
-                          type="button"
-                          onClick={() => editarUsuario(usuario)}
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          aria-label={`Borrar a ${usuario.nombre}`}
-                          className="grid h-9 w-9 place-items-center rounded-xl border border-rose-300/15 bg-rose-400/[.06] text-rose-300 transition hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-30"
-                          type="button"
-                          disabled={usuarioActual?.id === usuario.id}
-                          onClick={() => eliminarUsuario(usuario.id)}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  </motion.tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </AnimatePresence>
+            </tbody>
+          </table>
+        </div>
+        {cargando ? <div className="loading-card m-4">Cargando usuarios…</div> : null}
+        {!cargando && !errorCarga && !usuariosFiltrados.length ? (
+          <div className="p-4"><EmptyState icon={<Users size={26} />} title="Sin coincidencias">Prueba con otro nombre o rol.</EmptyState></div>
+        ) : null}
+      </section>
 
-          {cargando ? (
-            <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
-              Cargando telemetría de usuarios…
-            </div>
-          ) : null}
-          {!cargando && !errorCarga && !usuariosFiltrados.length ? (
-            <div className="empty-state mt-4">
-              <Search size={20} />
-              <p>No hay identidades que coincidan con la búsqueda.</p>
-            </div>
-          ) : null}
-        </section>
+      <Dialog busy={ocupado} onClose={cerrar} open={abierto} title={vista === "eliminar" ? "¿Eliminar usuario?" : "Editar usuario"} width={520}>
+        {form ? (
+          <Swap direction={vista === "eliminar" ? 1 : -1} swapKey={vista}>
+            {vista === "editar" ? (
+              <form className="grid gap-4" onSubmit={guardarUsuario}>
+                <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-3">
+                  <span className="avatar-display avatar-orbita" aria-hidden="true">{(original?.nombre ?? form.nombre).charAt(0).toUpperCase()}</span>
+                  <div className="min-w-0 flex-1">
+                    <strong className="block truncate font-extrabold">{original?.nombre}</strong>
+                    <small className="subtle block truncate font-semibold">{original?.correo}</small>
+                  </div>
+                  <span className={`save-state ${cambios ? "is-dirty" : ""}`}>{cambios ? "● Sin guardar" : "Sin cambios"}</span>
+                </div>
 
-        <section className="panel-card p-5 sm:p-6 xl:sticky xl:top-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="section-kicker">Editor de identidad</p>
-              <h2 className="mt-2 text-xl font-semibold">
-                {usuarioForm.id ? "Modificar usuario" : "Selecciona un usuario"}
-              </h2>
-            </div>
-            <span className="grid h-10 w-10 place-items-center rounded-xl border border-emerald-300/15 bg-emerald-300/[.07] text-emerald-200">
-              <UserCog size={19} />
-            </span>
-          </div>
-          <form className="mt-5 space-y-4" onSubmit={guardarUsuario}>
-            <label className="field-label" htmlFor="usuario-nombre">
-              Nombre
-              <input
-                className={inputClass}
-                id="usuario-nombre"
-                value={usuarioForm.nombre}
-                onChange={(event) =>
-                  setUsuarioForm((actual) => ({ ...actual, nombre: event.target.value }))
-                }
-                required
-              />
-            </label>
+                {errorModal ? <p className="notice notice-error" role="alert">{errorModal}</p> : null}
 
-            <label className="field-label" htmlFor="usuario-correo">
-              Correo
-              <input
-                className={inputClass}
-                id="usuario-correo"
-                type="email"
-                value={usuarioForm.correo}
-                onChange={(event) =>
-                  setUsuarioForm((actual) => ({ ...actual, correo: event.target.value }))
-                }
-                required
-              />
-            </label>
+                <label className="field-label" htmlFor="usuario-nombre">
+                  Nombre
+                  <input className="field-input" data-autofocus id="usuario-nombre" onChange={(e) => setForm({ ...form, nombre: e.target.value })} required value={form.nombre} />
+                </label>
+                <label className="field-label" htmlFor="usuario-correo">
+                  Correo
+                  <input className="field-input" id="usuario-correo" onChange={(e) => setForm({ ...form, correo: e.target.value })} required type="email" value={form.correo} />
+                </label>
+                <label className="field-label" htmlFor="usuario-rol">
+                  Rol
+                  <select className="field-input" disabled={esPropio} id="usuario-rol" onChange={(e) => setForm({ ...form, rol: e.target.value as Rol })} value={form.rol}>
+                    {(Object.keys(ROLES) as Rol[]).map((r) => <option key={r} value={r}>{ROLES[r]}</option>)}
+                  </select>
+                  {esPropio ? <span className="field-help">Tu propio rol está protegido.</span> : null}
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="field-label" htmlFor="usuario-nivel-actual">
+                    Nivel actual
+                    <input className="field-input" id="usuario-nivel-actual" max="6" min="1" onChange={(e) => setForm({ ...form, nivelActual: e.target.value })} required type="number" value={form.nivelActual} />
+                  </label>
+                  <label className="field-label" htmlFor="usuario-puntaje">
+                    Puntaje
+                    <input className="field-input" id="usuario-puntaje" min="0" onChange={(e) => setForm({ ...form, puntaje: e.target.value })} required step="1" type="number" value={form.puntaje} />
+                  </label>
+                </div>
+                <p className="field-help -mt-2">La ruta en gafas tiene 4 niveles; 5 y 6 siguen en diseño.</p>
 
-            <label className="field-label" htmlFor="usuario-rol">
-              Rol
-              <select
-                className={inputClass}
-                id="usuario-rol"
-                value={usuarioForm.rol}
-                disabled={usuarioActual?.id === usuarioForm.id}
-                onChange={(event) =>
-                  setUsuarioForm((actual) => ({
-                    ...actual,
-                    rol: event.target.value as Rol,
-                  }))
-                }
-              >
-                <option value="ESTUDIANTE">ESTUDIANTE</option>
-                <option value="DOCENTE">DOCENTE</option>
-                <option value="ADMINISTRADOR">ADMINISTRADOR</option>
-              </select>
-            </label>
-            {usuarioActual?.id === usuarioForm.id ? (
-              <p className="rounded-xl border border-amber-300/15 bg-amber-300/[.06] px-3 py-2 text-xs leading-5 text-amber-100/80">
-                Tu rango está protegido mientras administras esta sesión.
-              </p>
-            ) : null}
-
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              <label className="field-label" htmlFor="usuario-nivel-actual">
-                Nivel actual
-                <input
-                  className={inputClass}
-                  id="usuario-nivel-actual"
-                  max="6"
-                  min="1"
-                  type="number"
-                  value={usuarioForm.nivelActual}
-                  onChange={(event) =>
-                    setUsuarioForm((actual) => ({
-                      ...actual,
-                      nivelActual: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </label>
-
-              <label className="field-label" htmlFor="usuario-puntaje">
-                Puntaje
-                <input
-                  className={inputClass}
-                  id="usuario-puntaje"
-                  step="1"
-                  type="number"
-                  value={usuarioForm.puntaje}
-                  onChange={(event) =>
-                    setUsuarioForm((actual) => ({ ...actual, puntaje: event.target.value }))
-                  }
-                  required
-                />
-              </label>
-            </div>
-
-            <div className="flex flex-wrap gap-2 pt-1">
-              <button
-                className={`${buttonClass} bg-emerald-300 text-slate-950 hover:bg-emerald-200`}
-                type="submit"
-              >
-                <Save size={15} /> Guardar usuario
-              </button>
-              <button
-                className={`${buttonClass} border border-white/10 bg-white/[.035] text-slate-300 hover:bg-white/[.07]`}
-                type="button"
-                onClick={() => setUsuarioForm(usuarioInicial)}
-              >
-                <RotateCcw size={15} /> Limpiar
-              </button>
-            </div>
-          </form>
-        </section>
-      </div>
-    </>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {!esPropio ? (
+                    <button className="btn btn-ghost text-danger" disabled={ocupado} onClick={() => { setErrorModal(""); setVista("eliminar"); }} type="button">
+                      <Trash2 size={16} /> Eliminar
+                    </button>
+                  ) : null}
+                  <span className="flex-1" />
+                  <button className="btn btn-secondary" disabled={ocupado} onClick={cerrar} type="button">Cancelar</button>
+                  <button className="btn btn-primary" disabled={ocupado || !cambios} type="submit">
+                    {guardando ? <><Spinner /> Guardando…</> : <><Check size={18} /> Guardar</>}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="grid gap-4">
+                <p className="muted">
+                  Se eliminará la cuenta de <strong className="text-ink">{original?.nombre}</strong> ({original?.correo}) con su progreso y reportes. Esta acción no se puede deshacer.
+                </p>
+                <div className="mt-2 flex flex-wrap justify-end gap-2">
+                  <button className="btn btn-secondary" data-autofocus disabled={borrando} onClick={() => setVista("editar")} type="button">
+                    <ArrowLeft size={16} /> Volver
+                  </button>
+                  <button className="btn btn-danger-solid" disabled={borrando} onClick={() => void eliminarUsuario()} type="button">
+                    {borrando ? <><Spinner /> Eliminando…</> : <><Trash2 size={16} /> Sí, eliminar</>}
+                  </button>
+                </div>
+              </div>
+            )}
+          </Swap>
+        ) : null}
+      </Dialog>
+    </div>
   );
 }
 
 function RoleBadge({ role }: { role: Rol }) {
-  const clases = {
-    ESTUDIANTE: "border-cyan-300/15 bg-cyan-300/[.07] text-cyan-200",
-    DOCENTE: "border-violet-300/15 bg-violet-300/[.07] text-violet-200",
-    ADMINISTRADOR: "border-emerald-300/15 bg-emerald-300/[.07] text-emerald-200",
-  };
-
-  return (
-    <span
-      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[.1em] ${clases[role]}`}
-    >
-      {role}
-    </span>
-  );
+  const tono = { ESTUDIANTE: "badge-info", DOCENTE: "badge-progress", ADMINISTRADOR: "badge-action" }[role];
+  return <span className={`badge ${tono}`}>{ROLES[role]}</span>;
 }
