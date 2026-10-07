@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "demo": "node scripts/demo/iniciar-demo.mjs",
+    "test:demo": "node scripts/demo/probar-demo.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

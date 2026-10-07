@@ -206,7 +206,7 @@ Modo demostración (sin backend real, con perfiles de prueba):
 npm.cmd run demo
 ```
 
-Levanta un backend simulado en memoria y la web en `http://localhost:3000`. Contraseña de todas las cuentas: `Demo1234`.
+Levanta un backend simulado en memoria y la web; la consola indica la dirección a abrir (normalmente `http://localhost:3000`, o el siguiente puerto libre si ya tienes `npm run dev` abierto). Puede convivir con `npm run dev` porque usa su propia carpeta de compilación (`.next/demo`). Contraseña de todas las cuentas: `Demo1234`.
 
 | Perfil | Correo |
 |---|---|
@@ -216,6 +216,12 @@ Levanta un backend simulado en memoria y la web en `http://localhost:3000`. Cont
 | Administrador | `admin.demo@campusucc.edu.co` |
 
 Los cambios (ediciones, borrados, registros) se pierden al cerrar el comando.
+
+Comprobar que la demostración carga (inicia sesión con cada perfil, llama a sus peticiones y abre sus páginas):
+
+```powershell
+npm.cmd run test:demo
+```
 
 Validar lint:
 
