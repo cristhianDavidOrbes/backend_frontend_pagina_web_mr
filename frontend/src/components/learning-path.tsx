@@ -64,7 +64,7 @@ export function LearningPath({
           const open = abierto === nivel.nivel;
           return (
             <motion.li
-              className="path-step"
+              className={`path-step ${open ? "is-open" : ""}`}
               initial={{ opacity: 0, scale: reduce ? 1 : 0.6 }}
               key={nivel.nivel}
               style={{ "--offset": OFFSETS[i] } as React.CSSProperties}

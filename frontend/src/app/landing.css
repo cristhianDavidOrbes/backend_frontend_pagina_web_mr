@@ -119,7 +119,8 @@
 .path-line-bg { stroke: rgb(255 255 255 / .14); stroke-dasharray: 1 18; stroke-width: 9 !important; }
 .path-line-fg { stroke: rgb(var(--action) / .75); }
 .path-list { position: relative; display: grid; grid-auto-rows: 200px; margin: 0; padding: 0; list-style: none; }
-.path-step { display: grid; place-items: center; }
+.path-step { position: relative; z-index: 1; display: grid; place-items: center; }
+.path-step.is-open, .path-step:has(.path-bubble) { z-index: 20; }
 .path-step > * { translate: calc(var(--offset, 0) * 30cqw) 0; }
 .path-node-wrap { position: relative; display: grid; justify-items: center; gap: .55rem; }
 .path-node {
