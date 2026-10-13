@@ -7,6 +7,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useReducer,
   useRef,
   useState,
   type ReactNode,
@@ -14,6 +15,7 @@ import {
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bounds, ContactShadows, OrbitControls, useBounds, useGLTF } from "@react-three/drei";
 import { Box3, Color, Group, Mesh, MeshStandardMaterial, Vector3, type BufferGeometry, type Material, type Object3D } from "three";
+import { INITIAL_ROBOT_RENDERER, ROBOT_RENDERER_RETRY_DELAYS, robotRendererReducer } from "@/lib/robot-renderer-recovery";
 
 /**
  * Robot de AlgoLab (modelo GLB exportado desde Unity) con reacciones.
@@ -26,7 +28,6 @@ export type RobotSignal = { kind: RobotReaction; id: number };
 export type RobotPose =
   | "stand" | "sit" | "held" | "fall" | "walk" | "jump" | "climb" | "pull" | "dance" | "look" | "stretch"
   | "tumble" | "bonk" | "dizzy" | "getup" | "tiptoe" | "run" | "drive" | "carry" | "push" | "peek" | "bow" | "wave" | "juggle" | "sleep" | "haunted";
-type StageMode = "checking" | "loading" | "ready" | "fallback";
 
 type Props = {
   /** Cada cambio de `id` reproduce la reacción indicada. */
@@ -40,6 +41,8 @@ type Props = {
   facing?: -1 | 1;
   className?: string;
   label?: string;
+  /** La navegación recupera un renderizador fallido sin desmontar uno sano. */
+  recoveryKey?: string;
 };
 
 const MODEL_URL = "/models/algolab-robot.glb";
@@ -234,6 +237,37 @@ function RobotPoster({ visible, reaction, reactionId, pose, facing, animated, ha
 }
 
 /* ---------------- Recuperación ante errores ---------------- */
+
+function savesData() {
+  return Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
+}
+
+function supportsWebGL2() {
+  try {
+    // Three necesita WebGL2; aceptar WebGL1 ocultaba errores de compatibilidad.
+    const webgl = document.createElement("canvas").getContext("webgl2");
+    if (!webgl) return false;
+    webgl.getExtension("WEBGL_lose_context")?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function RendererContextGuard({ onLost }: { onLost: () => void }) {
+  const gl = useThree((state) => state.gl);
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const lost = (event: Event) => {
+      event.preventDefault();
+      onLost();
+    };
+    canvas.addEventListener("webglcontextlost", lost);
+    // R3F libera el contexto después del desmontaje: ese evento ya no nos pertenece.
+    return () => canvas.removeEventListener("webglcontextlost", lost);
+  }, [gl, onLost]);
+  return null;
+}
 
 class WebGLErrorBoundary extends Component<{ children: ReactNode; onError: () => void }, { hasError: boolean }> {
   constructor(props: { children: ReactNode; onError: () => void }) {
@@ -899,19 +933,24 @@ function StageContent({
 
 /* ---------------- Escenario ---------------- */
 
-export function RobotStage({ signal = null, presence = "hero", draggable = true, pose = "stand", facing = 1, className = "", label }: Props) {
-  const [mode, setMode] = useState<StageMode>("checking");
+export function RobotStage({ signal = null, presence = "hero", draggable = true, pose = "stand", facing = 1, className = "", label, recoveryKey }: Props) {
+  const [renderer, dispatch] = useReducer(robotRendererReducer, INITIAL_ROBOT_RENDERER);
+  const { mode, attempt, failures, reason } = renderer;
   const [visible, setVisible] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [documentVisible, setDocumentVisible] = useState(true);
+  const [online, setOnline] = useState(true);
   const hostRef = useRef<HTMLDivElement>(null);
+  const retryPending = useRef(false);
+  const previousRecoveryKey = useRef(recoveryKey);
   const reportTurn = useCallback<TurnReporter>((phase, yaw) => {
     if (!hostRef.current) return;
     hostRef.current.dataset.hauntedTurn = phase;
     hostRef.current.dataset.robotYaw = yaw.toFixed(4);
   }, []);
-  const showFallback = useCallback(() => setMode("fallback"), []);
-  const showModel = useCallback(() => setMode("ready"), []);
+  const showFallback = useCallback(() => dispatch({ type: "failed", attempt, reason: "model" }), [attempt]);
+  const showContextFallback = useCallback(() => dispatch({ type: "failed", attempt, reason: "context" }), [attempt]);
+  const showModel = useCallback(() => dispatch({ type: "ready", attempt }), [attempt]);
   const frozen = pose === "haunted";
   const canRotate = draggable && !frozen;
   const activeSignal = frozen ? null : signal;
@@ -931,17 +970,11 @@ export function RobotStage({ signal = null, presence = "hero", draggable = true,
     media.addEventListener("change", update);
     document.addEventListener("visibilitychange", updateVisibility);
 
-    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-    let supportsWebGL = !connection?.saveData;
-    try {
-      const probe = document.createElement("canvas");
-      const webgl = probe.getContext("webgl2") ?? probe.getContext("webgl");
-      supportsWebGL = supportsWebGL && Boolean(webgl);
-      webgl?.getExtension("WEBGL_lose_context")?.loseContext();
-    } catch {
-      supportsWebGL = false;
-    }
-    const id = window.setTimeout(() => setMode(supportsWebGL ? "loading" : "fallback"), 0);
+    const initialReason = savesData() ? "save-data" : supportsWebGL2() ? null : "unsupported";
+    const id = window.setTimeout(() => {
+      dispatch({ type: "initialize", reason: initialReason });
+      setOnline(navigator.onLine);
+    }, 0);
     return () => {
       window.clearTimeout(id);
       media.removeEventListener("change", update);
@@ -949,12 +982,70 @@ export function RobotStage({ signal = null, presence = "hero", draggable = true,
     };
   }, []);
 
-  // Si el modelo no llega a tiempo, se mantiene la vista ligera.
+  // El dibujo es un respaldo temporal; cada nuevo canvas tiene su propio límite.
   useEffect(() => {
     if (mode !== "loading") return;
     const id = window.setTimeout(showFallback, 12000);
     return () => window.clearTimeout(id);
   }, [mode, showFallback]);
+
+  useEffect(() => {
+    retryPending.current = false;
+  }, [attempt, mode]);
+
+  const retry3D = useCallback((resetBudget: boolean) => {
+    if (mode !== "fallback" || retryPending.current || document.hidden || !visible || !navigator.onLine || savesData()) return false;
+    // Un GLB fallido queda cacheado por Suspense. Se limpia antes del sondeo,
+    // aunque en ese momento tampoco esté disponible WebGL2.
+    if (reason === "model") useGLTF.clear(MODEL_URL);
+    if (!supportsWebGL2()) {
+      dispatch({ type: "unsupported", attempt });
+      return true;
+    }
+    retryPending.current = true;
+    // Un modelo sano y sus recursos compartidos se conservan al recuperar el contexto.
+    dispatch({ type: "retry", attempt, resetBudget });
+    return true;
+  }, [attempt, mode, reason, visible]);
+
+  useEffect(() => {
+    if (mode !== "fallback" || reason === "save-data" || reason === "unsupported" || !visible || !documentVisible || !online) return;
+    const delay = ROBOT_RENDERER_RETRY_DELAYS[failures - 1];
+    if (delay === undefined) return;
+    const timer = window.setTimeout(() => retry3D(false), delay);
+    return () => window.clearTimeout(timer);
+  }, [mode, reason, failures, visible, documentVisible, online, retry3D]);
+
+  useEffect(() => {
+    const updateOnline = () => {
+      setOnline(navigator.onLine);
+      if (navigator.onLine) retry3D(true);
+    };
+    const restore = () => { if (!document.hidden) retry3D(true); };
+    window.addEventListener("online", updateOnline);
+    window.addEventListener("offline", updateOnline);
+    window.addEventListener("focus", restore);
+    document.addEventListener("visibilitychange", restore);
+    return () => {
+      window.removeEventListener("online", updateOnline);
+      window.removeEventListener("offline", updateOnline);
+      window.removeEventListener("focus", restore);
+      document.removeEventListener("visibilitychange", restore);
+    };
+  }, [retry3D]);
+
+  useEffect(() => {
+    if (previousRecoveryKey.current === recoveryKey) return;
+    // Si la ruta cambió sin conexión o fuera de la vista, queda pendiente.
+    if (mode !== "fallback" || retry3D(true)) previousRecoveryKey.current = recoveryKey;
+  }, [recoveryKey, retry3D, mode, documentVisible, online]);
+
+  // Un contexto que vuelve a fallar inmediatamente no reinicia su presupuesto.
+  useEffect(() => {
+    if (mode !== "ready" || failures === 0 || !documentVisible || !visible) return;
+    const timer = window.setTimeout(() => dispatch({ type: "stable", attempt }), 30000);
+    return () => window.clearTimeout(timer);
+  }, [attempt, mode, failures, documentVisible, visible]);
 
   // No se dibuja mientras el escenario está fuera de la pantalla.
   useEffect(() => {
@@ -977,12 +1068,14 @@ export function RobotStage({ signal = null, presence = "hero", draggable = true,
       className={`robot-stage robot-stage-${mode} robot-presence-${presence} ${className}`}
       data-pose={pose}
       data-facing={facing}
+      data-renderer-attempt={attempt}
+      data-renderer-failures={failures}
       ref={hostRef}
       role="img"
     >
       <RobotPoster animated={visible && documentVisible && !reduceMotion} facing={facing} hauntedFallback={mode === "fallback"} onTurn={reportTurn} pose={pose} reaction={activeSignal?.kind} reactionId={activeSignal?.id} reduceMotion={reduceMotion} visible={mode !== "ready"} />
       {mode === "loading" || mode === "ready" ? (
-        <WebGLErrorBoundary onError={showFallback}>
+        <WebGLErrorBoundary key={attempt} onError={showFallback}>
           <Suspense fallback={null}>
             <Canvas
               camera={{ fov: 34, position: [0, 0.6, 7] }}
@@ -991,7 +1084,6 @@ export function RobotStage({ signal = null, presence = "hero", draggable = true,
               gl={{ alpha: true, antialias: true, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false }}
               onCreated={({ gl }) => {
                 gl.setClearColor(0x000000, 0);
-                gl.domElement.addEventListener("webglcontextlost", showFallback, { once: true });
               }}
               style={{
                 position: "absolute",
@@ -1003,16 +1095,19 @@ export function RobotStage({ signal = null, presence = "hero", draggable = true,
                 touchAction: canRotate ? "pan-y" : "auto",
               }}
             >
-              <StageContent
-                draggable={canRotate}
-                facing={facing}
-                onReady={showModel}
-                onTurn={reportTurn}
-                pose={pose}
-                presence={presence}
-                reduceMotion={reduceMotion}
-                signal={activeSignal}
-              />
+              <RendererContextGuard onLost={showContextFallback} />
+              <Suspense fallback={null}>
+                <StageContent
+                  draggable={canRotate}
+                  facing={facing}
+                  onReady={showModel}
+                  onTurn={reportTurn}
+                  pose={pose}
+                  presence={presence}
+                  reduceMotion={reduceMotion}
+                  signal={activeSignal}
+                />
+              </Suspense>
             </Canvas>
           </Suspense>
         </WebGLErrorBoundary>

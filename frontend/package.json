@@ -18,7 +18,9 @@
     "test:auth-robot:easter-egg:browser": "node scripts/verify-auth-robot-easter-egg-browser.mjs",
     "test:auth-robot:audio:browser": "node scripts/verify-auth-robot-audio-browser.mjs",
     "test:auth-robot:audio": "node --experimental-strip-types --test scripts/verify-auth-robot-audio.mjs",
-    "test:auth-robot:visual:browser": "node scripts/verify-auth-robot-visual-transition-browser.mjs"
+    "test:auth-robot:visual:browser": "node scripts/verify-auth-robot-visual-transition-browser.mjs",
+    "test:auth-robot:recovery:browser": "node scripts/verify-auth-robot-recovery-browser.mjs",
+    "test:auth-robot:recovery": "node --experimental-strip-types --test scripts/verify-robot-renderer-recovery.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

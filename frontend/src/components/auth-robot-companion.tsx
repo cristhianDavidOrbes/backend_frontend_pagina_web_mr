@@ -253,7 +253,7 @@ export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: 
     <div ref={layer} className={styles.layer} data-auth-companion="true">
       <div ref={actor} className={`${styles.actor}${!eerie && view.vehicle ? ` ${styles.driver}` : ""}${eerie ? ` ${styles.eerieActor}` : ""}`} data-pose={eerie ? "haunted" : "sit"}>
         <div className={styles.model} aria-hidden="true">
-          <RobotStage draggable={false} presence="quiet" pose={eerie ? "haunted" : view.pose} facing={view.facing} signal={eerie ? null : signal} />
+          <RobotStage draggable={false} presence="quiet" pose={eerie ? "haunted" : view.pose} facing={view.facing} recoveryKey={pathname} signal={eerie ? null : signal} />
         </div>
         {!eerie && view.vehicle ? <div className={styles.vehicle} data-robot-vehicle="car" aria-hidden="true"><RobotCar facing={view.facing} moving={view.pose === "drive"} /></div> : null}
         {!eerie && view.carried && !(view.carried === "car" && view.vehicle) ? <div className={styles.carried} data-carried-kind={view.carried} data-facing={view.facing} aria-hidden="true"><RobotProp kind={view.carried} size={105} /></div> : null}

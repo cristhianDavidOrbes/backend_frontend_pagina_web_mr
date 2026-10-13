@@ -8,7 +8,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(
 const base = process.env.TEST_BASE_URL || "http://127.0.0.1:3100";
 assert.ok(["127.0.0.1", "localhost"].includes(new URL(base).hostname), "Only test a local frontend; no real accounts are submitted.");
 const output = await mkdtemp(path.join(tmpdir(), "algolab-auth-robot-"));
-const browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_EXECUTABLE ? { executablePath: process.env.BROWSER_EXECUTABLE } : {}), args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+const browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_EXECUTABLE ? { executablePath: process.env.BROWSER_EXECUTABLE } : {}), args: ["--mute-audio", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const errors = [];
 let documents = 0;
 const settle = (page) => page.evaluate(async () => {
