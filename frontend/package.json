@@ -11,7 +11,14 @@
     "lint": "eslint",
     "test:code-runner": "node scripts/verify-code-runner-isolation.mjs",
     "test:compiler-errors": "node --import ./scripts/node-typescript-register.mjs --experimental-strip-types scripts/verify-compiler-errors.mjs",
-    "test:release-api": "node scripts/verify-release-api.mjs"
+    "test:release-api": "node scripts/verify-release-api.mjs",
+    "test:auth-robot": "node --experimental-strip-types --test scripts/verify-auth-robot-motion.mjs",
+    "test:auth-robot:browser": "node scripts/verify-auth-robot-browser.mjs",
+    "test:auth-robot:easter-egg": "node --experimental-strip-types --test scripts/verify-auth-robot-easter-egg.mjs",
+    "test:auth-robot:easter-egg:browser": "node scripts/verify-auth-robot-easter-egg-browser.mjs",
+    "test:auth-robot:audio:browser": "node scripts/verify-auth-robot-audio-browser.mjs",
+    "test:auth-robot:audio": "node --experimental-strip-types --test scripts/verify-auth-robot-audio.mjs",
+    "test:auth-robot:visual:browser": "node scripts/verify-auth-robot-visual-transition-browser.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

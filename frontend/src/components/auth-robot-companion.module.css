@@ -1,0 +1,43 @@
+.layer { position: fixed; inset: 0; z-index: 30; overflow: hidden; pointer-events: none; visibility: hidden; }
+.actor { position: absolute; top: 0; left: 0; width: 220px; height: 190px; will-change: transform; transform-origin: 50% 85%; }
+.backdrop { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; visibility: hidden; }
+.backdrop[hidden] { display: none; }
+.gloom { position: fixed; inset: 0; z-index: 20; pointer-events: none; visibility: hidden; background: radial-gradient(ellipse at 50% 30%, #04050799, #000e 75%); box-shadow: inset 0 0 160px 55px #000; animation: gloomArrival 700ms ease-in-out both; }
+.eerieActor .model { filter: saturate(.24) brightness(.58); animation: robotGloomArrival 700ms ease-in-out both; }
+@keyframes gloomArrival { from { opacity: 0; } to { opacity: 1; } }
+@keyframes robotGloomArrival { from { filter: saturate(1) brightness(1); } to { filter: saturate(.24) brightness(.58); } }
+.eerieActor .handle { cursor: pointer; }
+.scare { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #000; color: #fff; overflow: hidden; }
+.scare[open] { display: grid; place-items: center; }
+.scare::backdrop { background: #000; }
+.scareImage { position: absolute; inset: 0; width: 100vw; height: 100dvh; max-width: none; object-fit: cover; object-position: center; transform: scale(.06); transform-origin: center; }
+.scare[data-revealed="true"] .scareImage { animation: scareRush 120ms cubic-bezier(.2, 0, .65, 1) both; }
+@keyframes scareRush { from { transform: scale(.06); } to { transform: scale(1); } }
+.scareClose { position: absolute; right: 20px; top: 20px; padding: 10px 16px; border: 1px solid #777; border-radius: 10px; background: #111; color: #fff; cursor: pointer; font: inherit; }
+.scareClose:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+.sceneryItem { position: absolute; left: 0; top: 0; display: flex; align-items: flex-end; justify-content: center; opacity: .85; filter: drop-shadow(0 12px 14px #0003); transform-origin: 50% 100%; }
+.model { position: absolute; inset: 0; pointer-events: none; }
+.model :global(.robot-stage) { min-height: 0; height: 190px; }
+.model :global(canvas) { pointer-events: none !important; }
+.model :global(.robot-poster) { padding: 0; }
+.model :global(.robot-poster svg) { width: 111px; height: 154px; max-height: 154px; }
+.model :global(.robot-stage-ready .robot-poster) { visibility: hidden; transition: none; }
+.handle { position: absolute; top: 20px; left: 73px; width: 74px; height: 137px; border: 0; padding: 0; border-radius: 22px; background: transparent; pointer-events: auto; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.handle[aria-pressed="true"] { cursor: grabbing; }
+.handle:focus-visible { outline: 2px dashed rgb(var(--action-strong)); outline-offset: 5px; background: rgb(var(--action-strong) / .06); }
+.vehicle { position: absolute; left: -15px; bottom: 0; width: 250px; height: 146px; z-index: 2; pointer-events: none; }
+.driver .model { transform: translateY(20px) scale(.68); clip-path: inset(0 0 26% 0); }
+.carried { position: absolute; left: 150px; bottom: 5px; width: 105px; height: 85px; pointer-events: none; filter: drop-shadow(0 5px 5px #0004); }
+.carried[data-facing="-1"] { left: -35px; }
+.actor[data-pose="carry"] .carried, .actor[data-pose="juggle"] .carried { left: 92px; bottom: 35px; width: 75px; }
+.actor[data-pose="pull"] .carried[data-facing="1"] { left: -35px; }
+.actor[data-pose="pull"] .carried[data-facing="-1"] { left: 150px; }
+.effect { position: absolute; pointer-events: none; left: 25px; width: 170px; height: 127px; z-index: 3; }
+.impact, .dust { bottom: 8px; }
+.stars, .sparkles { top: -20px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .actor { will-change: auto; }
+  .gloom, .eerieActor .model, .scare[data-revealed="true"] .scareImage { animation: none; }
+  .scareImage { transform: none; }
+}

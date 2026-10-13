@@ -3,13 +3,14 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import styles from "@/app/auth-pages.module.css";
 import { Shared } from "@/components/page-transition";
 import { ProgressBar } from "@/components/ui";
 import type { RobotSignal } from "@/components/robot-stage";
 import { BrandMark } from "@/components/brand-mark";
+import { useAuthRobot } from "@/components/auth-robot-provider";
 
 const RobotStage = dynamic(() => import("@/components/robot-stage").then((m) => m.RobotStage), {
   ssr: false,
@@ -38,6 +39,18 @@ export function AuthLayout({
   /** Se conserva por compatibilidad. */
   aside?: ReactNode;
 }) {
+  const robot = useAuthRobot();
+  const mascot = useRef<HTMLDivElement>(null);
+  const card = useRef<HTMLElement>(null);
+  const active = robot?.active ?? false;
+  const register = robot?.register;
+  const react = robot?.react;
+  useEffect(() => {
+    if (active && register && mascot.current && card.current) return register({ mascot: mascot.current, card: card.current });
+  }, [active, register]);
+  useEffect(() => {
+    if (active && signal && react) react(signal.kind);
+  }, [active, signal, react]);
   return (
     <div className={styles.shell}>
       <header className={styles.topbar}>
@@ -58,11 +71,11 @@ export function AuthLayout({
       </header>
 
       <main className={styles.body} id="contenido">
-        <div className={styles.mascot} aria-hidden="true">
-          <RobotStage draggable={false} presence="quiet" signal={signal} />
+        <div ref={mascot} className={styles.mascot} aria-hidden="true">
+          {active ? null : <RobotStage draggable={false} presence="quiet" signal={signal} />}
         </div>
         <Shared name="auth-card">
-          <section className={`glass ${styles.card}`}>
+          <section ref={card} className={`glass ${styles.card}`}>
             <h1 className={styles.title}>{title}</h1>
             {intro ? <p className={styles.intro}>{intro}</p> : null}
             {children}

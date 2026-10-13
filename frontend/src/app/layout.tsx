@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { GlassPointer } from "@/components/glass-pointer";
+import { AuthRobotProvider } from "@/components/auth-robot-provider";
 import "./legacy.css";
 import "./globals.css";
 import "./landing.css";
@@ -122,7 +123,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col">
         <a className="skip-link" href="#contenido">Saltar al contenido</a>
-        {children}
+        <AuthRobotProvider>{children}</AuthRobotProvider>
         <GlassPointer />
       </body>
     </html>

@@ -3,6 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 
 import type { AvatarPreset } from "@/lib/avatar";
+import { completeAuthEasterEgg } from "@/lib/auth-robot-easter-egg";
 
 export type UsuarioSesion = {
   id: number;
@@ -59,6 +60,7 @@ export function saveAuthUser(usuario: UsuarioSesion) {
 export function saveAuthSession(token: string, usuario: UsuarioSesion) {
   window.localStorage.setItem("token", token);
   window.localStorage.setItem("usuario", JSON.stringify(usuario));
+  completeAuthEasterEgg();
   notifyAuthSessionChange();
 }
 
