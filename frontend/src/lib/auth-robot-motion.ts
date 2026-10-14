@@ -498,6 +498,14 @@ export class AuthRobotMotion {
 
   moveToy(id: number, center: Point) { this.toys.hold(id, center); }
 
+  /** Cancellation returns an object to its reserved slot, without starting a chase. */
+  cancelToy(id: number) {
+    const toy = this.toys.get(id);
+    if (!toy) return;
+    this.restore({ id, kind: toy.kind });
+    if (this.chase?.id === id) this.returnHome();
+  }
+
   throwToy(id: number, vx: number, vy: number) {
     const toy = this.toys.get(id);
     if (!toy || toy.state !== "held") return;
@@ -548,7 +556,10 @@ export class AuthRobotMotion {
       if (step.restore) this.restore(step.restore);
       this.steps.shift();
       if (this.steps.length) this.beginStep();
-      else if (this.chase) this.enterChase();
+      else if (this.chase) {
+        if (Math.abs(this.frame.y - this.floor()) > 4) this.pursue(this.chase.id);
+        else this.enterChase();
+      }
       else this.home();
     }
     return this.frame;
@@ -570,9 +581,9 @@ export class AuthRobotMotion {
     const g = this.geometry;
     const toy = this.toys.get(id);
     if (!g || !toy || this.frame.pose === "held" || this.reducedMotion) return;
-    if (this.chase && this.chase.id === id && this.chase.phase !== "watch" && !this.steps.length) return;
+    if (this.chase && this.chase.id === id && this.chase.phase !== "watch" && !this.steps.length && Math.abs(this.frame.y - this.floor()) < 4) return;
     this.dropCarried();
-    const wasRunning = this.chase !== null && this.chase.phase !== "watch" && !this.steps.length;
+    const wasRunning = this.chase !== null && this.chase.phase !== "watch" && !this.steps.length && Math.abs(this.frame.y - this.floor()) < 4;
     this.chase = { id, phase: "run", vy: 0, timer: 0, cooldown: 0.2, kick: 0, kicked: false };
     Object.assign(this.frame, { carried: null, vehicle: null, effect: null, picture: -1, scene: `juego-${toy.kind}` });
     const floor = this.floor();

@@ -16,6 +16,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bounds, ContactShadows, OrbitControls, useBounds, useGLTF } from "@react-three/drei";
 import { Box3, Color, Group, Mesh, MeshStandardMaterial, Vector3, type BufferGeometry, type Material, type Object3D } from "three";
 import { INITIAL_ROBOT_RENDERER, ROBOT_RENDERER_RETRY_DELAYS, robotRendererReducer } from "@/lib/robot-renderer-recovery";
+import type { CompanionPose } from "@/lib/auth-robot-motion";
 
 /**
  * Robot de AlgoLab (modelo GLB exportado desde Unity) con reacciones.
@@ -25,9 +26,7 @@ import { INITIAL_ROBOT_RENDERER, ROBOT_RENDERER_RETRY_DELAYS, robotRendererReduc
  */
 export type RobotReaction = "wave" | "attention" | "charge" | "cool" | "celebrate" | "shutdown";
 export type RobotSignal = { kind: RobotReaction; id: number };
-export type RobotPose =
-  | "stand" | "sit" | "held" | "fall" | "walk" | "jump" | "climb" | "pull" | "dance" | "look" | "stretch"
-  | "tumble" | "bonk" | "dizzy" | "getup" | "tiptoe" | "run" | "drive" | "carry" | "push" | "peek" | "bow" | "wave" | "juggle" | "sleep" | "haunted";
+export type RobotPose = CompanionPose | "stand" | "haunted";
 
 type Props = {
   /** Cada cambio de `id` reproduce la reacción indicada. */
@@ -557,6 +556,54 @@ function posture(pose: RobotPose, t: number, facing: -1 | 1, motion: number) {
     value.armR = -0.08;
     value.headRoll = -0.1;
     value.headYaw = 0.16;
+  } else if (pose === "ready" || pose === "catch") {
+    const reaching = pose === "catch";
+    value.armL = reaching ? 2.2 : 0.48;
+    value.armR = -value.armL;
+    value.armPitchL = value.armPitchR = reaching ? -1 : -0.6;
+    value.kneeL = value.kneeR = reaching ? 0.6 : 0.2;
+    value.legL = value.legR = reaching ? -0.3 : -0.1;
+    value.bodyYaw = facing * 0.35;
+    value.headPitch = reaching ? -0.3 : -0.12;
+    value.lift = Math.abs(cycle) * 0.025;
+  } else if (pose === "kick") {
+    const kick = motion ? bell(t / 0.32) : 0.8;
+    value.bodyYaw = facing * 0.8;
+    value.bodyPitch = -0.13;
+    value.legL = -1.1 * kick;
+    value.kneeL = 0.35 * (1 - kick);
+    value.armL = 0.7;
+    value.armR = -0.7;
+    value.headPitch = 0.18;
+  } else if (pose === "giggle") {
+    value.kneeL = value.kneeR = 0.35;
+    value.bodyPitch = 0.14;
+    value.bodyRoll = Math.sin(t * 16) * 0.07 * motion;
+    value.armPitchL = value.armPitchR = -1.1;
+    value.armL = 0.28;
+    value.armR = -0.28;
+    value.headPitch = 0.15;
+    value.lift = Math.abs(Math.sin(t * 16)) * 0.06 * motion;
+  } else if (pose === "cheer" || pose === "surprised") {
+    value.armL = pose === "cheer" ? 2.7 : 1.8;
+    value.armR = -value.armL;
+    value.headPitch = -0.23;
+    value.kneeL = value.kneeR = 0.15;
+    value.lift = Math.abs(cycle) * (pose === "cheer" ? 0.12 : 0.03);
+  } else if (pose === "shrug" || pose === "worried") {
+    value.armL = pose === "shrug" ? 1 : 0.6;
+    value.armR = -value.armL;
+    value.armPitchL = value.armPitchR = -0.55;
+    value.headRoll = facing * 0.18;
+    value.headPitch = pose === "worried" ? 0.22 : -0.08;
+    value.headYaw = Math.sin(t * 3) * 0.18 * motion;
+    value.bodyPitch = pose === "worried" ? 0.1 : 0;
+  } else if (pose === "spin") {
+    value.bodyYaw = t * Math.PI * 2 * motion;
+    value.armL = 1.6;
+    value.armR = -1.6;
+    value.kneeL = value.kneeR = 0.12;
+    value.lift = Math.abs(cycle) * 0.06;
   } else if (pose === "juggle") {
     const toss = Math.sin(t * 6) * motion;
     value.armPitchL = -1.12 + toss * 0.42;

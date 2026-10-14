@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { usePathname } from "next/navigation";
-import { AuthRobotMotion, type CompanionFrame, type PlacedScenery } from "@/lib/auth-robot-motion";
+import { AuthRobotMotion, type CompanionFrame, type Point } from "@/lib/auth-robot-motion";
+import { PointerVelocity } from "@/lib/auth-robot-pointer";
 import { AuthScareAudio } from "@/lib/auth-robot-scare-audio";
 import { finishAuthEasterEgg } from "@/lib/auth-robot-easter-egg";
 import { RobotStage, type RobotSignal } from "./robot-stage";
 import { RobotCar, RobotEffect, RobotProp } from "./auth-robot-props";
 import { AuthRobotScare } from "./auth-robot-scare";
+import { AuthRobotToys } from "./auth-robot-toys";
 import type { AuthRobotAnchor } from "./auth-robot-provider";
 import styles from "./auth-robot-companion.module.css";
 
-type Drag = { id: number; dx: number; dy: number };
+type Drag = { id: number; dx: number; dy: number; start: Point; moved: boolean; velocity: PointerVelocity };
 type VisualState = Pick<CompanionFrame, "pose" | "facing" | "vehicle" | "effect" | "carried">;
 
 /** A real hole hides the same canvas behind the card, without remounting it. */
@@ -28,7 +30,8 @@ function occlusionPath(width: number, height: number, boxes: DOMRect[]) {
 export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: AuthRobotAnchor | null; signal: RobotSignal | null; eerie?: boolean }) {
   const pathname = usePathname();
   const scareAudio = useRef<AuthScareAudio | null>(null);
-  const engine = useRef(new AuthRobotMotion());
+  const [motion] = useState(() => new AuthRobotMotion());
+  const engine = useRef(motion);
   const actor = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
@@ -41,8 +44,6 @@ export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: 
   const rarePress = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const previousView = useRef("");
   const previousPosition = useRef("");
-  const previousScenery = useRef<readonly PlacedScenery[]>([]);
-  const [scenery, setScenery] = useState<readonly PlacedScenery[]>([]);
   const [view, setView] = useState<VisualState>({ pose: "sit", facing: 1, vehicle: null, effect: null, carried: null });
   const [scare, setScare] = useState(false);
   const dismissScare = useCallback(() => { scareAudio.current?.stop(); setScare(false); }, []);
@@ -52,10 +53,11 @@ export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: 
   // Only transforms change per frame. Forms and the WebGL scene do not rerender at 60 Hz.
   const paint = useCallback(() => {
     const frame = engine.current.frame;
-    const position = `${frame.x}:${frame.y}:${frame.pose}:${frame.rotation}:${frame.layer}:${frame.scene}:${eerie}`;
+    const position = `${frame.x}:${frame.y}:${frame.pose}:${frame.rotation}:${frame.layer}:${frame.scene}:${frame.squash}:${eerie}`;
     if (actor.current && position !== previousPosition.current) {
       previousPosition.current = position;
-      actor.current.style.transform = `translate3d(${frame.x - 110}px, ${frame.y - 170 - (eerie ? 20 : 0)}px, 0) rotate(${frame.rotation}deg)`;
+      const squash = eerie ? 1 : frame.squash;
+      actor.current.style.transform = `translate3d(${frame.x - 110}px, ${frame.y - 170 - (eerie ? 20 : 0)}px, 0) rotate(${frame.rotation}deg) scale(${1 / Math.sqrt(squash)}, ${squash})`;
       actor.current.dataset.pose = eerie ? "haunted" : frame.pose;
       actor.current.dataset.depth = frame.layer;
       actor.current.dataset.scene = eerie ? "evento-sombrio" : frame.scene;
@@ -66,10 +68,6 @@ export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: 
       previousView.current = key;
       setView({ pose: frame.pose, facing: frame.facing, vehicle: frame.vehicle, effect: frame.effect, carried: frame.carried });
     }
-    if (engine.current.scenery !== previousScenery.current) {
-      previousScenery.current = engine.current.scenery;
-      setScenery(engine.current.scenery);
-    }
   }, [eerie]);
 
   const release = useCallback((cancelled = false, edge?: "left" | "right" | "top" | "bottom") => {
@@ -78,7 +76,10 @@ export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: 
     keyboardHeld.current = false;
     if (pointer && handle.current?.hasPointerCapture(pointer.id)) handle.current.releasePointerCapture(pointer.id);
     if (cancelled) engine.current.home();
-    else engine.current.drop(edge);
+    else {
+      engine.current.drop(edge, pointer?.moved ? pointer.velocity.value() : undefined);
+      if (pointer && !pointer.moved) engine.current.poke();
+    }
     paint();
   }, [paint]);
 
@@ -194,7 +195,9 @@ export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: 
     if (!event.isPrimary || event.button !== 0 || drag.current || !measured.current) return;
     event.preventDefault();
     keyboardHeld.current = false;
-    drag.current = { id: event.pointerId, dx: event.clientX - engine.current.frame.x, dy: event.clientY - engine.current.frame.y };
+    const velocity = new PointerVelocity();
+    velocity.sample(event.clientX, event.clientY, event.timeStamp);
+    drag.current = { id: event.pointerId, dx: event.clientX - engine.current.frame.x, dy: event.clientY - engine.current.frame.y, start: { x: event.clientX, y: event.clientY }, moved: false, velocity };
     event.currentTarget.setPointerCapture(event.pointerId);
     engine.current.grab();
     paint();
@@ -208,6 +211,8 @@ export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: 
     }
     const held = drag.current;
     if (!held || held.id !== event.pointerId) return;
+    held.moved ||= Math.hypot(event.clientX - held.start.x, event.clientY - held.start.y) > 8;
+    held.velocity.sample(event.clientX, event.clientY, event.timeStamp);
     engine.current.drag({ x: event.clientX - held.dx, y: event.clientY - held.dy });
     paint();
   }
@@ -242,13 +247,8 @@ export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: 
   return (
     <>
     {eerie ? <div ref={gloom} className={styles.gloom} data-auth-eerie aria-hidden="true" /> : null}
-    <div ref={backdrop} className={styles.backdrop} data-auth-scenery="true" aria-hidden="true" hidden={eerie}>
-      {scenery.map((item) => (
-        <div key={item.id} className={styles.sceneryItem} data-scenery-kind={item.kind}
-          style={{ width: item.size, height: item.size, transform: `translate3d(${item.x - item.size / 2}px, ${item.y - item.size}px, 0) rotate(${item.rotation}deg)` }}>
-          <RobotProp kind={item.kind} size={item.size} />
-        </div>
-      ))}
+    <div ref={backdrop} className={styles.backdrop} data-auth-scenery="true" hidden={eerie}>
+      <AuthRobotToys motion={motion} onUpdate={paint} paused={eerie} />
     </div>
     <div ref={layer} className={styles.layer} data-auth-companion="true">
       <div ref={actor} className={`${styles.actor}${!eerie && view.vehicle ? ` ${styles.driver}` : ""}${eerie ? ` ${styles.eerieActor}` : ""}`} data-pose={eerie ? "haunted" : "sit"}>
@@ -275,7 +275,7 @@ export function AuthRobotCompanion({ anchor, signal, eerie = false }: { anchor: 
           onFocus={() => { if (!drag.current && !keyboardHeld.current) { engine.current.home(); paint(); } }}
           onBlur={() => { if (keyboardHeld.current) release(true); }} />
       </div>
-      <span id="auth-robot-instructions" className={styles.srOnly}>{eerie ? "Pulsa el robot o usa Intro o Espacio para descubrir una sorpresa con imagen y sonido. Escape cierra la sorpresa." : "Arrastra el robot para moverlo. Con teclado, pulsa Espacio o Intro para agarrarlo, usa las flechas y vuelve a pulsar para soltarlo. Escape lo devuelve a su sitio."}</span>
+      <span id="auth-robot-instructions" className={styles.srOnly}>{eerie ? "Pulsa el robot o usa Intro o Espacio para descubrir una sorpresa con imagen y sonido. Escape cierra la sorpresa." : "Arrastra el robot o los objetos para moverlos y lanzarlos. Toca el robot para una reacción. Con teclado, pulsa Espacio o Intro para agarrarlo, usa las flechas y vuelve a pulsar para soltarlo. En los objetos, Intro los lanza. Escape cancela el arrastre."}</span>
     </div>
     {eerie && scare ? <AuthRobotScare onDismiss={dismissScare} onReveal={revealScare} onComplete={completeScare} /> : null}
     </>

@@ -16,6 +16,11 @@
 .scareClose { position: absolute; right: 20px; top: 20px; padding: 10px 16px; border: 1px solid #777; border-radius: 10px; background: #111; color: #fff; cursor: pointer; font: inherit; }
 .scareClose:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 .sceneryItem { position: absolute; left: 0; top: 0; display: flex; align-items: flex-end; justify-content: center; opacity: .85; filter: drop-shadow(0 12px 14px #0003); transform-origin: 50% 100%; }
+.toy { border: 0; padding: 0; background: transparent; pointer-events: auto; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.toy[hidden] { display: none; }
+.toy[aria-pressed="true"] { cursor: grabbing; }
+.toy:focus-visible { outline: 2px dashed rgb(var(--action-strong)); outline-offset: 3px; border-radius: 10px; }
+.toy svg { pointer-events: none; }
 .model { position: absolute; inset: 0; pointer-events: none; }
 .model :global(.robot-stage) { min-height: 0; height: 190px; }
 .model :global(canvas) { pointer-events: none !important; }

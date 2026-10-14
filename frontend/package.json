@@ -20,7 +20,9 @@
     "test:auth-robot:audio": "node --experimental-strip-types --test scripts/verify-auth-robot-audio.mjs",
     "test:auth-robot:visual:browser": "node scripts/verify-auth-robot-visual-transition-browser.mjs",
     "test:auth-robot:recovery:browser": "node scripts/verify-auth-robot-recovery-browser.mjs",
-    "test:auth-robot:recovery": "node --experimental-strip-types --test scripts/verify-robot-renderer-recovery.mjs"
+    "test:auth-robot:recovery": "node --experimental-strip-types --test scripts/verify-robot-renderer-recovery.mjs",
+    "test:auth-robot:toys": "node --experimental-strip-types --test scripts/verify-auth-robot-toys.mjs",
+    "test:auth-robot:toys:browser": "node scripts/verify-auth-robot-toys-browser.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
