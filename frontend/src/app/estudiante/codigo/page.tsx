@@ -4,16 +4,23 @@ import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import {
   CheckCircle2,
-  Circle,
   Lock,
   ChevronRight,
   ArrowRight,
+  Code2,
+  Trophy,
+  BookOpen,
+  Box,
+  ShieldCheck,
+  Layers3,
 } from "lucide-react";
 import { OOP_NIVELES, type MiniNivel } from "@/lib/oop-niveles";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { apiRequest } from "@/lib/client-api";
 import { LanguageIcon } from "@/components/language-icon";
-import styles from "./programar-poo.module.css";
+import { LevelObject } from "@/components/level-object";
+import { PageHead, ProgressBar, Segmented } from "@/components/ui";
+import styles from "./poo-learning.module.css";
 
 const STORAGE_KEY = "oop_progreso";
 
@@ -83,27 +90,7 @@ function fusionarNivelProgreso(
   };
 }
 
-const COLOR_MAP: Record<string, string> = {
-  cyan: "text-cyan-300",
-  amber: "text-amber-300",
-  emerald: "text-emerald-300",
-  violet: "text-violet-300",
-  sky: "text-sky-300",
-  rose: "text-rose-300",
-  purple: "text-purple-300",
-  yellow: "text-yellow-300",
-};
-
-const BG_MAP: Record<string, string> = {
-  cyan: "border-cyan-500/30 bg-cyan-500/5",
-  amber: "border-amber-500/30 bg-amber-500/5",
-  emerald: "border-emerald-500/30 bg-emerald-500/5",
-  violet: "border-violet-500/30 bg-violet-500/5",
-  sky: "border-sky-500/30 bg-sky-500/5",
-  rose: "border-rose-500/30 bg-rose-500/5",
-  purple: "border-purple-500/30 bg-purple-500/5",
-  yellow: "border-yellow-500/30 bg-yellow-500/5",
-};
+const MODULE_ICONS = [BookOpen, Box, ShieldCheck, Layers3];
 
 export default function CodigoPage() {
   const { token, usuario } = useAuthSession();
@@ -207,81 +194,87 @@ export default function CodigoPage() {
   );
 
   return (
-    <main className={`oop-main ${styles.routePage}`}>
-      <header className={styles.compactRouteHeader}>
-        <div>
-          <span className={styles.optionalBadge}>Complemento opcional · independiente de la ruta en gafas</span>
-          <h1>
-            <span className={styles.desktopTitle}>Programar POO</span>
-            <span className={styles.mobileTitle}>POO</span>
-          </h1>
-          <p>Practica en código los conceptos que aprendiste con objetos en las gafas.</p>
-        </div>
-        <div className={styles.routeSummary} aria-label="Resumen de tu progreso">
-          <strong>{completados}/{OOP_NIVELES.length}</strong>
-          <span>retos completados</span>
-          <b>{puntajeOopTotal} pts</b>
-        </div>
-      </header>
-
-      <section className={styles.missionHero} aria-labelledby="mision-programar-poo">
-        <div className={styles.missionCopy}>
-          <div className={styles.missionTopRow}>
-            <span className={styles.liveBadge}>
-              <span aria-hidden="true" /> {rutaCompleta ? "Todos los retos completados" : "Siguiente reto"}
-            </span>
-
-            <div className={styles.languageOrb} aria-label="Lenguaje de aprendizaje">
-              <span className={styles.languageOrbLabel}>Lenguaje</span>
-              <div className={styles.languageOrbButtons}>
-                <button
-                  type="button"
-                  aria-pressed={lenguaje === "python"}
-                  onClick={() => cambiarLenguaje("python")}
-                  title="Aprender en Python"
-                >
-                  <LanguageIcon lenguaje="python" size={15} /> Python
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={lenguaje === "java"}
-                  onClick={() => cambiarLenguaje("java")}
-                  title="Aprender en Java"
-                >
-                  <LanguageIcon lenguaje="java" size={15} /> Java
-                </button>
-              </div>
+    <main className={styles.catalogue}>
+      <PageHead
+        title={<>Programar <span className="gradient-text">POO</span></>}
+        description="De los objetos en tus gafas a tu propio código. Aprende, prueba y supera un reto a la vez."
+        actions={<Segmented label="Lenguaje de aprendizaje" value={lenguaje} onChange={cambiarLenguaje} options={[
+          { value: "python", label: "Python", icon: <LanguageIcon lenguaje="python" size={18} /> },
+          { value: "java", label: "Java", icon: <LanguageIcon lenguaje="java" size={18} /> },
+        ]} />}
+      />
+      <div className={styles.journeyLayout}>
+        <div className={styles.journeyMain}>
+          <section className={`glass ${styles.nextChallenge}`} aria-labelledby="mision-programar-poo">
+            <div>
+              <span className={`badge ${rutaCompleta ? "badge-action" : "badge-info"}`}>
+                {rutaCompleta ? "¡Ruta completa!" : `Tu siguiente reto · ${siguienteNivel?.subnivel ?? "1.1"}`}
+              </span>
+              <h2 id="mision-programar-poo" className="title-lg">
+                {rutaCompleta ? "Ya sabes construir con código" : siguienteNivel?.titulo ?? "Variables y Tipos"}
+              </h2>
+              <p className="muted">{rutaCompleta
+                ? "Repite tus retos favoritos o prueba el otro lenguaje. Tu progreso se conserva."
+                : siguienteNivel?.descripcionCorta ?? "Convierte lo aprendido en tu primera solución."}</p>
+              <Link href={`/estudiante/codigo/${siguienteNivel?.id ?? OOP_NIVELES[0].id}?lang=${lenguaje}`} className="btn btn-primary">
+                {rutaCompleta ? "Volver a practicar" : completados > 0 ? "Continuar reto" : "Comenzar mi primer reto"}
+                <ArrowRight size={18} aria-hidden="true" />
+              </Link>
             </div>
-          </div>
-
-          <p className={styles.eyebrow}>
-            {rutaCompleta ? "Laboratorio completado" : `Siguiente desafío · ${siguienteNivel?.subnivel ?? "1.1"}`}
-          </p>
-          <h2 id="mision-programar-poo">
-            {rutaCompleta ? "Tu colección POO está completa" : siguienteNivel?.titulo ?? "Variables y Tipos"}
-          </h2>
-          <p>
-            {rutaCompleta
-              ? "Puedes repetir cualquier reto, probar el otro lenguaje y perfeccionar tus soluciones sin perder el progreso."
-              : siguienteNivel?.descripcionCorta ?? "Convierte lo aprendido en una solución real de código."}
-          </p>
-
-          <div className={styles.missionActions}>
-            <Link
-              href={`/estudiante/codigo/${siguienteNivel?.id ?? OOP_NIVELES[0].id}?lang=${lenguaje}`}
-              className={styles.primaryMissionButton}
-            >
-              {rutaCompleta ? "Volver al laboratorio" : completados > 0 ? "Continuar misión" : "Comenzar aventura"}
-              <ArrowRight size={17} />
-            </Link>
-          </div>
-
-          <div className={styles.compactProgress} aria-label={`${porcentaje}% de la ruta completado`}>
-            <div><span style={{ width: `${porcentaje}%` }} /></div>
-            <small>{porcentaje}% completado</small>
-          </div>
+            <div className={styles.challengeMark} aria-hidden="true"><LevelObject objeto="robot" size={120} /><span>¡Vamos a crear!</span></div>
+          </section>
+          <section aria-labelledby="ruta-poo" className={styles.learningRoute}>
+            <div className={styles.routeHeading}><h2 className="title-md" id="ruta-poo">Tu camino en código</h2><span className="muted">8 retos · 4 módulos</span></div>
+            {modulos.map((mod) => {
+              const ModuleIcon = MODULE_ICONS[mod.numero - 1] ?? Code2;
+              const moduleDone = mod.niveles.filter((n) => progreso.niveles[String(n.id)]?.completado).length;
+              return <section className={styles.module} key={mod.numero} data-module={mod.numero} aria-labelledby={`modulo-${mod.numero}`}>
+                <header className={styles.moduleHeading}>
+                  <span className={styles.moduleIcon}><ModuleIcon size={22} aria-hidden="true" /></span>
+                  <div><span className="subtle text-sm">Módulo {mod.numero}</span><h3 id={`modulo-${mod.numero}`}>{mod.nombre.replace(/^Módulo\s+\d+:\s*/i, "")}</h3></div>
+                  <span className={styles.moduleCount}>{moduleDone}/{mod.niveles.length}<span className="sr-only"> retos completados</span></span>
+                </header>
+                <ol className={styles.routeList}>
+                  {mod.niveles.map((nivel) => {
+                    const index = OOP_NIVELES.findIndex((n) => n.id === nivel.id);
+                    const saved = progreso.niveles[String(nivel.id)];
+                    const done = saved?.completado ?? false;
+                    const locked = index > 0 && !progreso.niveles[String(OOP_NIVELES[index - 1].id)]?.completado;
+                    const current = !done && !locked;
+                    return <li key={nivel.id} className={`${styles.routeItem} ${current ? styles.current : ""} ${locked ? styles.locked : ""}`}>
+                      <span className={styles.routeNode} aria-hidden="true">{done ? <CheckCircle2 size={23} /> : locked ? <Lock size={19} /> : nivel.subnivel}</span>
+                      <div className={styles.levelCopy}>
+                        <h4>{nivel.titulo}</h4><p>{nivel.descripcionCorta}</p>
+                        <span className={styles.levelStatus}>{done ? `Completado · ${saved.puntos} pts` : locked ? "Completa el reto anterior para desbloquearlo" : `Disponible · hasta ${nivel.puntaje} pts`}</span>
+                      </div>
+                      {!locked && <Link className="btn btn-secondary btn-sm" href={`/estudiante/codigo/${nivel.id}?lang=${lenguaje}`} aria-label={`${done ? "Repasar" : "Empezar"}: ${nivel.titulo}`}>
+                        {done ? "Repasar" : "Empezar"}<ChevronRight size={16} aria-hidden="true" />
+                      </Link>}
+                    </li>;
+                  })}
+                </ol>
+              </section>;
+            })}
+          </section>
         </div>
-      </section>
+        <aside className={styles.journeyRail} aria-label="Tu progreso y cómo aprender">
+          <section className="card card-pad">
+            <div className={styles.railHeading}><h2 className="title-md">Cada reto cuenta</h2><Trophy size={22} className="text-progress" aria-hidden="true" /></div>
+            <p className={styles.progressCopy}><strong>{completados} de {OOP_NIVELES.length}</strong> retos superados</p>
+            <ProgressBar value={porcentaje} label="Progreso de los retos de Programar POO" />
+            <p className={styles.points}><strong>{puntajeOopTotal}</strong> puntos en código</p>
+            <p className="muted text-sm">{rutaCompleta ? "¡Lo lograste! Ahora experimenta con tus propias ideas." : "Un reto terminado abre el siguiente. Puedes repasar los que ya superaste."}</p>
+          </section>
+          <section className={`card card-pad ${styles.howTo}`}>
+            <h2 className="title-md">Aprende haciendo</h2>
+            <ol><li><span>1</span><div><strong>Descubre</strong><p>Lee la guía y el ejemplo completo.</p></div></li>
+              <li><span>2</span><div><strong>Experimenta</strong><p>Cambia valores, escribe y ejecuta.</p></div></li>
+              <li><span>3</span><div><strong>Supera tu reto</strong><p>Revisa el resultado y vuelve a probar.</p></div></li></ol>
+            <p className={styles.tutorNote}>Equivocarte también es aprender. El laboratorio te explica los errores; las pistas se habilitan después de 6 intentos.</p>
+          </section>
+          <p className={`muted text-sm ${styles.optionalNote}`}>Esta práctica es opcional e independiente de tu ruta en las gafas.</p>
+        </aside>
+      </div>
 
       {rutaCompleta ? (
         <section className="oop-konami-reward" aria-label="Recompensa secreta de Programar POO">
@@ -305,71 +298,6 @@ export default function CodigoPage() {
         </section>
       ) : null}
 
-      {/* Modules and Sublevels list in 2-column grid */}
-      <div className="oop-modules-grid">
-        {modulos.map((mod) => {
-          const subnivelesCompletados = mod.niveles.filter((n) => progreso.niveles[String(n.id)]?.completado).length;
-
-          return (
-            <section key={mod.numero} className={`oop-module-card ${styles.moduleStage}`}>
-              <div className={styles.moduleHeader}>
-                <div className={styles.moduleIdentity}>
-                  <span className={styles.moduleNumber}>{String(mod.numero).padStart(2, "0")}</span>
-                  <h2>{mod.nombre}</h2>
-                </div>
-                <span className={styles.moduleCounter}>
-                  {subnivelesCompletados}/{mod.niveles.length}
-                </span>
-                <div className={styles.moduleProgress} aria-hidden="true">
-                  <span style={{ width: `${(subnivelesCompletados / mod.niveles.length) * 100}%` }} />
-                </div>
-              </div>
-
-              <div className="oop-module-levels">
-                {mod.niveles.map((nivel) => {
-                  const nivelIdx = OOP_NIVELES.findIndex((n) => n.id === nivel.id);
-                  const nivelProgreso = progreso.niveles[String(nivel.id)];
-                  const completado = nivelProgreso?.completado ?? false;
-                  const bloqueado = nivelIdx > 0 && !progreso.niveles[String(OOP_NIVELES[nivelIdx - 1].id)]?.completado;
-
-                  return (
-                    <div
-                      key={nivel.id}
-                      className={`${styles.compactLevelCard} border ${BG_MAP[nivel.color]} ${bloqueado ? `${styles.levelLocked} opacity-50` : ""} ${completado ? styles.levelComplete : ""}`}
-                    >
-                      <span className={styles.compactLevelEmoji}>{nivel.emoji}</span>
-                      <div className={styles.compactLevelCopy}>
-                        <div className={styles.compactLevelMeta}>
-                          <span>Subnivel {nivel.subnivel}</span>
-                          <b className={COLOR_MAP[nivel.color]}>{nivel.concepto}</b>
-                        </div>
-                        <h3>{nivel.titulo}</h3>
-                      </div>
-                      <div className={styles.compactLevelAction}>
-                        {bloqueado ? (
-                          <span className={styles.lockedLabel}><Lock size={13} /> Anterior</span>
-                        ) : (
-                          <Link
-                            href={`/estudiante/codigo/${nivel.id}?lang=${lenguaje}`}
-                            className={styles.compactLevelButton}
-                          >
-                            {completado ? "Repasar" : "Empezar"}
-                            <ChevronRight size={13} />
-                          </Link>
-                        )}
-                        <span className={styles.compactPoints}>
-                          {completado ? <CheckCircle2 size={14} /> : bloqueado ? <Lock size={13} /> : <Circle size={13} />}
-                          {completado ? nivelProgreso.puntos : nivel.puntaje} pts
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </div>
     </main>
   );
 }

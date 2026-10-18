@@ -39,7 +39,9 @@ import {
   type OopSyncPayload,
 } from "@/lib/oop-sync-queue";
 import { LanguageIcon } from "@/components/language-icon";
+import { LevelObject } from "@/components/level-object";
 import styles from "../programar-poo.module.css";
+import learningStyles from "../poo-learning.module.css";
 
 const STORAGE_KEY = "oop_progreso";
 const SYNC_QUEUE_KEY = "oop_progreso_sync";
@@ -886,7 +888,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
           : "";
 
   return (
-    <div className={`oop-level-page ${styles.levelShell} ${celebrando ? "oop-celebrating" : ""}`}>
+    <div className={`oop-level-page ${styles.levelShell} ${learningStyles.workbench} ${celebrando ? "oop-celebrating" : ""}`}>
       {/* Navegación compacta: contexto, lenguaje y dificultad. */}
       <nav className="oop-level-nav">
         <div className={styles.levelNavRow}>
@@ -897,13 +899,15 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
             </Link>
             <span className="text-xs text-slate-600">|</span>
             <span className="text-emerald-400 font-mono text-xs font-extrabold">{nivel.subnivel}</span>
-            <strong className="text-xs text-slate-300 font-semibold truncate max-w-[210px]">{nivel.titulo}</strong>
+            <h1 className={learningStyles.lessonTitle}>{nivel.titulo}</h1>
           </div>
 
           <div className={styles.levelControls}>
             <div className="oop-lang-tabs-mini">
               <button
                 className={`oop-lang-tab-mini ${lenguaje === "python" ? "active" : ""}`}
+                type="button"
+                aria-pressed={lenguaje === "python"}
                 onClick={() => cambiarLenguaje("python")}
                 title="Programar en Python"
               >
@@ -911,6 +915,8 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               </button>
               <button
                 className={`oop-lang-tab-mini ${lenguaje === "java" ? "active" : ""}`}
+                type="button"
+                aria-pressed={lenguaje === "java"}
                 onClick={() => cambiarLenguaje("java")}
                 title="Programar en Java"
               >
@@ -926,6 +932,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               <button
                 type="button"
                 onClick={() => handleModoChange("normal")}
+                aria-pressed={modoEditor === "normal"}
                 className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-bold transition ${
                   modoEditor === "normal"
                     ? "bg-emerald-500/20 text-emerald-300 shadow-sm border border-emerald-500/30"
@@ -934,11 +941,12 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                 title="Modo Normal: el editor cierra símbolos y sugiere funciones"
               >
                 <span>⚡</span>
-                <span className="hidden md:inline">Normal</span>
+                <span>Normal</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleModoChange("dificil")}
+                aria-pressed={modoEditor === "dificil"}
                 className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-bold transition ${
                   modoEditor === "dificil"
                     ? "bg-purple-500/25 text-purple-300 shadow-sm border border-purple-500/30"
@@ -947,7 +955,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                 title="Modo Difícil: Escritura manual completa"
               >
                 <span>🧠</span>
-                <span className="hidden md:inline">Difícil</span>
+                <span>Difícil</span>
               </button>
             </div>
 
@@ -966,6 +974,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               onClick={ejecutar}
               disabled={ejecutando}
               className="flex sm:hidden items-center justify-center h-7 px-2.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+              aria-label={ejecutando ? "Ejecutando código" : "Ejecutar código"}
               title="Ejecutar código"
             >
               {ejecutando ? (
@@ -978,11 +987,10 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
         </div>
 
         <div className={styles.levelMobileRow}>
-          <div className={`${styles.mobileViewTabs} flex-1`} role="tablist" aria-label="Vista del laboratorio">
+          <div className={`${styles.mobileViewTabs} flex-1`} role="group" aria-label="Vista del laboratorio">
             <button
               type="button"
-              role="tab"
-              aria-selected={mobileVista === "docs"}
+              aria-pressed={mobileVista === "docs"}
               aria-controls="oop-docs-view"
               onClick={() => setMobileVista("docs")}
             >
@@ -990,8 +998,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
             </button>
             <button
               type="button"
-              role="tab"
-              aria-selected={mobileVista === "code"}
+              aria-pressed={mobileVista === "code"}
               aria-controls="oop-code-view"
               onClick={() => setMobileVista("code")}
             >
@@ -999,8 +1006,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
             </button>
             <button
               type="button"
-              role="tab"
-              aria-selected={mobileVista === "terminal"}
+              aria-pressed={mobileVista === "terminal"}
               aria-controls="oop-terminal-view"
               onClick={() => setMobileVista("terminal")}
             >
@@ -1045,7 +1051,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
         <div className="oop-left-panel" id="oop-code-view">
           {/* Editor Header & Container */}
           <div className="oop-editor-container">
-            <div className="oop-editor-header flex items-center justify-between px-3 py-2 border-b border-white/[0.07] bg-black/40">
+            <div className={`oop-editor-header ${learningStyles.editorToolbar}`}>
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-[11px] text-slate-400">
                   Intentos: {intentos}/{MAX_INTENTOS}
@@ -1067,7 +1073,8 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                   </Link>
                 )}
                 <button
-                  className="oop-reset-btn"
+                  className="btn btn-ghost btn-sm"
+                  aria-label={`Restablecer código base de ${lenguaje === "python" ? "Python" : "Java"}`}
                   onClick={limpiarEditor}
                   disabled={ejecutando}
                   title={`Restablecer código base de ${lenguaje === "python" ? "Python" : "Java"}`}
@@ -1076,7 +1083,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
                   <span className="hidden sm:inline text-xs ml-1">Restablecer</span>
                 </button>
                 <button
-                  className={`oop-run-btn ${editorModificado && !completado ? styles.runReady : ""}`}
+                  className={`btn btn-primary btn-sm ${editorModificado && !completado ? styles.runReady : ""}`}
                   onClick={ejecutar}
                   disabled={ejecutando}
                   title="Ejecutar código localmente (Ctrl+Enter)"
@@ -1096,6 +1103,10 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
               </div>
             </div>
 
+            {!completado && <div className={learningStyles.editorWelcome}>
+              <span aria-hidden="true"><LevelObject objeto="robot" size={54} /></span>
+              <div><strong>Este espacio es tuyo para experimentar.</strong><p>Escribe una idea, ejecútala y observa qué pasa.</p></div>
+            </div>}
             <CodeEditor
               codigo={codigo}
               onChange={handleCodigoChange}
@@ -1116,15 +1127,7 @@ export default function NivelPage({ params }: { params: Promise<PageParams> }) {
 
         {/* Right: Docs + Practice */}
         <div className={`oop-right-panel ${styles.docsWithHud}`} id="oop-docs-view">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.07] bg-black/40">
-            <div className="flex items-center gap-2">
-              <BookOpen size={14} className="text-emerald-400" />
-              <span className="text-xs font-bold text-slate-200">Documentación</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-emerald-300 font-mono font-bold">Subnivel {nivel.subnivel}</span>
-            </div>
-          </div>
+          <div className={learningStyles.guideLabel}><BookOpen size={18} aria-hidden="true" />Guía y práctica · lectura continua</div>
           <div className={styles.docsBody}>
             <OopDocsPanel
               nivel={nivel}

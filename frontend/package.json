@@ -11,6 +11,7 @@
     "lint": "eslint",
     "test:code-runner": "node scripts/verify-code-runner-isolation.mjs",
     "test:compiler-errors": "node --import ./scripts/node-typescript-register.mjs --experimental-strip-types scripts/verify-compiler-errors.mjs",
+    "test:poo-learning:browser": "node scripts/verify-poo-learning-browser.mjs",
     "test:release-api": "node scripts/verify-release-api.mjs",
     "test:auth-robot": "node --experimental-strip-types --test scripts/verify-auth-robot-motion.mjs",
     "test:auth-robot:browser": "node scripts/verify-auth-robot-browser.mjs",

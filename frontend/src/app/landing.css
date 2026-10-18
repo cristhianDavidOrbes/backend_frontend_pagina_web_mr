@@ -239,3 +239,15 @@
   .step-icon { grid-row: span 2; width: 60px; height: 60px; margin: 0; border-radius: 20px; }
   .step h3 { font-size: 1.35rem; }
 }
+
+/* Vertical composition: the same protagonist settles above the actual copy. */
+@media (max-width: 639px) {
+  .hero { gap: 1rem; padding-block: 1.25rem 2rem; }
+  .hero-mascot { order: 0; padding-top: 48px; }
+  .hero-stage { height: clamp(180px, 27svh, 260px); }
+  .hero-copy { order: 1; }
+  .hero-copy h1 { font-size: clamp(2.3rem, 10vw, 3.3rem); line-height: 1.08; }
+  .hero-copy .lead { font-size: 1rem; line-height: 1.5; }
+  .hero-speech { font-size: .8rem; max-width: 230px; padding: .6rem .8rem; }
+  .hero-ctas { gap: .65rem; margin-top: 1.25rem; }
+}

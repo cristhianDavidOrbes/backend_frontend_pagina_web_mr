@@ -50,6 +50,7 @@ const roleConfig: Record<UsuarioSesion["rol"], RoleConfig> = {
       { href: "/docente/estudiantes", label: "Estudiantes", icon: Users },
       { href: "/docente/reportes", label: "Reportes", icon: BarChart3 },
       { href: "/docente/perfil", label: "Mi perfil", icon: UserRound },
+      { href: "/docente/configuracion", label: "Configuración", icon: Settings },
     ],
   },
   ADMINISTRADOR: {
@@ -60,6 +61,7 @@ const roleConfig: Record<UsuarioSesion["rol"], RoleConfig> = {
       { href: "/administrador/niveles", label: "Niveles", icon: Layers },
       { href: "/administrador/tutor-ia", label: "Tutor IA", icon: Sparkles },
       { href: "/administrador/perfil", label: "Mi perfil", icon: UserRound },
+      { href: "/administrador/configuracion", label: "Configuración", icon: Settings },
     ],
   },
 };

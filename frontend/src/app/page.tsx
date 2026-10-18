@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { motion, useReducedMotion } from "framer-motion";
 import { Component, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, Eye, GraduationCap, Hand, Lightbulb, ShieldCheck, Sparkles, Glasses } from "lucide-react";
@@ -14,6 +13,8 @@ import type { RobotSignal } from "@/components/robot-stage";
 import { PUNTAJE_MAXIMO_NIVEL } from "@/lib/ruta-mr";
 import { useAuthSession } from "@/lib/use-auth-session";
 import { BrandMark } from "@/components/brand-mark";
+import { LandingIntro } from "@/components/landing-intro";
+import { LandingHeroRobot } from "@/components/landing-hero-robot";
 
 class FeatureBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -27,11 +28,6 @@ class FeatureBoundary extends Component<{ children: ReactNode }, { failed: boole
     return this.state.failed ? null : this.props.children;
   }
 }
-
-const RobotStage = dynamic(() => import("@/components/robot-stage").then((m) => m.RobotStage), {
-  ssr: false,
-  loading: () => <div className="robot-stage robot-stage-checking" />,
-});
 
 const pasos = [
   { icon: Hand, color: "action", titulo: "Toca", texto: "Manipulas objetos en tu propio espacio." },
@@ -76,7 +72,7 @@ export default function Home() {
   );
 
   return (
-    <div className="landing">
+    <LandingIntro><div className="landing">
       <header className="landing-nav">
         <div className="landing-nav-pill glass">
           <Shared name="brand">
@@ -109,7 +105,7 @@ export default function Home() {
           <Reveal className="hero-mascot" direction="none">
             <div className="hero-stage" onPointerEnter={() => reaccionar("attention")}>
               <FeatureBoundary>
-                <RobotStage presence="hero" signal={senal} />
+                <LandingHeroRobot signal={senal} />
               </FeatureBoundary>
               <div className="stage-floor" />
             </div>
@@ -260,6 +256,6 @@ export default function Home() {
         <span className="brand"><BrandMark /><span className="brand-name">AlgoLab</span></span>
         <p>Programación orientada a objetos en realidad mixta · UCC Pasto · © 2026</p>
       </footer>
-    </div>
+    </div></LandingIntro>
   );
 }

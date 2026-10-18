@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, BookOpen, RotateCcw, Trash2 } from "lucide-react";
 
 import { AnimatedNotice, ConfirmDialog, PageHead, type Tone } from "@/components/ui";
+import { IntroPreferences } from "@/components/intro-preferences";
 
 import { apiRequest } from "@/lib/client-api";
 import { clearAuthSession, useAuthSession } from "@/lib/use-auth-session";
@@ -95,6 +96,8 @@ export default function ConfiguracionEstudiantePage() {
       />
 
       <AnimatedNotice message={mensaje} tone={mensajeTono} />
+
+      <IntroPreferences />
 
       <section className="card overflow-hidden">
         <header className="flex items-start gap-3 border-b border-line/10 p-5">

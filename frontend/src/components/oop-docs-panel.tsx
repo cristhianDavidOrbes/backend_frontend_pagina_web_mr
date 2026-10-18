@@ -1,9 +1,12 @@
 "use client";
 
-import type { MiniNivel, LenguajeOOP } from "@/lib/oop-niveles";
-import { BookOpen, Sparkles, ArrowRight } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, BookOpen, Check, CheckCircle2, Code2, Copy, Lightbulb, Target, Trophy } from "lucide-react";
 import Link from "next/link";
+import type { MiniNivel, LenguajeOOP } from "@/lib/oop-niveles";
 import { LanguageIcon } from "@/components/language-icon";
+import { LevelObject } from "@/components/level-object";
+import styles from "@/app/estudiante/codigo/poo-learning.module.css";
 
 type Props = {
   nivel: MiniNivel;
@@ -18,241 +21,110 @@ type Props = {
   nextNivelSubnivel?: string;
 };
 
-function CodeBlock({ code }: { code: string }) {
-  return (
-    <pre className="oop-code-block overflow-x-auto">
-      <code>{code}</code>
-    </pre>
-  );
+// React text preserves <, > and single-* emphasis without injecting course HTML.
+function inline(text: string): ReactNode[] {
+  return text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g).map((part, index) => {
+    if (part.startsWith("`")) return <code key={index}>{part.slice(1, -1)}</code>;
+    if (part.startsWith("**")) return <strong key={index}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith("*")) return <em key={index}>{part.slice(1, -1)}</em>;
+    return part;
+  });
 }
 
-function MarkdownRenderer({ text }: { text: string }) {
-  // Simple markdown: **bold**, bullet lists, inline code `code`
+function CourseText({ text }: { text: string }) {
+  const blocks: ReactNode[] = [];
   const lines = text.split("\n");
-  return (
-    <div className="oop-markdown">
-      {lines.map((line, i) => {
-        if (line.startsWith("- ")) {
-          const content = parseInline(line.slice(2));
-          return (
-            <div key={i} className="oop-list-item">
-              <span className="oop-bullet">▸</span>
-              <span dangerouslySetInnerHTML={{ __html: content }} />
-            </div>
-          );
-        }
-        if (line.trim() === "") return <div key={i} className="oop-spacer" />;
-        return (
-          <p key={i} dangerouslySetInnerHTML={{ __html: parseInline(line) }} />
-        );
-      })}
-    </div>
-  );
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index].trim();
+    if (!line) continue;
+    if (line.startsWith("- ")) {
+      const items: ReactNode[] = [];
+      const first = index;
+      do {
+        items.push(<li key={index}>{inline(lines[index].trim().slice(2))}</li>);
+        index++;
+      } while (index < lines.length && lines[index].trim().startsWith("- "));
+      index--;
+      blocks.push(<ul key={first}>{items}</ul>);
+    } else { blocks.push(<p key={index}>{inline(line)}</p>); }
+  }
+  return <div className={styles.prose}>{blocks}</div>;
 }
 
-function parseInline(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/`(.+?)`/g, "<code class='oop-inline-code'>$1</code>");
+function Example({ code, lenguaje }: { code: string; lenguaje: LenguajeOOP }) {
+  const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  async function copy() {
+    try { await navigator.clipboard.writeText(code); setStatus("copied"); }
+    catch { setStatus("error"); }
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setStatus("idle"), 3000);
+  }
+  return <div className={styles.codeExample}>
+    <div className={styles.codeBar}>
+      <span><LanguageIcon lenguaje={lenguaje} size={16} />{lenguaje === "python" ? "ejemplo.py" : "Main.java"}</span>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => void copy()} aria-label="Copiar ejemplo completo">
+        {status === "copied" ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+        {status === "copied" ? "Copiado" : "Copiar"}
+      </button>
+    </div>
+    <pre className={styles.codeBlock} tabIndex={0} aria-label="Ejemplo de código completo"><code>{code.split(/(#[^\n]*|\/\/[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:public|private|protected|class|static|void|String|int|double|float|boolean|return|def|self|print|True|False|true|false|new|extends|super|implements|abstract)\b|\b\d+(?:\.\d+)?\b)/g).map((token, index) => {
+      const tone = /^(#|\/\/)/.test(token) ? styles.syntaxComment : /^["']/.test(token) ? styles.syntaxString : /^\d/.test(token) ? styles.syntaxNumber : /^(public|private|protected|class|static|void|String|int|double|float|boolean|return|def|self|print|True|False|true|false|new|extends|super|implements|abstract)$/.test(token) ? styles.syntaxKeyword : undefined;
+      return <span className={tone} key={index}>{token}</span>;
+    })}</code></pre>
+    <span className="sr-only" role="status">{status === "copied" ? "Ejemplo copiado" : status === "error" ? "No se pudo copiar. Selecciona el código y cópialo manualmente." : ""}</span>
+    {status === "error" && <p className="notice notice-warning">No se pudo copiar. Selecciona el código y cópialo manualmente.</p>}
+  </div>;
 }
 
-export function OopDocsPanel({
-  nivel,
-  lenguaje,
-  intentos,
-  maxIntentos,
-  completado,
-  onVerPista,
-  onVerSolucion,
-  mostroPista,
-  nextNivelId,
-  nextNivelSubnivel,
-}: Props) {
-  const ejemploCodigo =
-    lenguaje === "python" ? nivel.docs.ejemploPython : nivel.docs.ejemploJava;
-  const glosario =
-    lenguaje === "python" ? nivel.docs.glosarioPython : nivel.docs.glosarioJava;
-  const intentosRestantes = maxIntentos - intentos;
-  const agotadoIntentos = intentos >= maxIntentos;
-
-  return (
-    <div className="oop-docs-panel flex h-full flex-col overflow-hidden">
-      {/* Header */}
-      <div className="oop-docs-header flex-shrink-0">
-        <span className="oop-docs-emoji">{nivel.emoji}</span>
-        <div>
-          <div className="flex items-center gap-1.5">
-            <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300">
-              Subnivel {nivel.subnivel}
-            </span>
-            <p className="section-kicker">{nivel.concepto}</p>
+export function OopDocsPanel({ nivel, lenguaje, intentos, maxIntentos, completado, onVerPista, onVerSolucion, mostroPista, nextNivelId, nextNivelSubnivel }: Props) {
+  const code = lenguaje === "python" ? nivel.docs.ejemploPython : nivel.docs.ejemploJava;
+  const glossary = lenguaje === "python" ? nivel.docs.glosarioPython : nivel.docs.glosarioJava;
+  const exhausted = intentos >= maxIntentos;
+  return <article className={styles.guide} aria-label={`Guía continua: ${nivel.titulo}`}>
+    <header className={styles.guideHeader}>
+      <span className={styles.guideRobot} aria-hidden="true"><LevelObject objeto="robot" size={64} /></span>
+      <div><h2>{nivel.titulo}</h2><p>Reto {nivel.subnivel} · {nivel.concepto}</p></div>
+      <span className={styles.guidePoints}><Trophy size={16} aria-hidden="true" />Hasta {nivel.puntaje} pts</span>
+    </header>
+    <div className={styles.guideContent} tabIndex={0} aria-label="Contenido de la guía">
+      <p>{nivel.docs.intro}</p>
+      <section className={styles.guideSection}><h3><BookOpen size={20} aria-hidden="true" />Entiende la idea</h3><CourseText text={nivel.docs.concepto} /></section>
+      <section className={styles.guideSection}><h3><Code2 size={20} aria-hidden="true" />Mira el ejemplo completo</h3><Example key={`${nivel.id}:${lenguaje}`} code={code} lenguaje={lenguaje} /></section>
+      {glossary.length > 0 && <section className={styles.guideSection}>
+        <h3>Cómo funciona ese código</h3>
+        <dl className={styles.glossary}>{glossary.map((item, index) => <div key={index}><dt>{item.termino}</dt><dd>{item.explicacion}</dd></div>)}</dl>
+      </section>}
+      <div className={styles.tip}><Lightbulb size={20} aria-hidden="true" /><p>{nivel.docs.tip}</p></div>
+      <section className={`${styles.guideSection} ${styles.practice}`}>
+        <h3><Target size={20} aria-hidden="true" />Ahora te toca a ti</h3>
+        <div className={styles.practiceCompanion}><span aria-hidden="true"><LevelObject objeto="robot" size={52} /></span><p><strong>Tu idea, tu código.</strong> Prueba, cambia y descubre qué puedes construir.</p></div>
+        <p>Resuelve este reto en el editor y pulsa «Ejecutar» para comprobarlo. Al superarlo, abres el siguiente.</p>
+        <CourseText text={nivel.practica.enunciado} />
+        <p className={styles.outputLabel}>Resultado de referencia</p>
+        <pre className={styles.expectedOutput}>{nivel.practica.salidaEsperada}</pre>
+        <p className="muted text-sm">Puedes cambiar valores y nombres mientras cumplas los conceptos pedidos.</p>
+      </section>
+      {!completado && <section className={styles.help} aria-label="Intentos y ayuda">
+        <h3>Prueba, aprende y vuelve a intentar</h3>
+        <div className={styles.attempts} aria-hidden="true">{Array.from({ length: maxIntentos }, (_, index) => <i key={index} data-used={index < intentos} />)}</div>
+        <p>{exhausted ? "Ya puedes elegir cómo recibir ayuda." : `${intentos} de ${maxIntentos} intentos usados. La ayuda se habilita después de ${maxIntentos} intentos.`}</p>
+        {exhausted && <>
+          <div className={styles.helpActions}>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onVerPista} disabled={mostroPista}><Lightbulb size={18} aria-hidden="true" />{mostroPista ? "Pista activa" : "Ver pista · mitad de puntos"}</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onVerSolucion}>Ver solución · sin puntos</button>
           </div>
-          <h2 className="oop-docs-title">{nivel.titulo}</h2>
-        </div>
-        <div className="oop-pts-badge ml-auto">
-          <span>⭐</span>
-          <span>{nivel.puntaje} pts</span>
-        </div>
-      </div>
-
-      {/* Docs content (Scrollable vertically and horizontally) */}
-      <div className="oop-docs-content flex-1 overflow-x-auto overflow-y-auto p-4 md:p-6">
-        {/* Intro */}
-        <p className="oop-intro">{nivel.docs.intro}</p>
-
-        {/* Concept */}
-        <div className="oop-section">
-          <h3 className="oop-section-title flex items-center gap-1.5">
-            <BookOpen size={14} className="text-emerald-400" />
-            📖 Concepto clave
-          </h3>
-          <MarkdownRenderer text={nivel.docs.concepto} />
-        </div>
-
-        {/* Example */}
-        <div className="oop-section">
-          <h3 className="oop-section-title">
-            <LanguageIcon lenguaje={lenguaje} size={14} /> Ejemplo en {lenguaje === "python" ? "Python" : "Java"}
-          </h3>
-          <CodeBlock code={ejemploCodigo} />
-        </div>
-
-        {/* 🔍 Syntax Breakdown & Explanations (Desglose de sintaxis paso a paso) */}
-        {glosario && glosario.length > 0 && (
-          <div className="oop-section">
-            <h3 className="oop-section-title flex items-center gap-1.5">
-              <Sparkles size={14} className="text-cyan-400" />
-              🔍 ¿Qué significa cada parte del código?
-            </h3>
-            <div className="space-y-2">
-              {glosario.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed transition hover:border-cyan-500/30 hover:bg-cyan-500/5"
-                >
-                  <div className="font-mono font-bold text-cyan-300">
-                    {item.termino}
-                  </div>
-                  <p className="mt-1 text-slate-300">{item.explicacion}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tip */}
-        <div className="oop-tip-box">
-          <p>{nivel.docs.tip}</p>
-        </div>
-
-        {/* Divider */}
-        <hr className="oop-divider" />
-
-        {/* ══ PRÁCTICA OBLIGATORIA ══ */}
-        <div className="oop-practica-section">
-          <div className="oop-practica-header">
-            <div className="oop-practica-title">
-              <span>🎯</span>
-              <span>Tu práctica</span>
-            </div>
-            <span className="oop-practica-required-badge">⚠ Obligatoria</span>
-          </div>
-
-          {/* Aviso destacado */}
-          <div className="oop-practica-notice">
-            <span className="oop-practica-notice-icon">📌</span>
-            <span>Debes completar este reto en el editor para avanzar al siguiente nivel.</span>
-          </div>
-
-          {/* Enunciado */}
-          <div className="oop-practica-box">
-            <MarkdownRenderer text={nivel.practica.enunciado} />
-          </div>
-        </div>
-
-        {/* ══ SALIDA ESPERADA ══ */}
-        <div className="oop-expected-output-section">
-          <div className="oop-expected-output-header">
-            <div className="oop-expected-output-title">
-              <span>✅</span>
-              <span>Salida esperada</span>
-            </div>
-            <span className="oop-expected-output-badge">📋 Referencia</span>
-          </div>
-          <div className="oop-expected-output-hint">
-            <span>💡</span>
-            <span>Puedes personalizar valores y nombres mientras cumplas los conceptos pedidos.</span>
-          </div>
-          <pre className="oop-expected-output overflow-x-auto">{nivel.practica.salidaEsperada}</pre>
-        </div>
-
-        {/* Attempt counter */}
-        {!completado && (
-          <div className="oop-attempts">
-            <div className="oop-attempts-bar">
-              {Array.from({ length: maxIntentos }, (_, i) => (
-                <div
-                  key={i}
-                  className={`oop-attempt-dot ${i < intentos ? "used" : "available"}`}
-                />
-              ))}
-            </div>
-            <p className="oop-attempts-text">
-              {intentos === 0
-                ? `Tienes ${maxIntentos} intentos antes de activar las opciones de ayuda`
-                : agotadoIntentos
-                ? "6 intentos alcanzados: Botón de ayuda disponible arriba"
-                : `${intentosRestantes} intento${intentosRestantes !== 1 ? "s" : ""} restante${intentosRestantes !== 1 ? "s" : ""}`}
-            </p>
-          </div>
-        )}
-
-        {/* Hint/Solution buttons when attempts exhausted */}
-        {agotadoIntentos && !completado && (
-          <div className="oop-help-section">
-            <p className="oop-help-title">¿Necesitas ayuda? Elige una opción:</p>
-            <div className="oop-help-buttons">
-              <button
-                className="oop-hint-btn"
-                onClick={onVerPista}
-                disabled={mostroPista}
-              >
-                💡 {mostroPista ? "Pista activa (½ pts)" : "Ver pista (½ pts)"}
-              </button>
-              <button
-                className="oop-solution-btn"
-                onClick={onVerSolucion}
-              >
-                🏳 Mostrar solución (sin pts)
-              </button>
-            </div>
-            {mostroPista && (
-              <p className="oop-hint-note">
-                Completa el nivel con la pista y ganarás {Math.floor(nivel.puntaje / 2)} pts.
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Completed badge & Next Level Button */}
-        {completado && (
-          <div className="oop-completed-badge flex-col gap-2 p-3">
-            <div className="flex items-center gap-2 font-bold text-emerald-300">
-              <span className="text-lg">🎉</span>
-              <span>¡Subnivel completado con éxito!</span>
-            </div>
-            {nextNivelId && (
-              <Link
-                href={`/estudiante/codigo/${nextNivelId}?lang=${lenguaje}`}
-                className="flex items-center justify-center gap-2 w-full mt-2 py-2 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/30 transition-all hover:scale-[1.02] active:scale-95 text-center"
-              >
-                <span>Avanzar al Siguiente Subnivel ({nextNivelSubnivel})</span>
-                <ArrowRight size={14} />
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
+          {mostroPista && <p className="muted text-sm mt-3">Con la pista puedes completar el reto y ganar {Math.floor(nivel.puntaje / 2)} puntos.</p>}
+        </>}
+      </section>}
+      {completado && <section className={styles.success} role="status">
+        <h3><CheckCircle2 size={22} aria-hidden="true" />¡Reto superado!</h3>
+        <p>{nextNivelId ? "Un paso más en tu camino. Tu siguiente reto ya está disponible." : "¡Terminaste los ocho retos! Puedes volver a practicar o explorar el otro lenguaje."}</p>
+        <Link href={nextNivelId ? `/estudiante/codigo/${nextNivelId}?lang=${lenguaje}` : "/estudiante/codigo"} className="btn btn-primary btn-sm">
+          {nextNivelId ? `Continuar al reto ${nextNivelSubnivel}` : "Ver mi camino completo"}<ArrowRight size={18} aria-hidden="true" />
+        </Link>
+      </section>}
     </div>
-  );
+  </article>;
 }
