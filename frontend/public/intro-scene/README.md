@@ -6,7 +6,7 @@ Esta escena conserva la animación aprobada de `algolab-corto-demo`: cuarto, pue
 
 La interfaz final se ensambla con nodos del DOM real a través de `src/lib/landing-assembly.ts` del frontend. Título, navegación y botones mantienen sus medidas y tipografía reales. En celular, el personaje termina arriba del texto. No se recorta una captura horizontal ni se encoje un recuadro de video.
 
-El puente `postMessage` verifica origen y ventana de procedencia en ambos lados. No maneja cuentas, tokens ni datos académicos. El reloj visual no depende de permisos de reproducción de audio; el sonido se activa mediante un gesto.
+El puente `postMessage` verifica origen y ventana de procedencia en ambos lados. No maneja cuentas, tokens ni datos académicos. La escena y la pista esperan su carga antes de arrancar juntas con sonido al 65 %; el audio marca el tiempo durante la reproducción. Si el navegador impide el audio automático, la escena continúa con reloj visual y ofrece activarlo con un toque. Al terminar, la misma escena pasa de capa fija a capa absoluta de la landing: el robot se desplaza con el documento, no se queda pegado a la pantalla al hacer scroll.
 
 ## Activos y licencias
 

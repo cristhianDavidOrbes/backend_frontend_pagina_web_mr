@@ -15,7 +15,7 @@ Origen editable de las exportaciones: proyecto local `algolab-corto-demo`. La im
 
 `algolab:intro:seen` y `algolab:intro:preference` se guardan en localStorage del navegador. No contienen identificadores de dispositivo ni se sincronizan con la cuenta. El valor visto no se reinicia al cambiar de usuario ni al actualizar el video. Las preferencias son `once` (predeterminada), `always` y `never`. `/?intro=preview` permite una vista explícita sin cambiar la preferencia.
 
-Se omite con reducción de movimiento, ahorro de datos o almacenamiento inaccesible; el ahorro de datos permite una vista explícita, la reducción de movimiento no. Errores de medios y esperas de carga prolongadas dejan accesible la página. El sonido comienza silenciado y requiere un gesto para activarse.
+Se omite con reducción de movimiento, ahorro de datos o almacenamiento inaccesible; el ahorro de datos permite una vista explícita, la reducción de movimiento no. Errores de medios y esperas de carga prolongadas dejan accesible la página. Se espera la carga de la escena completa y la pista antes de arrancar ambas desde cero. La reproducción intenta comenzar con sonido al 65 % de volumen y permite silenciarlo; cuando se reproduce, el audio marca el tiempo visual para evitar desfases por carga o renderizado lento. Si el navegador bloquea el audio automático, la escena continúa y muestra «Activar sonido»; al tocarlo, el audio se sincroniza con la animación. El bloqueo del audio no cambia el estado de pausa de la escena.
 
 ## Verificación local
 
