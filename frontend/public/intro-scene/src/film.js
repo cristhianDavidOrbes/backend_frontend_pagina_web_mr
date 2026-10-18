@@ -6,6 +6,7 @@ import { createCar } from './car.js';
 import { createLandingRobotPass } from './landing-robot.js';
 import { createLandingBehavior } from './landing-behavior.js';
 import { renderQuality } from './render-quality.js';
+import { carDeparture, EXIT_APPROACH, EXIT_ARC } from './prop-motion.js';
 
 const DURATION = 20;
 // Preserve the authored pacing on a twenty-second public timeline.
@@ -76,6 +77,7 @@ function textPlane(parent,w,h,pos,texture){const m=new THREE.Mesh(new THREE.Plan
 // One physical green shell travels through the story. Its bevel and gold corner
 // remain recognizable while fittings unfold, lock in and park in the same room.
 const shell=new THREE.Group();scene.add(shell);
+shell.name='original-book-and-door';
 rounded(shell,[1,1,.12],[0,0,0],materials.mint,.045);
 rounded(shell,[.18,.08,.035],[.38,.42,.075],materials.gold,.015);
 const inset=rounded(shell,[.78,.76,.025],[0,0,.074],mat('#2ead87'),.025);
@@ -94,15 +96,14 @@ const brandReady=new THREE.TextureLoader().loadAsync(new URL('../assets/algolab-
 // Door frames are hollow, so the robot and background remain visible through them.
 const doors=new THREE.Group();scene.add(doors);
 function doorFrame(x,color){const g=new THREE.Group();g.position.x=x;doors.add(g);rounded(g,[.1,2.45,.19],[-.6,1.225,0],materials.dark);rounded(g,[.1,2.45,.19],[.6,1.225,0],materials.dark);rounded(g,[1.3,.12,.19],[0,2.45,0],materials.dark);rounded(g,[1.35,.07,.45],[0,.035,0],materials.chrome);return g;}
-doorFrame(0,materials.mint);
+const firstDoor=doorFrame(0,materials.mint);
 const second=doorFrame(1.6,materials.cyan);
 const leaf=new THREE.Group();leaf.position.set(-.55,.06,.05);second.add(leaf);
 rounded(leaf,[1.1,2.3,.12],[.55,1.15,0],materials.cyan);
 rounded(leaf,[.68,.6,.035],[.55,1.68,.08],mat('#c9ece7',.3,.17));
 rounded(leaf,[.065,.28,.1],[.95,1.02,.1],materials.gold);
-const retainedDoor=new THREE.Group();doors.add(retainedDoor);
-rounded(retainedDoor,[1.1,2.3,.12],[0,1.21,.05],materials.mint);
-cylinder(retainedDoor,.045,.12,[.38,1.2,.16],materials.gold);
+// The original book is the first door leaf; there is no replacement panel.
+const doorCenter=new THREE.Vector3(0,1.22,.05);
 
 const {car,chassis,cabin,wheels}=createCar(scene);
 
@@ -117,6 +118,8 @@ const consoleGood=diagramTexture('console',true);
 
 // A real bound book: page block, back cover, spine and a hinged front cover.
 const book=new THREE.Group();scene.add(book);
+const bookCoverPose=new THREE.Object3D();
+let bookCoverAngle=0;
 rounded(book,[1.0,1.4,.08],[0,0,-.2],materials.dark,.025);
 rounded(book,[.94,1.32,.2],[0,0,-.07],materials.white,.018);
 rounded(book,[.09,1.41,.3],[-.48,0,-.07],materials.mint,.02);
@@ -180,7 +183,7 @@ const robotKeys=[
  [15.6,[-1.3,-1.55,.5],[.8]], [16.5,[-.8,-1.55,.75],[.8]],
  [17.4,[-1.1,-1.55,.7],[.35]], [18.9,[-2,-1.55,.65],[0]], [20,[-2,-1.55,.65],[0]]
 ];
-const carKeys=[[0,[.8,-1.55,.28],[0]],[8.05,[.8,-1.55,.28],[0]],[8.7,[1.5,-1.55,-.15],[Math.PI/2]],[9.4,[1.5,-1.55,-3.05],[Math.PI/2]],[10.35,[1.5,-1.55,-10],[Math.PI/2]],[20,[1.5,-1.55,-10],[Math.PI/2]]];
+const carKeys=[[0,[.8,-1.55,.28],[0]],[8.05,[.8,-1.55,.28],[0]],[8.7,[1.5,-1.55,-.15],[Math.PI/2]],[9.4,[1.5,-1.55,-3.05],[Math.PI/2]],[20,[1.5,-1.55,-3.05],[Math.PI/2]]];
 const chapters=[
  {start:0,end:2.5,title:'Tu cuarto. Nuevas posibilidades.',sub:'Realidad mixta · lo virtual vive en tu espacio'},
  {start:2.5,end:5.5,title:'Una clase. Objetos con vida propia.',sub:'Clases y objetos · cada puerta conserva su estado'},
@@ -214,25 +217,37 @@ function renderAtTime(t){
  const s=track(shellKeys,anim);fit(shell,...s);
  // No loose green slab between scenes: the cover exists only as an actual
  // book or door. Vehicle, controls and code each have their own fitted body.
- const coverPresence=(1-phase(anim,4.8,5.45))+phase(anim,12.0,12.7)*(1-phase(anim,14.45,15.35));
+ const coverPresence=anim<6.15?1:phase(anim,12.0,12.7)*(1-phase(anim,14.45,15.35));
  shell.scale.multiplyScalar(Math.max(.001,coverPresence));
  shell.visible=coverPresence>.001;
  const guide=1-phase(anim,2.1,2.75);openingBook.scale.z=Math.max(.001,guide);bookBadge.scale.setScalar(Math.max(.001,guide));
- const doorMode=(1-phase(anim,5.1,5.7))*phase(anim,2.15,2.9);
+ const doorMode=anim<6.15?phase(anim,2.15,2.9):0;
  handle.scale.setScalar(Math.max(.001,doorMode));
  inset.scale.setScalar(Math.max(.001,doorMode));
- const opening=phase(anim,2.3,3.05);const parking=phase(anim,5.0,6.15);
- doors.position.set(mix(.6,shell.position.x,parking),mix(-1.5,shell.position.y,parking),mix(0,shell.position.z,parking));
- doors.scale.set(Math.max(.001,opening*(1-parking)),Math.max(.001,opening*(1-parking)),Math.max(.001,1-parking));doors.rotation.z=-parking*Math.PI*.6;
- doors.visible=opening*(1-parking)>.001;
- retainedDoor.scale.setScalar(Math.max(.001,phase(anim,5.05,5.6)));
+ const opening=phase(anim,2.3,3.05);const parking=phase(anim,5.1,6.15);
+ // Carry the closed doors away as a rigid assembly, rather than shrinking one
+ // leaf and growing a lookalike inside its frame. This is deterministic on seek.
+ doors.position.set(mix(.6,12,parking),-1.5,mix(0,-1.4,parking));
+ doors.scale.set(Math.max(.001,opening),Math.max(.001,opening),1);
+ doors.rotation.set(0,-parking*.35,-parking*.12);
+ doors.visible=opening>.001&&anim<6.15;
+ if(anim>=5.1&&anim<6.15){
+  doors.updateMatrixWorld(true);
+  shell.position.copy(doorCenter).applyMatrix4(firstDoor.matrixWorld);
+  shell.rotation.copy(doors.rotation);
+  shell.scale.set(1.1,2.3,1);
+ }
  leaf.rotation.y=-phase(anim,3.6,4.35)*1.15+parking*1.15;
  // The robot gives its creation a push. It turns, accelerates and actually crosses the wall opening at 9.4s.
- const assemble=phase(anim,5.7,6.2),cp=track(carKeys,anim);car.position.set(...cp[0]);car.rotation.y=cp[1][0];car.scale.setScalar(Math.max(.001,assemble));
- car.visible=assemble>.001&&anim<10.35;
+ const assemble=phase(anim,5.7,6.2),cp=track(carKeys,anim),departure=carDeparture(anim);car.position.set(...cp[0]);car.rotation.y=cp[1][0];car.scale.setScalar(Math.max(.001,assemble));
+ if(anim>=9.4){car.position.set(departure.x,-1.55,departure.z);car.rotation.y=departure.yaw;}
+ // No time-based disappearance: the car follows the bend behind the wall and
+ // keeps driving right until normal camera/frustum occlusion hides it.
+ car.visible=assemble>.001;
  const bodyP=phase(anim,5.75,6.45);chassis.position.y=mix(1.8,0,bodyP);
  const cabinP=phase(anim,6.7,7.6);cabin.position.set(0,mix(2.0,0,cabinP),0);cabin.scale.setScalar(Math.max(.001,cabinP));
- wheels.forEach((w,i)=>{const p=phase(anim,6.1+i*.1,6.85+i*.1),[x,y,z]=w.userData.target;w.position.set(x,y+Math.sin(p*Math.PI)*.25,z+Math.sign(z)*(1-p)*1.1);w.rotation.z=-(.28-car.position.z)/.3;w.scale.setScalar(Math.max(.001,p));});
+ const steering=anim>=9.4&&departure.distance>EXIT_APPROACH&&departure.distance<EXIT_APPROACH+EXIT_ARC?-Math.sin(Math.PI*(departure.distance-EXIT_APPROACH)/EXIT_ARC)*.23:0;
+ wheels.forEach((w,i)=>{const p=phase(anim,6.1+i*.1,6.85+i*.1),[x,y,z]=w.userData.target;w.position.set(x,y+Math.sin(p*Math.PI)*.25,z+Math.sign(z)*(1-p)*1.1);w.rotation.z=-((anim>=9.4?3.33+departure.distance:.28-car.position.z))/.3;w.rotation.y=x>0?steering:0;w.scale.setScalar(Math.max(.001,p));});
  // Controls lock onto the shell, then retract into the binding as it becomes a book.
  const controlP=phase(anim,8.65,9.2)*(1-phase(anim,11.9,12.6));
  consoleFit.position.copy(shell.position);consoleFit.rotation.copy(shell.rotation);consoleFit.scale.setScalar(Math.max(.001,controlP));
@@ -241,12 +256,23 @@ function renderAtTime(t){
  const press= Math.sin(phase(anim,10.4,11.0)*Math.PI);buttons[0].position.z=.15-press*.06;
  consoleScreen.material.map=anim>=10.9?consoleGood:consoleScreen.userData.initial;
  const bookP=phase(anim,12.0,12.85),parkBook=phase(anim,14.45,15.35);
- book.position.set(mix(.75,shell.position.x,parkBook),mix(-.03,shell.position.y,parkBook),mix(.19,shell.position.z-.08,parkBook));
- book.rotation.set(-.1,mix(-.3,Math.PI,parkBook),mix(-.05,.07,parkBook));book.scale.setScalar(Math.max(.001,bookP*(1-parkBook)));
+ book.position.set(mix(.75,1,parkBook),mix(-.03,.05,parkBook),mix(.19,.02,parkBook));
+ book.rotation.set(mix(-.1,0,parkBook),mix(-.3,-.15,parkBook),mix(-.05,0,parkBook));book.scale.setScalar(Math.max(.001,bookP*(1-parkBook)));
  book.visible=bookP*(1-parkBook)>.001;
- const vinylP=phase(anim,12.4,13.2);vinyl.position.set(mix(2.05,shell.position.x,parkBook),mix(.0,shell.position.y,parkBook)+Math.sin(parkBook*Math.PI)*.4,mix(.05,shell.position.z-.08,parkBook));vinyl.rotation.set(0,mix(-.3,Math.PI*2,parkBook),Math.sin(anim*1.6)*.025);vinyl.scale.setScalar(Math.max(.001,vinylP*(1-parkBook)));
+ // Hinge the original cover at the spine. Closing, movement and shrink all use
+ // the body's single transform, so no separate green strip crosses the pages.
+ bookCoverAngle=-1.05*phase(anim,13,13.9)*(1-phase(anim,14.05,14.6));
+ if(anim>=12&&anim<15.35){
+  bookCoverPose.position.set(-.48+.48*Math.cos(bookCoverAngle)+.045*Math.sin(bookCoverAngle),0,.06-.48*Math.sin(bookCoverAngle)+.045*Math.cos(bookCoverAngle));
+  bookCoverPose.rotation.set(0,bookCoverAngle,0);bookCoverPose.scale.set(1,1.4,1);bookCoverPose.updateMatrix();
+  book.updateMatrixWorld(true);
+  shell.matrix.multiplyMatrices(book.matrixWorld,bookCoverPose.matrix);
+  shell.matrix.decompose(shell.position,shell.quaternion,shell.scale);
+  shell.visible=book.visible;
+ }
+ const vinylP=phase(anim,12.4,13.2);vinyl.position.set(mix(2.05,s[0][0],parkBook),mix(.0,s[0][1],parkBook)+Math.sin(parkBook*Math.PI)*.4,mix(.05,s[0][2]-.08,parkBook));vinyl.rotation.set(0,mix(-.3,Math.PI*2,parkBook),Math.sin(anim*1.6)*.025);vinyl.scale.setScalar(Math.max(.001,vinylP*(1-parkBook)));
  vinyl.visible=vinylP*(1-parkBook)>.001;
- const codeP=phase(anim,15.0,15.65);code.position.copy(shell.position);code.rotation.copy(shell.rotation);code.scale.setScalar(Math.max(.001,codeP));codeFace.material.map=anim>=16.6?codeSuccess:codeFace.userData.initial;
+ const codeP=phase(anim,15.0,15.65);code.position.set(...s[0]);code.rotation.set(...s[1]);code.scale.setScalar(Math.max(.001,codeP));codeFace.material.map=anim>=16.6?codeSuccess:codeFace.userData.initial;
  code.visible=codeP>.001;
  if(robot){const rp=track(robotKeys,anim),before=track(robotKeys,Math.max(0,anim-.02));const moving=Math.min(1,Math.hypot(...rp[0].map((v,i)=>(v-before[0][i])*50)));
  const reach=Math.sin(phase(anim,1.3,2.5)*Math.PI)*.75+Math.sin(phase(anim,3.3,4.3)*Math.PI)*.7+Math.sin(phase(anim,6.2,7.7)*Math.PI)*.7+Math.sin(phase(anim,10.2,11.2)*Math.PI)*.85+Math.sin(phase(anim,13,14.6)*Math.PI)*.6+Math.sin(phase(anim,16,16.9)*Math.PI)*.85;
@@ -290,6 +316,21 @@ window.__renderAtTime=t=>{time=clamp(t,0,DURATION);playing=false;reduced=false;s
 window.__audioDiagnostics=()=>soundtrack.diagnostics();
 window.__isRobotReady=()=>ready;
 window.__duration=DURATION;
+// On-demand checks only: no bounding-box work is added to the animation loop.
+window.__propDiagnostics=()=>{
+ scene.updateMatrixWorld(true);
+ const bounds=group=>{
+  const box=new THREE.Box3().setFromObject(group),points=[];
+  for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z])points.push(new THREE.Vector3(x,y,z).project(camera));
+  return {minX:Math.min(...points.map(p=>p.x)),maxX:Math.max(...points.map(p=>p.x)),minY:Math.min(...points.map(p=>p.y)),maxY:Math.max(...points.map(p=>p.y))};
+ };
+ return {
+  time,
+  door:{id:shell.uuid,frameId:firstDoor.uuid,frameCount:doors.children.length,visible:shell.visible,framesVisible:doors.visible,scale:shell.scale.toArray(),frameScale:doors.scale.toArray(),localCenter:firstDoor.worldToLocal(shell.position.clone()).toArray(),bounds:bounds(doors)},
+  car:{id:car.uuid,visible:car.visible,position:car.position.toArray(),yaw:car.rotation.y,wheelRoll:wheels[0].rotation.z,steering:wheels[2].rotation.y,bounds:bounds(car)},
+  book:{id:book.uuid,coverId:shell.uuid,visible:book.visible,coverVisible:shell.visible,scale:book.scale.x,coverScale:shell.scale.toArray(),hingeAngle:bookCoverAngle,coverLocal:book.worldToLocal(shell.position.clone()).toArray(),bounds:bounds(book)},
+ };
+};
 window.__introProjection=()=>{
  if(!robot)return null;
  const project=point=>{const p=point.clone().project(camera);return[(p.x+1)*WIDTH/2,(1-p.y)*HEIGHT/2];};

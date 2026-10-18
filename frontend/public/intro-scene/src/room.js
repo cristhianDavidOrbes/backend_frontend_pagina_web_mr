@@ -1,4 +1,5 @@
 import * as THREE from '../assets/vendor/three.module.js';
+import { exitRoute } from './prop-motion.js';
 
 // The physical room remains present throughout the film, including the
 // broken wall pieces after the car's departure. Animation is seekable.
@@ -68,8 +69,18 @@ export function createRoom(scene, { extendedFloor = false } = {}) {
 
   const garden = material('#8c9b74');
   const path = material('#b8b39d');
-  box(14, 0.12, 12, garden, 0, floorY - 0.035, -10.4);
-  box(2.45, 0.035, 11.8, path, 1.5, floorY + 0.04, -10.4);
+  box(38, 0.12, 12, garden, 10, floorY - 0.035, -10.4);
+  // A single flat road strip follows exactly the same right-hand bend as the
+  // car. It starts inside the opening and continues beyond the camera's view.
+  const roadVertices=[],roadIndices=[],roadSamples=96;
+  for(let i=0;i<=roadSamples;i++) {
+    const pose=exitRoute(28*i/roadSamples),sideX=Math.sin(pose.yaw)*1.225,sideZ=Math.cos(pose.yaw)*1.225;
+    roadVertices.push(pose.x-sideX,floorY+.04,pose.z-sideZ,pose.x+sideX,floorY+.04,pose.z+sideZ);
+    if(i<roadSamples){const a=i*2;roadIndices.push(a,a+1,a+2,a+1,a+3,a+2);}
+  }
+  const roadGeometry=new THREE.BufferGeometry();
+  roadGeometry.setAttribute('position',new THREE.Float32BufferAttribute(roadVertices,3));roadGeometry.setIndex(roadIndices);roadGeometry.computeVertexNormals();
+  const road=mesh(roadGeometry,path,0,0,0);road.name='car-route-right-hand-bend';road.castShadow=false;
   const fragments = [];
   const xs = [0.25, 1.02, 1.91, 2.75];
   const ys = [floorY, -0.77, 0.02, 0.75];
