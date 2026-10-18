@@ -16,3 +16,12 @@ El puente `postMessage` verifica origen y ventana de procedencia en ambos lados.
 - Música y efectos por objeto: generación existente en ElevenLabs, servida por separado en `/media/intro/algolab-soundtrack.mp3`.
 
 El código del robot de autenticación no se modifica. Si no hay WebGL o falla la escena, la landing conserva su alternativa habitual y no bloquea el acceso.
+
+## Presupuesto de rendimiento
+
+- Densidad y sombras adaptadas a pantalla, memoria y núcleos disponibles; los datos solo se consultan localmente, no se almacenan ni transmiten.
+- En móviles: hasta 900 000 píxeles y sombras de 1024; con pocos recursos: hasta 650 000 píxeles, densidad máxima 1 y sombras de 512. El encuadre y el modelo no cambian.
+- Los materiales del personaje final se preparan durante la carga, no en el primer fotograma del cierre.
+- Las piezas del DOM se miden y preparan en tiempo ocioso. Se insertan juntas, se animan con transformaciones y se dejan de actualizar al asentarse. No se mide la posición del robot cada fotograma.
+- El cuarto no se dibuja después de desvanecerse. Al entrar a la landing también se detienen su simulación y matrices; el mismo personaje mantiene seguimiento, arrastre y reacciones.
+- Verificación: `node --test scripts/verify-intro-render-quality.mjs` y `node scripts/verify-landing-intro-browser.mjs`, incluida emulación de 2 GB/2 núcleos con CPU ralentizada cuatro veces. La emulación no sustituye una prueba en cada teléfono físico.

@@ -3,10 +3,9 @@ import { RoundedBoxGeometry } from '../assets/vendor/geometries/RoundedBoxGeomet
 import { createRoom } from './room.js';
 import { createRobot } from './robot.js';
 import { createCar } from './car.js';
-import { createLandingMorph } from './landing-morph.js';
-import { createSoundtrack } from './soundtrack.js';
 import { createLandingRobotPass } from './landing-robot.js';
 import { createLandingBehavior } from './landing-behavior.js';
+import { renderQuality } from './render-quality.js';
 
 const DURATION = 20;
 // Preserve the authored pacing on a twenty-second public timeline.
@@ -16,7 +15,10 @@ const STORY_DURATION = 20;
 const parameters = new URLSearchParams(location.search);
 let portrait = matchMedia('(orientation: portrait)').matches;
 const siteIntro = parameters.get('site') === '1';
-const initialRatio = Math.min(devicePixelRatio || 1, 1.5, Math.sqrt(2100000 / (innerWidth * innerHeight)));
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+const quality = () => renderQuality({ width: innerWidth, height: innerHeight, pixelRatio: devicePixelRatio || 1, coarse: matchMedia('(pointer: coarse)').matches, memory: navigator.deviceMemory, cores: navigator.hardwareConcurrency });
+const initialQuality = quality();
+const initialRatio = initialQuality.ratio;
 let WIDTH = Math.round(innerWidth * initialRatio);
 let HEIGHT = Math.round(innerHeight * initialRatio);
 let embeddedLanding = false, landingStarted = 0, lastLandingFrame = 0, embeddedVisible = true, embeddedYaw = 0, embeddedPitch = 0, reactionKind = '';
@@ -28,7 +30,7 @@ const canvas = document.querySelector('#filmCanvas');
 canvas.width = WIDTH;
 canvas.height = HEIGHT;
 const ctx = canvas.getContext('2d', { alpha: true });
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(WIDTH, HEIGHT, false);
 renderer.setPixelRatio(1);
 renderer.shadowMap.enabled = true;
@@ -46,7 +48,7 @@ scene.add(new THREE.HemisphereLight('#e7f6ff', '#9d7756', 2));
 const sun = new THREE.DirectionalLight('#fff0d4', 3.4);
 sun.position.set(-3, 7, 5);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(initialQuality.shadowSize, initialQuality.shadowSize);
 Object.assign(sun.shadow.camera, { left:-9, right:9, top:8, bottom:-7, near:.1, far:24 });
 sun.shadow.bias = -.0005;
 sun.shadow.normalBias = .035;
@@ -190,17 +192,25 @@ const chapters=[
 ];
 const interactionGeometry=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
 const interactionRay=new THREE.Line(interactionGeometry,new THREE.LineBasicMaterial({color:'#9cfbe2',transparent:true,opacity:0,depthWrite:false}));scene.add(interactionRay);
-let robot,landing,ready=false,time=0,playing=false,last=null,reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let robot,landing,ready=false,time=0,playing=false,last=null,reduced=motionPreference.matches,lastWorldTime=-1,worldPasses=0,worldActive=true;
+function setWorldActive(active){if(worldActive===active)return;worldActive=active;for(const child of scene.children){if(child.isLight||child===robot?.root)continue;child.visible=active;child.matrixWorldAutoUpdate=active;}}
 const soundtrack={sync(){},time:fallback=>fallback,diagnostics:()=>({externalClock:true})};
 function fit(group,position,rotation,size){group.position.set(...position);group.rotation.set(...rotation);group.scale.set(...size);}
 function renderAtTime(t){
  t=clamp(t,0,DURATION);let anim=t*STORY_DURATION/DURATION;
+ // The room has gone: keep only this same actor alive, not the whole film simulation.
+ if(embeddedLanding&&robot&&lastWorldTime===20&&t===DURATION){
+  const now=performance.now(),quiet=motionPreference.matches;
+  landingPose=landingBehavior.update(now,quiet);
+  robot.update(quiet?20:20+(now-landingStarted)/1000,{x:-2,y:-1.55,z:.65,yaw:0,lookX:.5,...landingPose});
+  ctx.clearRect(0,0,WIDTH,HEIGHT);worldPasses=0;landingRobot.draw(robot,20);return;
+ }
  if(reduced){const chapter=chapters.find(c=>anim<c.end)||chapters.at(-1);anim=t>=DURATION?STORY_DURATION:(chapter.start+chapter.end)/2;}
  const c=track(cameraKeys,anim);camera.position.set(...c[0]);camera.lookAt(...c[1]);
  const impact=Math.max(0,anim-9.4),shake=anim>=9.4?Math.exp(-impact*9)*.035:0;camera.position.x+=Math.sin(impact*70)*shake;camera.position.y+=Math.sin(impact*91)*shake;
  camera.updateMatrixWorld(true);
  room.update(anim);
- dust.forEach((p,i)=>{const a=i*2.399;p.position.set(1.5+Math.cos(a)*impact*1.2,-.45+Math.sin(a)*impact*.8,-4.1-impact*(.8+(i%3)*.25));p.scale.setScalar(1+impact*4);p.material.opacity=(anim>=9.4?.4:0)*(1-phase(anim,9.65,10.3));});
+ dust.forEach((p,i)=>{p.material.opacity=(anim>=9.4?.4:0)*(1-phase(anim,9.65,10.3));p.visible=p.material.opacity>.001;if(!p.visible)return;const a=i*2.399;p.position.set(1.5+Math.cos(a)*impact*1.2,-.45+Math.sin(a)*impact*.8,-4.1-impact*(.8+(i%3)*.25));p.scale.setScalar(1+impact*4);});
  const s=track(shellKeys,anim);fit(shell,...s);
  // No loose green slab between scenes: the cover exists only as an actual
  // book or door. Vehicle, controls and code each have their own fitted body.
@@ -214,43 +224,53 @@ function renderAtTime(t){
  const opening=phase(anim,2.3,3.05);const parking=phase(anim,5.0,6.15);
  doors.position.set(mix(.6,shell.position.x,parking),mix(-1.5,shell.position.y,parking),mix(0,shell.position.z,parking));
  doors.scale.set(Math.max(.001,opening*(1-parking)),Math.max(.001,opening*(1-parking)),Math.max(.001,1-parking));doors.rotation.z=-parking*Math.PI*.6;
+ doors.visible=opening*(1-parking)>.001;
  retainedDoor.scale.setScalar(Math.max(.001,phase(anim,5.05,5.6)));
  leaf.rotation.y=-phase(anim,3.6,4.35)*1.15+parking*1.15;
  // The robot gives its creation a push. It turns, accelerates and actually crosses the wall opening at 9.4s.
  const assemble=phase(anim,5.7,6.2),cp=track(carKeys,anim);car.position.set(...cp[0]);car.rotation.y=cp[1][0];car.scale.setScalar(Math.max(.001,assemble));
+ car.visible=assemble>.001&&anim<10.35;
  const bodyP=phase(anim,5.75,6.45);chassis.position.y=mix(1.8,0,bodyP);
  const cabinP=phase(anim,6.7,7.6);cabin.position.set(0,mix(2.0,0,cabinP),0);cabin.scale.setScalar(Math.max(.001,cabinP));
  wheels.forEach((w,i)=>{const p=phase(anim,6.1+i*.1,6.85+i*.1),[x,y,z]=w.userData.target;w.position.set(x,y+Math.sin(p*Math.PI)*.25,z+Math.sign(z)*(1-p)*1.1);w.rotation.z=-(.28-car.position.z)/.3;w.scale.setScalar(Math.max(.001,p));});
  // Controls lock onto the shell, then retract into the binding as it becomes a book.
  const controlP=phase(anim,8.65,9.2)*(1-phase(anim,11.9,12.6));
  consoleFit.position.copy(shell.position);consoleFit.rotation.copy(shell.rotation);consoleFit.scale.setScalar(Math.max(.001,controlP));
+ consoleFit.visible=controlP>.001;
  const footY=-1.55-consoleFit.position.y;consoleFoot.position.y=footY+.03;consoleStem.position.y=(footY-.6)/2;consoleStem.scale.y=Math.max(.05,(-.6-footY)/.7);
  const press= Math.sin(phase(anim,10.4,11.0)*Math.PI);buttons[0].position.z=.15-press*.06;
  consoleScreen.material.map=anim>=10.9?consoleGood:consoleScreen.userData.initial;
  const bookP=phase(anim,12.0,12.85),parkBook=phase(anim,14.45,15.35);
  book.position.set(mix(.75,shell.position.x,parkBook),mix(-.03,shell.position.y,parkBook),mix(.19,shell.position.z-.08,parkBook));
  book.rotation.set(-.1,mix(-.3,Math.PI,parkBook),mix(-.05,.07,parkBook));book.scale.setScalar(Math.max(.001,bookP*(1-parkBook)));
+ book.visible=bookP*(1-parkBook)>.001;
  const vinylP=phase(anim,12.4,13.2);vinyl.position.set(mix(2.05,shell.position.x,parkBook),mix(.0,shell.position.y,parkBook)+Math.sin(parkBook*Math.PI)*.4,mix(.05,shell.position.z-.08,parkBook));vinyl.rotation.set(0,mix(-.3,Math.PI*2,parkBook),Math.sin(anim*1.6)*.025);vinyl.scale.setScalar(Math.max(.001,vinylP*(1-parkBook)));
+ vinyl.visible=vinylP*(1-parkBook)>.001;
  const codeP=phase(anim,15.0,15.65);code.position.copy(shell.position);code.rotation.copy(shell.rotation);code.scale.setScalar(Math.max(.001,codeP));codeFace.material.map=anim>=16.6?codeSuccess:codeFace.userData.initial;
+ code.visible=codeP>.001;
  if(robot){const rp=track(robotKeys,anim),before=track(robotKeys,Math.max(0,anim-.02));const moving=Math.min(1,Math.hypot(...rp[0].map((v,i)=>(v-before[0][i])*50)));
  const reach=Math.sin(phase(anim,1.3,2.5)*Math.PI)*.75+Math.sin(phase(anim,3.3,4.3)*Math.PI)*.7+Math.sin(phase(anim,6.2,7.7)*Math.PI)*.7+Math.sin(phase(anim,10.2,11.2)*Math.PI)*.85+Math.sin(phase(anim,13,14.6)*Math.PI)*.6+Math.sin(phase(anim,16,16.9)*Math.PI)*.85;
  const crouch=pulse(anim,.7,1.7)*.9+pulse(anim,5.8,6.8)*.85+pulse(anim,9.1,10.15)*.8;
  const jump=pulse(anim,2.05,2.7)*.32+pulse(anim,7.0,7.5)*.38+pulse(anim,9.35,9.95)*.55;
  const surprise=pulse(anim,9.25,10.4),celebrate=pulse(anim,11.05,12.1)*.9+pulse(anim,16.7,17.6);
- const actingTime=embeddedLanding&&!matchMedia('(prefers-reduced-motion: reduce)').matches?20+(performance.now()-landingStarted)/1000:anim;
- if(embeddedLanding)landingPose=landingBehavior.update(performance.now(),matchMedia('(prefers-reduced-motion: reduce)').matches);
+ const actingTime=embeddedLanding&&!motionPreference.matches?20+(performance.now()-landingStarted)/1000:anim;
+ if(embeddedLanding)landingPose=landingBehavior.update(performance.now(),motionPreference.matches);
  robot.update(actingTime,{x:rp[0][0],y:rp[0][1],z:rp[0][2],yaw:rp[1][0],walk:moving,reach,wave:embeddedLanding?0:pulse(anim,18,19.5),lookX:mix(.5,-.3,surprise),lookY:pulse(anim,1.6,2.8)*.3,headTilt:pulse(anim,12.5,13.5)*.3,lean:reach*.07,crouch,jump,surprise,celebrate,push:pulse(anim,7.7,8.6),run:pulse(anim,8.6,9.75),...(embeddedLanding?landingPose:{})});
  // Keep this very same 3D object throughout the move into the landing page.
  robot.root.visible=true;
  const ray=interactionGeometry.attributes.position;ray.setXYZ(0,rp[0][0]+.42,rp[0][1]+1.4,rp[0][2]+.3);ray.setXYZ(1,shell.position.x,shell.position.y,shell.position.z+.15);ray.needsUpdate=true;interactionGeometry.computeBoundingSphere();interactionRay.material.opacity=reach*.55;}
  ctx.clearRect(0,0,WIDTH,HEIGHT);
- if(anim<19.95){
+ worldPasses=0;
+ if(anim<19.08){
   if(robot)robot.root.visible=anim<17.2;
+  renderer.shadowMap.autoUpdate=anim<17.2;
   renderer.render(scene,camera);ctx.globalAlpha=1-phase(anim,17.2,19.08);ctx.drawImage(renderer.domElement,0,0,WIDTH,HEIGHT);ctx.globalAlpha=1;
+  worldPasses=1;
  }
  if(robot)robot.root.visible=true;
  if(landing){const project=(group,offset=0)=>{const p=group.position.clone();p.y+=offset;p.project(camera);return [(p.x+1)*960,(1-p.y)*540];};landing.draw(ctx,anim,{robot:project(robot.root,1.25),book:project(book),door:project(doors,1),code:project(code),brand:project(shell)});}
  if(robot&&anim>=17.2)landingRobot.draw(robot,anim);
+ lastWorldTime=anim;
  document.querySelector('#seek').value=t;document.querySelector('#time').textContent=`00:${String(Math.floor(t)).padStart(2,'0')} / 00:20`;
  const chapter=chapters.find(c=>anim<c.end)||chapters.at(-1);document.querySelectorAll('[data-time]').forEach((b,i)=>b.setAttribute('aria-current',String(i===chapters.indexOf(chapter))));
 }
@@ -277,7 +297,7 @@ window.__introProjection=()=>{
  return {time,feet,height:Math.abs(feet[1]-head[1])};
 };
 window.__sceneDiagnostics=()=>({time,duration:DURATION,objects:scene.children.length,robot:robot?.root.position.toArray(),joints:robot?.root.diagnostics,car:car.position.toArray(),props:{doors:doors.scale.x,book:book.scale.x,vinyl:vinyl.scale.x},wall:room.group.children.filter(o=>o.name.startsWith('wall-fragment')).map(o=>o.position.toArray()),shell:shell.position.toArray(),landingReady:!!landing?.ready,room:room.diagnostics(),landingRobot:landingRobot.diagnostics(),camera:camera.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles});
-Promise.all([createRobot(scene),siteIntro?Promise.resolve(null):createLandingMorph(),brandReady,room.ready]).then(([r,l])=>{robot=r;landing=l;ready=true;document.querySelector('#loading').hidden=true;renderAtTime(0);parent.postMessage({type:'algolab:ready',instanceId:robot.root.uuid,rendererId},location.origin);}).catch(error=>{document.querySelector('#loading').textContent='No se pudo cargar la escena. Abre la demo desde el servidor local y recarga.';parent.postMessage({type:'algolab:error',message:String(error)},location.origin);console.error(error);});
+Promise.all([createRobot(scene),siteIntro?Promise.resolve(null):import('./landing-morph.js').then(module=>module.createLandingMorph()),brandReady,room.ready]).then(async([r,l])=>{robot=r;landing=l;await landingRobot.prepare(robot);ready=true;document.querySelector('#loading').hidden=true;renderAtTime(0);parent.postMessage({type:'algolab:ready',instanceId:robot.root.uuid,rendererId},location.origin);}).catch(error=>{document.querySelector('#loading').textContent='No se pudo cargar la escena. Abre la demo desde el servidor local y recarga.';parent.postMessage({type:'algolab:error',message:String(error)},location.origin);console.error(error);});
 function loop(now){if(last===null)last=now;const dt=Math.min((now-last)/1000,.1);last=now;if(ready&&embeddedLanding&&embeddedVisible&&!document.hidden&&now-lastLandingFrame>=33){renderAtTime(20);lastLandingFrame=now;}if(ready&&playing){time=soundtrack.time(Math.min(time+dt,DURATION));renderAtTime(time);if(time>=DURATION){playing=false;soundtrack.sync();sync();}}requestAnimationFrame(loop);}requestAnimationFrame(loop);
 
 
@@ -289,8 +309,8 @@ window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==parent||!event.data)return;
  const data=event.data;
  if(data.target&&[data.target.x,data.target.y,data.target.height].every(Number.isFinite))embeddedTarget=data.target;
- if(data.type==='algolab:render'&&ready){embeddedLanding=false;window.__renderAtTime(Number(data.time)||0);parent.postMessage({type:'algolab:frame',time,anchors:embeddedAnchors(),instanceId:robot.root.uuid,rendererId},location.origin);}
- if(data.type==='algolab:land'&&ready){embeddedLanding=true;landingStarted=performance.now();landingBehavior.reset(landingStarted);window.__renderAtTime(20);}
+ if(data.type==='algolab:render'&&ready){setWorldActive(true);embeddedLanding=false;window.__renderAtTime(Number(data.time)||0);parent.postMessage({type:'algolab:frame',time,anchors:embeddedAnchors(),instanceId:robot.root.uuid,rendererId},location.origin);}
+ if(data.type==='algolab:land'&&ready){embeddedLanding=true;landingStarted=performance.now();landingBehavior.reset(landingStarted);window.__renderAtTime(20);setWorldActive(false);}
  if(data.type==='algolab:target'){embeddedVisible=data.visible!==false;if(ready&&embeddedLanding)renderAtTime(20);}
  if(data.type==='algolab:signal'&&embeddedLanding){landingBehavior.react(data.kind,performance.now());reactionKind=landingBehavior.diagnostics().kind;}
  if(data.type==='algolab:pointer'&&embeddedLanding)landingBehavior.point(data);
@@ -298,8 +318,8 @@ window.addEventListener('message',event=>{
 });
 window.addEventListener('resize',()=>{
  portrait=matchMedia('(orientation: portrait)').matches;cameraKeys=portrait?portraitCameraKeys:landscapeCameraKeys;
- const ratio=Math.min(devicePixelRatio||1,1.5,Math.sqrt(2100000/(innerWidth*innerHeight)));
+ const ratio=quality().ratio;
  WIDTH=Math.round(innerWidth*ratio);HEIGHT=Math.round(innerHeight*ratio);canvas.width=WIDTH;canvas.height=HEIGHT;renderer.setSize(WIDTH,HEIGHT,false);fitCamera();if(ready)renderAtTime(time);
 });
-window.__continuityDiagnostics=()=>({instanceId:robot?.root.uuid,rendererId,landed:embeddedLanding,time,reactionKind,yaw:embeddedYaw,pitch:embeddedPitch,behavior:landingBehavior.diagnostics(),canvasCount:document.querySelectorAll('canvas').length,landing:landingRobot.diagnostics()});
+window.__continuityDiagnostics=()=>({instanceId:robot?.root.uuid,rendererId,landed:embeddedLanding,time,reactionKind,yaw:embeddedYaw,pitch:embeddedPitch,behavior:landingBehavior.diagnostics(),canvasCount:document.querySelectorAll('canvas').length,landing:landingRobot.diagnostics(),performance:{worldPasses,worldActive,pixels:WIDTH*HEIGHT,budget:quality().pixels,shadowSize:initialQuality.shadowSize}});
 window.addEventListener('webglcontextlost',()=>parent.postMessage({type:'algolab:error',message:'WebGL context lost'},location.origin),true);

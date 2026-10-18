@@ -64,6 +64,7 @@ try {
   const mobileFrame = mobile.page.frames().find(frame => frame.url().includes("/intro-scene/index.html"));
   assert.ok(mobileFrame);
   const mobileIdentity = await mobileFrame.evaluate(() => window.__continuityDiagnostics());
+  check(mobileIdentity.performance.shadowSize <= 1024 && mobileIdentity.performance.pixels <= mobileIdentity.performance.budget + 2000, "mobile: rendering obeys conservative pixel and shadow budgets");
   check(await mobileFrame.evaluate(() => { const c = document.querySelector("#filmCanvas"); return c.height > c.width; }) && await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => !v.muted && !v.paused && v.volume === .65), "mobile: native portrait 3D scene starts with audible soundtrack");
   await mobile.page.getByRole("button", { name: "Silenciar sonido" }).tap();
   check(await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.muted && !v.paused), "user can mute without pausing the animation");
@@ -71,6 +72,8 @@ try {
   check(await mobile.page.evaluate(() => localStorage.getItem("algolab:intro:seen") === "1"), "first playback marks only this browser as seen");
   check(await mobile.page.locator(".landing").evaluate(element => Boolean(element.closest("[inert]"))), "landing cannot receive accidental clicks behind intro");
   await mobile.page.getByRole("button", { name: "Pausar animación" }).tap();
+  await mobile.page.waitForFunction(() => document.querySelector("[data-intro-assembly]")?.childElementCount > 0);
+  check(await mobileFrame.evaluate(() => window.__continuityDiagnostics().time < 17.2), "the actual landing pieces are prepared before the closing transition, not during it");
   const before = await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.currentTime);
   await mobile.page.waitForTimeout(300);
   check(Math.abs(await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.currentTime) - before) < .06, "pause stops the movie");
@@ -92,6 +95,7 @@ try {
   await mobileFrame.waitForFunction(() => { const c = document.querySelector("#filmCanvas"); return c.height > c.width; });
   await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => new Promise(resolve => { v.addEventListener("seeked", resolve, { once: true }); v.currentTime = 19.95; }));
   await mobileFrame.waitForFunction(() => Math.abs(window.__continuityDiagnostics().time - 19.95) < .02);
+  check(await mobileFrame.evaluate(() => window.__continuityDiagnostics().performance.worldPasses === 0), "the fully faded room is not rendered behind the closing robot");
   const mobileEnd = await mobileFrame.evaluate(() => window.__continuityDiagnostics().landing);
   check(await mobileFrame.evaluate(() => {
     const canvas = document.querySelector("#filmCanvas"), pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
@@ -104,6 +108,7 @@ try {
   await mobile.page.getByRole("button", { name: "Omitir", exact: true }).tap();
   await noIntro(mobile.page, "skip reveals the actual landing");
   await mobileFrame.waitForFunction(() => window.__continuityDiagnostics().landed);
+  check(await mobileFrame.evaluate(() => window.__continuityDiagnostics().performance.worldPasses === 0), "landing idle renders the actor without replaying the room simulation");
   const mobileLanded = await mobileFrame.evaluate(() => window.__continuityDiagnostics().landing);
   const idleLift = await mobileFrame.evaluate(() => window.__continuityDiagnostics().behavior.lift);
   check(Math.abs(mobileEnd.feet[0] - mobileLanded.feet[0]) < .001 && Math.abs(mobileEnd.feet[1] - (mobileLanded.feet[1] + idleLift * mobileLanded.height / 2.5)) < .001 && Math.abs(mobileEnd.height - mobileLanded.height) < .001, "mobile: position and scale remain continuous across the final frame, including restored idle breathing");
@@ -266,6 +271,29 @@ try {
   await partial.page.getByRole("button", { name: "Omitir", exact: true }).tap();
   await robotAnchored(partial.page, "mobile partial buffering keeps the same robot visible in the landing");
   await partial.context.close();
+  const modest = await setup(390, 844);
+  await modest.context.addInitScript(() => {
+    Object.defineProperty(navigator, "deviceMemory", { configurable: true, value: 2 });
+    Object.defineProperty(navigator, "hardwareConcurrency", { configurable: true, value: 2 });
+  });
+  const throttled = await modest.context.newCDPSession(modest.page);
+  await throttled.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await modest.page.goto(base);
+  await movieReady(modest.page);
+  const modestFrame = modest.page.frames().find(frame => frame.url().includes("/intro-scene/index.html"));
+  assert.ok(modestFrame);
+  const budget = await modestFrame.evaluate(() => window.__continuityDiagnostics().performance);
+  check(budget.shadowSize === 512 && budget.pixels <= 650000, "modest device: small GPU budget under four-times CPU slowdown");
+  await modest.page.getByRole("button", { name: "Pausar animación" }).tap();
+  await modest.page.locator("audio[data-intro-soundtrack]").evaluate(a => { a.currentTime = 19.4; });
+  await modestFrame.waitForFunction(() => Math.abs(window.__continuityDiagnostics().time - 19.4) < .1);
+  check(await modestFrame.evaluate(() => window.__continuityDiagnostics().performance.worldPasses === 0), "modest device: closing shot avoids the invisible room pass");
+  await modest.page.getByRole("button", { name: "Omitir", exact: true }).tap();
+  await robotAnchored(modest.page, "modest device: transition keeps the same anchored robot under CPU slowdown");
+  check(await modestFrame.evaluate(() => !window.__continuityDiagnostics().performance.worldActive), "modest device: the completed room also stops updating its matrices");
+  await modest.page.screenshot({ path: path.join(output, "mobile-modest-device.png") });
+  await throttled.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  await modest.context.close();
   const denied = await setup(390, 844);
   await denied.context.addInitScript(() => {
     // Deterministic browser-policy denial, lifted only by an actual user gesture.

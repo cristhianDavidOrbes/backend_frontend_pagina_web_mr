@@ -25,6 +25,9 @@ export function LandingIntro({ children }: { children: ReactNode }) {
   const content = useRef<HTMLDivElement>(null);
   const shell = useRef<HTMLDivElement>(null);
   const pieces = useRef<HTMLDivElement>(null);
+  const progress = useRef<HTMLSpanElement>(null);
+  const anchors = useRef<LandingAnchors>({});
+  const targetSnapshot = useRef({ x: .334, y: .702, height: .394 });
   const skip = useRef<HTMLButtonElement>(null);
   const assembly = useRef<ReturnType<typeof createLandingAssembly> | null>(null);
   const waiting = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -40,11 +43,13 @@ export function LandingIntro({ children }: { children: ReactNode }) {
   const send = useCallback((message: Record<string, unknown>) => {
     scene.current?.contentWindow?.postMessage(message, location.origin);
   }, []);
-  const target = useCallback(() => {
+  const measureTarget = useCallback(() => {
     const stage = content.current?.querySelector(".hero-stage")?.getBoundingClientRect();
     const viewport = scene.current?.getBoundingClientRect();
-    return stage && viewport?.width && viewport.height ? { x: (stage.left + stage.width / 2 - viewport.left) / viewport.width, y: (stage.bottom - stage.height * .1 - viewport.top) / viewport.height, height: stage.height * .78 / viewport.height } : { x: .334, y: .702, height: .394 };
+    if (stage && viewport?.width && viewport.height) targetSnapshot.current = { x: (stage.left + stage.width / 2 - viewport.left) / viewport.width, y: (stage.bottom - stage.height * .1 - viewport.top) / viewport.height, height: stage.height * .78 / viewport.height };
+    return targetSnapshot.current;
   }, []);
+  const target = useCallback(() => targetSnapshot.current, []);
   const clearWaiting = useCallback(() => { clearTimeout(waiting.current); waiting.current = undefined; }, []);
   const beginClock = useCallback(() => {
     if (!ready.current || clockStarted.current) return;
@@ -95,22 +100,19 @@ export function LandingIntro({ children }: { children: ReactNode }) {
       if (event.origin !== location.origin || event.source !== scene.current?.contentWindow) return;
       if (event.data?.type === "algolab:ready" && active) {
         ready.current = true; setLive(true); clearWaiting();
-        send({ type: "algolab:render", time: 0, target: target() });
+        send({ type: "algolab:render", time: 0, target: measureTarget() });
         if (mediaReady.current) startWhenReady(); else playSound();
       }
       if (event.data?.type === "algolab:error") {
         ready.current = false; setLive(false); finish(false);
       }
       if (event.data?.type === "algolab:frame" && active) {
-        if (content.current && pieces.current && event.data.time >= 17.2) {
-          assembly.current ??= createLandingAssembly(content.current, pieces.current);
-          assembly.current.update(event.data.time, event.data.anchors as LandingAnchors);
-        }
+        anchors.current = event.data.anchors as LandingAnchors;
       }
     }
     window.addEventListener("message", message);
     return () => window.removeEventListener("message", message);
-  }, [active, clearWaiting, finish, playSound, send, startWhenReady, target]);
+  }, [active, clearWaiting, finish, measureTarget, playSound, send, startWhenReady]);
 
   useEffect(() => {
     if (!live || active) return;
@@ -122,7 +124,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
         const rect = content.current?.querySelector(".hero-stage")?.getBoundingClientRect();
         const layer = sceneLayer.current;
         if (rect && layer) layer.style.height = `${Math.ceil(Math.max(innerHeight, rect.bottom - layer.getBoundingClientRect().top + 48))}px`;
-        send({ type: "algolab:target", target: target(), visible: Boolean(rect && rect.bottom > 0 && rect.top < innerHeight) });
+        send({ type: "algolab:target", target: measureTarget(), visible: Boolean(rect && rect.bottom > 0 && rect.top < innerHeight) });
       });
     };
     updateTarget();
@@ -134,7 +136,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
     window.addEventListener("resize", updateTarget);
     window.visualViewport?.addEventListener("resize", updateTarget);
     return () => { cancelAnimationFrame(frame); observer.disconnect(); window.removeEventListener("scroll", updateTarget, true); window.removeEventListener("resize", updateTarget); window.visualViewport?.removeEventListener("resize", updateTarget); };
-  }, [active, live, send, target]);
+  }, [active, live, measureTarget, send]);
 
   useEffect(() => {
     if (!active) return;
@@ -145,7 +147,21 @@ export function LandingIntro({ children }: { children: ReactNode }) {
     skip.current?.focus({ preventScroll: true });
     const motion = matchMedia("(prefers-reduced-motion: reduce)");
     const reduceMotion = () => { if (motion.matches) finish(false); };
-    function resize() { assembly.current?.dispose(); assembly.current = null; lastSent.current = -1; }
+    let disposed = false;
+    let warmIdle: number | undefined, warmTimer: number | undefined;
+    const cancelWarmup = () => { if (warmIdle !== undefined) window.cancelIdleCallback(warmIdle); if (warmTimer !== undefined) window.clearTimeout(warmTimer); };
+    function warmAssembly() {
+      cancelWarmup();
+      const prepare = () => { if (!disposed && content.current && pieces.current) assembly.current ??= createLandingAssembly(content.current, pieces.current); };
+      if (typeof window.requestIdleCallback === "function") warmIdle = window.requestIdleCallback(prepare, { timeout: 1500 });
+      else warmTimer = window.setTimeout(prepare, 120);
+    }
+    function resize() { assembly.current?.dispose(); assembly.current = null; measureTarget(); lastSent.current = -1; warmAssembly(); }
+    measureTarget(); warmAssembly();
+    const layoutObserver = new ResizeObserver(resize);
+    const hero = content.current?.querySelector(".hero-stage");
+    if (hero) layoutObserver.observe(hero);
+    void document.fonts.ready.then(() => { if (!disposed) resize(); });
     function visibility() {
       clearWaiting();
       lastTick.current = null;
@@ -176,7 +192,11 @@ export function LandingIntro({ children }: { children: ReactNode }) {
       lastTick.current = now;
       const time = Math.min(20, timeline.current);
       if (time >= 20 && ready.current) { finish(); return; }
-      shell.current?.style.setProperty("--intro-time", String(Math.min(1, time / 20)));
+      if (progress.current) progress.current.style.transform = `scaleX(${Math.min(1, time / 20)})`;
+      if (time >= 17.2 && content.current && pieces.current) {
+        assembly.current ??= createLandingAssembly(content.current, pieces.current);
+        assembly.current.update(time, anchors.current);
+      }
       if (ready.current && (Math.abs(time - lastSent.current) >= 1 / 30 || lastSent.current < 0)) {
         lastSent.current = time;
         send({ type: "algolab:render", time, target: target() });
@@ -186,6 +206,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
     frame = requestAnimationFrame(update);
     return () => {
       cancelAnimationFrame(frame); clearTimeout(loadDeadline); clearWaiting();
+      disposed = true; cancelWarmup(); layoutObserver.disconnect();
       assembly.current?.dispose(); assembly.current = null;
       window.removeEventListener("resize", resize); motion.removeEventListener("change", reduceMotion);
       document.removeEventListener("visibilitychange", visibility); document.removeEventListener("keydown", keyboard);
@@ -193,7 +214,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
       if (previousFocus?.isConnected && previousFocus !== document.body) previousFocus.focus({ preventScroll: true });
       else { const title = contentElement?.querySelector("h1"); if (title) { title.setAttribute("tabindex", "-1"); title.focus({ preventScroll: true }); title.removeAttribute("tabindex"); } }
     };
-  }, [active, clearWaiting, finish, playSound, send, target]);
+  }, [active, clearWaiting, finish, measureTarget, playSound, send, target]);
 
   function waitForMedia() {
     clearWaiting();
@@ -224,7 +245,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
         {active && !live ? <div aria-hidden className={styles.backdrop} /> : null}
         <iframe aria-hidden className={styles.scene} ref={scene} src="/intro-scene/index.html?site=1" tabIndex={-1} title="Escena continua y personaje 3D de AlgoLab" />
         {active ? <>
-          <div aria-hidden className={styles.assembly} inert ref={pieces} />
+          <div aria-hidden className={styles.assembly} data-intro-assembly inert ref={pieces} />
           <div aria-describedby="intro-description" aria-label="Bienvenida a AlgoLab" aria-modal="true" className={styles.overlay} ref={dialog} role="dialog">
             <p className="sr-only" id="intro-description">Animación de 20 segundos con sonido. El robot transforma objetos en un cuarto de realidad mixta y permanece en la página de inicio. Puedes pausarla, silenciar el sonido u omitirla.</p>
             <audio aria-hidden autoPlay={live && !paused} className={styles.clock} data-intro-soundtrack muted={muted}
@@ -247,7 +268,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
               </button>
               <button className={styles.skip} onClick={() => finish()} ref={skip} type="button">Omitir <ArrowRight aria-hidden size={18} /></button>
             </div>
-            <div aria-hidden className={styles.progress}><span /></div>
+            <div aria-hidden className={styles.progress}><span ref={progress} /></div>
           </div>
         </> : null}
       </div> : null}

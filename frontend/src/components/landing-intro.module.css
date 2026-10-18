@@ -33,7 +33,7 @@
 .controls .skip { background: #38d6a2; color: #04241b; }
 .controls .skip:hover { background: #66e3bc; }
 .progress { position: absolute; inset: auto 0 0; height: 3px; background: #071b1726; }
-.progress span { display: block; width: 100%; height: 100%; background: #38d6a2; transform: scaleX(var(--intro-time, 0)); transform-origin: left; }
+.progress span { display: block; width: 100%; height: 100%; background: #38d6a2; transform: scaleX(0); transform-origin: left; will-change: transform; }
 .experience[data-intro-active] .content { pointer-events: none; }
 .experience[data-intro-active] .content :global(.hero-copy),
 .experience[data-intro-active] .content :global(.hero-speech) { opacity: 0 !important; }

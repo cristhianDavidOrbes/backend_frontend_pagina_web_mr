@@ -4,11 +4,19 @@ import * as THREE from '../assets/vendor/three.module.js';
 export function createLandingRobotPass(renderer,scene,camera,context,options){
  const smooth=value=>{const x=Math.max(0,Math.min(1,value));return x*x*(3-2*x);};
  let diagnostics={active:false,sameInstance:true};
+ const prepared=new WeakSet();
+ function prepareLayers(robot){if(!prepared.has(robot.root)){robot.root.traverse(object=>object.layers.enable(1));prepared.add(robot.root);}}
  scene.traverse(object=>{if(object.isLight)object.layers.enable(1);});
+ async function prepare(robot){
+  prepareLayers(robot);
+  const mask=camera.layers.mask,shadows=renderer.shadowMap.enabled,background=scene.background,fog=scene.fog;
+  try{camera.layers.set(1);renderer.shadowMap.enabled=false;scene.background=null;scene.fog=null;await renderer.compileAsync(scene,camera);}
+  finally{camera.layers.mask=mask;renderer.shadowMap.enabled=shadows;scene.background=background;scene.fog=fog;}
+ }
  function draw(robot,time){
   const [width,height]=options.viewport();
   const project=point=>{const p=point.clone().project(camera);return[(p.x+1)*width/2,(1-p.y)*height/2,p.z];};
-  const root=robot.root;root.traverse(object=>object.layers.enable(1));
+  const root=robot.root;prepareLayers(robot);
   const position=root.position.clone(),rotation=root.rotation.clone(),scale=root.scale.clone();
   const background=scene.background,fog=scene.fog,mask=camera.layers.mask,shadows=renderer.shadowMap.enabled;
   const clearColor=renderer.getClearColor(new THREE.Color()),clearAlpha=renderer.getClearAlpha();
@@ -33,5 +41,5 @@ export function createLandingRobotPass(renderer,scene,camera,context,options){
    root.position.copy(position);root.rotation.copy(rotation);root.scale.copy(scale);root.updateMatrixWorld(true);scene.background=background;scene.fog=fog;camera.layers.mask=mask;renderer.shadowMap.enabled=shadows;renderer.setClearColor(clearColor,clearAlpha);
   }
  }
- return{draw,diagnostics:()=>diagnostics};
+ return{draw,prepare,diagnostics:()=>diagnostics};
 }
