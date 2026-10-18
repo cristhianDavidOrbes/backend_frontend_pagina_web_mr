@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import vm from "node:vm";
@@ -29,6 +29,7 @@ async function loadModule(path, imports) {
   const exports = {};
   vm.runInNewContext(compiled, {
     exports, module: { exports }, require: (name) => {
+      if (name === "node:crypto") return { createHash };
       assert.ok(name in imports, `Unexpected import: ${name}`);
       return imports[name];
     },

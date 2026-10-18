@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
+import { createHash } from "node:crypto";
 import ts from "typescript";
 
 let checks = 0;
@@ -17,6 +18,7 @@ async function loadModule(path, context, imports) {
   const exports = {};
   const sandbox = {
     exports, module: { exports }, require: (name) => {
+      if (name === "node:crypto") return { createHash };
       if (!(name in imports)) throw new Error(`Unexpected import: ${name}`);
       return imports[name];
     },
