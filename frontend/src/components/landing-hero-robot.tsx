@@ -6,7 +6,7 @@ import type { RobotSignal } from "./robot-stage";
 const RobotStage = dynamic(() => import("./robot-stage").then(module => module.RobotStage), { ssr: false, loading: () => <div className="robot-stage robot-stage-checking" /> });
 
 export function LandingHeroRobot({ signal }: { signal: RobotSignal | null }) {
-  const { live, send } = useContext(LandingRobotContext);
+  const { live, loading, send } = useContext(LandingRobotContext);
   const pointer = useRef<{ x: number; y: number; dragging: boolean } | null>(null);
   useEffect(() => { if (live && signal) send({ type: "algolab:signal", kind: signal.kind }); }, [live, signal, send]);
   useEffect(() => {
@@ -28,6 +28,7 @@ export function LandingHeroRobot({ signal }: { signal: RobotSignal | null }) {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     resetLook();
   };
+  if (!live && loading) return <div className="robot-stage robot-stage-checking" aria-hidden="true" />;
   if (!live) return <RobotStage presence="hero" signal={signal} />;
   return <div aria-label="Robot de AlgoLab. Sigue el puntero. Arrastra para girarlo; pulsa Enter para saludar." className="robot-stage" role="img" style={{ touchAction: "pan-y" }} tabIndex={0}
     onKeyDown={event => {

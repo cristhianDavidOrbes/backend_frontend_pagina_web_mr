@@ -17,7 +17,8 @@ export function LandingIntro({ children }: { children: ReactNode }) {
   const [muted, setMuted] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const [preparing, setPreparing] = useState(true);
-  const video = useRef<HTMLVideoElement>(null);
+  const [initializing, setInitializing] = useState(true);
+  const video = useRef<HTMLAudioElement>(null);
   const scene = useRef<HTMLIFrameElement>(null);
   const sceneLayer = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -45,43 +46,47 @@ export function LandingIntro({ children }: { children: ReactNode }) {
     return stage && viewport?.width && viewport.height ? { x: (stage.left + stage.width / 2 - viewport.left) / viewport.width, y: (stage.bottom - stage.height * .1 - viewport.top) / viewport.height, height: stage.height * .78 / viewport.height } : { x: .334, y: .702, height: .394 };
   }, []);
   const clearWaiting = useCallback(() => { clearTimeout(waiting.current); waiting.current = undefined; }, []);
-  const playSound = useCallback(() => {
-    const element = video.current;
-    if (!element || !ready.current || !clockStarted.current || userPaused.current || document.hidden) return;
-    element.volume = .65;
-    // Keep audio aligned even when autoplay was denied while the visual clock continued.
-    if (Math.abs(element.currentTime - timeline.current) > .15) element.currentTime = timeline.current;
-    void element.play().then(() => {
-      if (video.current === element) setAudioBlocked(false);
-    }).catch((error: unknown) => {
-      if (video.current !== element) return;
-      clearWaiting();
-      if (!element.muted && error instanceof DOMException && error.name === "NotAllowedError") setAudioBlocked(true);
-    });
-  }, [clearWaiting]);
-  const startWhenReady = useCallback(() => {
-    if (!ready.current || !mediaReady.current || clockStarted.current) return;
+  const beginClock = useCallback(() => {
+    if (!ready.current || clockStarted.current) return;
     clockStarted.current = true;
     timeline.current = 0; lastTick.current = null;
     setPreparing(false);
     if (!started.current) { started.current = true; markIntroSeen(); }
+  }, []);
+  const playSound = useCallback(() => {
+    const element = video.current;
+    if (!element || !ready.current || userPaused.current || document.hidden) return;
+    element.volume = .65;
+    // Keep audio aligned even when autoplay was denied while the visual clock continued.
+    if (clockStarted.current && Math.abs(element.currentTime - timeline.current) > .15) element.currentTime = timeline.current;
+    void element.play().then(() => {
+      if (video.current === element) { beginClock(); setAudioBlocked(false); }
+    }).catch((error: unknown) => {
+      if (video.current !== element) return;
+      clearWaiting();
+      if (!element.muted && error instanceof DOMException && error.name === "NotAllowedError") { setAudioBlocked(true); if (mediaReady.current) beginClock(); }
+    });
+  }, [beginClock, clearWaiting]);
+  const startWhenReady = useCallback(() => {
+    if (!ready.current || !mediaReady.current || clockStarted.current) return;
+    beginClock();
     playSound();
-  }, [playSound]);
+  }, [beginClock, playSound]);
   const finish = useCallback((seen = true) => {
     clearWaiting(); video.current?.pause();
     if (seen) markIntroSeen();
     if (ready.current) send({ type: "algolab:land", target: target() });
     setActive(false);
   }, [clearWaiting, send, target]);
-  const robotContext = useMemo(() => ({ live, send }), [live, send]);
+  const robotContext = useMemo(() => ({ live, loading: initializing || (active && !live), send }), [active, initializing, live, send]);
 
   useEffect(() => {
     let state;
     try { state = readIntroState(window.localStorage); }
     catch { state = { preference: "once" as const, seen: true }; }
     const connection = (navigator as Navigator & { connection?: Connection }).connection;
-    if (!shouldShowIntro({ ...state, reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches, saveData: connection?.saveData, preview: new URLSearchParams(location.search).get("intro") === "preview" })) return;
-    const frame = requestAnimationFrame(() => setActive(true));
+    const show = shouldShowIntro({ ...state, reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches, saveData: connection?.saveData, preview: new URLSearchParams(location.search).get("intro") === "preview" });
+    const frame = requestAnimationFrame(() => { setActive(show); setInitializing(false); });
     return () => cancelAnimationFrame(frame);
   }, []);
 
@@ -91,7 +96,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
       if (event.data?.type === "algolab:ready" && active) {
         ready.current = true; setLive(true); clearWaiting();
         send({ type: "algolab:render", time: 0, target: target() });
-        startWhenReady();
+        if (mediaReady.current) startWhenReady(); else playSound();
       }
       if (event.data?.type === "algolab:error") {
         ready.current = false; setLive(false); finish(false);
@@ -105,7 +110,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
     }
     window.addEventListener("message", message);
     return () => window.removeEventListener("message", message);
-  }, [active, clearWaiting, finish, send, startWhenReady, target]);
+  }, [active, clearWaiting, finish, playSound, send, startWhenReady, target]);
 
   useEffect(() => {
     if (!live || active) return;
@@ -222,15 +227,15 @@ export function LandingIntro({ children }: { children: ReactNode }) {
           <div aria-hidden className={styles.assembly} inert ref={pieces} />
           <div aria-describedby="intro-description" aria-label="Bienvenida a AlgoLab" aria-modal="true" className={styles.overlay} ref={dialog} role="dialog">
             <p className="sr-only" id="intro-description">Animación de 20 segundos con sonido. El robot transforma objetos en un cuarto de realidad mixta y permanece en la página de inicio. Puedes pausarla, silenciar el sonido u omitirla.</p>
-            <video aria-hidden className={styles.clock} disablePictureInPicture muted={muted}
+            <audio aria-hidden autoPlay={live && !paused} className={styles.clock} data-intro-soundtrack muted={muted}
               onSeeked={() => { if (video.current) timeline.current = Math.min(20, video.current.currentTime); lastTick.current = null; lastSent.current = -1; }}
-              onCanPlay={() => { clearWaiting(); mediaReady.current = Boolean(video.current && video.current.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA); if (clockStarted.current) playSound(); else startWhenReady(); }}
+              onCanPlay={() => { clearWaiting(); mediaReady.current = Boolean(video.current && video.current.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA); if (clockStarted.current) playSound(); else startWhenReady(); }}
               onCanPlayThrough={() => { mediaReady.current = true; clearWaiting(); startWhenReady(); }}
               onEnded={() => finish()} onError={() => finish(false)}
               onLoadedMetadata={() => { if (video.current) video.current.volume = .65; }}
               onLoadStart={waitForMedia} onWaiting={waitForMedia}
-              onPlaying={() => { clearWaiting(); setAudioBlocked(false); if (!started.current) { started.current = true; markIntroSeen(); } }}
-              playsInline preload="auto" ref={video} src="/media/intro/algolab-soundtrack.mp3" />
+              onPlaying={() => { clearWaiting(); beginClock(); setAudioBlocked(false); }}
+              preload="auto" ref={video} src="/media/intro/algolab-soundtrack.mp3" />
             {!live || preparing ? <p className={styles.loading} role="status">Preparando el cuarto y el sonido…</p> : null}
             {audioBlocked && !muted ? <p className={styles.audioNotice} role="status">Toca «Activar sonido» para escuchar la animación.</p> : null}
             <div className={styles.controls}>

@@ -24,12 +24,12 @@ async function setup(width, height, reducedMotion = "no-preference") {
 }
 async function movieReady(page) {
   await page.getByRole("dialog", { name: "Bienvenida a AlgoLab" }).waitFor({ timeout: 60000 });
-  await page.waitForFunction(() => document.querySelector("video")?.currentTime > .05, { timeout: 20000 });
+  await page.waitForFunction(() => document.querySelector("audio[data-intro-soundtrack]")?.currentTime > .05, { timeout: 20000 });
 }
 async function noIntro(page, label) {
   await page.getByRole("heading", { name: /Aprende POO/ }).waitFor();
   await page.waitForTimeout(450);
-  check(await page.locator("video").count() === 0, label);
+  check(await page.locator("audio[data-intro-soundtrack]").count() === 0, label);
 }
 async function robotAnchored(page, label) {
   await page.waitForFunction(() => {
@@ -64,20 +64,20 @@ try {
   const mobileFrame = mobile.page.frames().find(frame => frame.url().includes("/intro-scene/index.html"));
   assert.ok(mobileFrame);
   const mobileIdentity = await mobileFrame.evaluate(() => window.__continuityDiagnostics());
-  check(await mobileFrame.evaluate(() => { const c = document.querySelector("#filmCanvas"); return c.height > c.width; }) && await mobile.page.locator("video").evaluate(v => !v.muted && !v.paused && v.playsInline && v.volume === .65), "mobile: native portrait 3D scene starts with audible inline soundtrack");
+  check(await mobileFrame.evaluate(() => { const c = document.querySelector("#filmCanvas"); return c.height > c.width; }) && await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => !v.muted && !v.paused && v.volume === .65), "mobile: native portrait 3D scene starts with audible soundtrack");
   await mobile.page.getByRole("button", { name: "Silenciar sonido" }).tap();
-  check(await mobile.page.locator("video").evaluate(v => v.muted && !v.paused), "user can mute without pausing the animation");
+  check(await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.muted && !v.paused), "user can mute without pausing the animation");
   check(requests.length === 0, "3D introduction downloads no replacement robot movie");
   check(await mobile.page.evaluate(() => localStorage.getItem("algolab:intro:seen") === "1"), "first playback marks only this browser as seen");
   check(await mobile.page.locator(".landing").evaluate(element => Boolean(element.closest("[inert]"))), "landing cannot receive accidental clicks behind intro");
   await mobile.page.getByRole("button", { name: "Pausar animación" }).tap();
-  const before = await mobile.page.locator("video").evaluate(v => v.currentTime);
+  const before = await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.currentTime);
   await mobile.page.waitForTimeout(300);
-  check(Math.abs(await mobile.page.locator("video").evaluate(v => v.currentTime) - before) < .06, "pause stops the movie");
+  check(Math.abs(await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.currentTime) - before) < .06, "pause stops the movie");
   await mobile.page.getByRole("button", { name: "Activar sonido" }).tap();
-  check(await mobile.page.locator("video").evaluate(v => !v.muted && v.paused), "user can restore sound while keeping the animation paused");
-  await mobile.page.locator("video").evaluate(v => new Promise(resolve => { v.addEventListener("seeked", resolve, { once: true }); v.currentTime = 7; }));
-  await mobile.page.waitForFunction(() => Math.abs(document.querySelector("video").currentTime - 7) < .1);
+  check(await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => !v.muted && v.paused), "user can restore sound while keeping the animation paused");
+  await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => new Promise(resolve => { v.addEventListener("seeked", resolve, { once: true }); v.currentTime = 7; }));
+  await mobile.page.waitForFunction(() => Math.abs(document.querySelector("audio[data-intro-soundtrack]").currentTime - 7) < .1);
   await mobile.page.screenshot({ path: path.join(output, "mobile-portrait.png") });
   check(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "portrait: no horizontal overflow");
   for (const button of await mobile.page.getByRole("dialog").getByRole("button").all()) {
@@ -86,11 +86,11 @@ try {
   await mobile.page.setViewportSize({ width: 844, height: 390 });
   await mobileFrame.waitForFunction(() => { const c = document.querySelector("#filmCanvas"); return c.width > c.height; });
   check((await mobileFrame.evaluate(() => window.__continuityDiagnostics())).instanceId === mobileIdentity.instanceId, "rotation keeps the exact same 3D protagonist");
-  check(await mobile.page.locator("video").evaluate(v => v.paused && !v.muted), "rotation preserves time, pause and audio preference");
+  check(await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.paused && !v.muted), "rotation preserves time, pause and audio preference");
   await mobile.page.screenshot({ path: path.join(output, "mobile-landscape.png") });
   await mobile.page.setViewportSize({ width: 390, height: 844 });
   await mobileFrame.waitForFunction(() => { const c = document.querySelector("#filmCanvas"); return c.height > c.width; });
-  await mobile.page.locator("video").evaluate(v => new Promise(resolve => { v.addEventListener("seeked", resolve, { once: true }); v.currentTime = 19.95; }));
+  await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => new Promise(resolve => { v.addEventListener("seeked", resolve, { once: true }); v.currentTime = 19.95; }));
   await mobileFrame.waitForFunction(() => Math.abs(window.__continuityDiagnostics().time - 19.95) < .02);
   const mobileEnd = await mobileFrame.evaluate(() => window.__continuityDiagnostics().landing);
   check(await mobileFrame.evaluate(() => {
@@ -147,10 +147,10 @@ try {
   const desktopFrame = desktop.page.frames().find(frame => frame.url().includes("/intro-scene/index.html"));
   assert.ok(desktopFrame);
   const desktopIdentity = await desktopFrame.evaluate(() => window.__continuityDiagnostics());
-  check(await desktopFrame.evaluate(() => { const c = document.querySelector("#filmCanvas"); return c.width > c.height; }) && await desktop.page.locator("video").evaluate(v => Math.abs(v.duration - 20) < .1), "desktop: horizontal 3D sequence lasts twenty seconds");
+  check(await desktopFrame.evaluate(() => { const c = document.querySelector("#filmCanvas"); return c.width > c.height; }) && await desktop.page.locator("audio[data-intro-soundtrack]").evaluate(v => Math.abs(v.duration - 20) < .1), "desktop: horizontal 3D sequence lasts twenty seconds");
   await desktop.page.screenshot({ path: path.join(output, "desktop-intro.png") });
   await desktop.page.getByRole("button", { name: "Pausar animación" }).click();
-  await desktop.page.locator("video").evaluate(v => new Promise(resolve => { v.addEventListener("seeked", resolve, { once: true }); v.currentTime = 18.7; }));
+  await desktop.page.locator("audio[data-intro-soundtrack]").evaluate(v => new Promise(resolve => { v.addEventListener("seeked", resolve, { once: true }); v.currentTime = 18.7; }));
   await desktop.page.waitForTimeout(120);
   await desktopFrame.waitForFunction(() => Math.abs(window.__continuityDiagnostics().time - 18.7) < .1);
   check(await desktop.page.locator(".hero-stage canvas").count() === 0, "no second robot renderer is mounted behind the transition");
@@ -161,7 +161,7 @@ try {
   const finalIdentity = await desktopFrame.evaluate(() => window.__continuityDiagnostics());
   check(await desktopFrame.evaluate(() => getComputedStyle(document.documentElement).colorScheme === "dark" && document.querySelector("canvas").getContext("2d").getImageData(0, 0, 1, 1).data[3] === 0), "landing renderer is transparent, without a white or black replacement screen");
   check(finalIdentity.instanceId === desktopIdentity.instanceId && finalIdentity.rendererId === desktopIdentity.rendererId, "full ending preserves the same model instance and renderer, without replacement");
-  check(await desktop.page.locator(".landing h1").count() === 1 && await desktop.page.locator("video").count() === 0, "movie ends on the real responsive page, not a screenshot");
+  check(await desktop.page.locator(".landing h1").count() === 1 && await desktop.page.locator("audio[data-intro-soundtrack]").count() === 0, "movie ends on the real responsive page, not a screenshot");
   await desktop.page.mouse.wheel(0, 220);
   await desktop.page.waitForFunction(() => scrollY > 150);
   await robotAnchored(desktop.page, "desktop: wheel scrolling does not leave the robot fixed on screen");
@@ -239,15 +239,33 @@ try {
     await slow.page.goto(base, { waitUntil: "domcontentloaded" });
     await requestArrived;
     await slow.page.waitForTimeout(500);
-    check(await slow.page.locator("video").evaluate(v => v.paused && v.currentTime === 0), `delayed ${label}: soundtrack waits at zero until all assets are ready`);
+    check(await slow.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.currentTime === 0), `delayed ${label}: soundtrack waits at zero until all assets are ready`);
+    check(await slow.page.locator(".hero-stage canvas").count() === 0, `delayed ${label}: no second 3D renderer competes with the intro on mobile`);
     const slowFrame = slow.page.frames().find(frame => frame.url().includes("/intro-scene/index.html"));
     if (slowFrame) check(await slowFrame.evaluate(() => !window.__continuityDiagnostics || window.__continuityDiagnostics().time === 0), `delayed ${label}: visual clock also waits at zero`);
     release();
     await movieReady(slow.page);
-    check(await slow.page.locator("video").evaluate(v => !v.muted && !v.paused), `delayed ${label}: animation and audible soundtrack start together after loading`);
+    check(await slow.page.locator("audio[data-intro-soundtrack]").evaluate(v => !v.muted && !v.paused), `delayed ${label}: animation and audible soundtrack start together after loading`);
     await slow.page.getByRole("button", { name: "Omitir", exact: true }).tap();
     await slow.context.close();
   }
+  const partial = await setup(390, 844);
+  await partial.context.addInitScript(() => {
+    // Mobile-style streaming: playable data, without HAVE_ENOUGH_DATA/canplaythrough.
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "readyState");
+    Object.defineProperty(HTMLMediaElement.prototype, "readyState", { configurable: true, get() { return Math.min(3, descriptor.get.call(this)); } });
+    document.addEventListener("canplaythrough", event => event.stopImmediatePropagation(), true);
+  });
+  await partial.page.goto(base);
+  await movieReady(partial.page);
+  check(await partial.page.locator("audio[data-intro-soundtrack]").evaluate(a => a.readyState === 3 && !a.muted && !a.paused), "mobile partial buffering starts sound without waiting for canplaythrough");
+  const partialFrame = partial.page.frames().find(frame => frame.url().includes("/intro-scene/index.html"));
+  assert.ok(partialFrame);
+  await partialFrame.waitForFunction(() => window.__continuityDiagnostics().time > .1);
+  check(Boolean(await partialFrame.evaluate(() => window.__continuityDiagnostics().instanceId)), "mobile partial buffering still loads and animates the actual 3D robot");
+  await partial.page.getByRole("button", { name: "Omitir", exact: true }).tap();
+  await robotAnchored(partial.page, "mobile partial buffering keeps the same robot visible in the landing");
+  await partial.context.close();
   const denied = await setup(390, 844);
   await denied.context.addInitScript(() => {
     // Deterministic browser-policy denial, lifted only by an actual user gesture.
@@ -264,20 +282,20 @@ try {
   const deniedFrame = denied.page.frames().find(frame => frame.url().includes("/intro-scene/index.html"));
   assert.ok(deniedFrame);
   await deniedFrame.waitForFunction(() => window.__continuityDiagnostics().time > .3);
-  check(await denied.page.locator("video").evaluate(v => !v.muted && v.paused), "browser autoplay denial preserves sound-on preference while visuals continue");
+  check(await denied.page.locator("audio[data-intro-soundtrack]").evaluate(v => !v.muted && v.paused), "browser autoplay denial preserves sound-on preference while visuals continue");
   check(await denied.page.getByRole("status").filter({ hasText: "Activar sonido" }).isVisible(), "browser denial explicitly asks for one tap to enable sound");
   await denied.page.getByRole("button", { name: "Pausar animación" }).tap();
   const deniedTime = await deniedFrame.evaluate(() => window.__continuityDiagnostics().time);
   await denied.page.waitForTimeout(250);
   check(Math.abs((await deniedFrame.evaluate(() => window.__continuityDiagnostics().time)) - deniedTime) < .1, "pause still stops the visual clock when audio autoplay is denied");
   await denied.page.getByRole("button", { name: "Activar sonido" }).tap();
-  check(await denied.page.locator("video").evaluate(v => !v.muted && v.paused), "enabling sound after browser denial respects an explicit pause");
+  check(await denied.page.locator("audio[data-intro-soundtrack]").evaluate(v => !v.muted && v.paused), "enabling sound after browser denial respects an explicit pause");
   await denied.page.getByRole("button", { name: "Reproducir animación" }).tap();
-  await denied.page.waitForFunction(() => { const v = document.querySelector("video"); return v && !v.paused && !v.muted; });
+  await denied.page.waitForFunction(() => { const v = document.querySelector("audio[data-intro-soundtrack]"); return v && !v.paused && !v.muted; });
   check(await denied.page.getByRole("button", { name: "Silenciar sonido" }).isVisible(), "a real gesture restores audible playback and the mute control");
-  check(Math.abs((await denied.page.locator("video").evaluate(v => v.currentTime)) - (await deniedFrame.evaluate(() => window.__continuityDiagnostics().time))) < .3, "audio joins at the current visual time after permission is granted");
+  check(Math.abs((await denied.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.currentTime)) - (await deniedFrame.evaluate(() => window.__continuityDiagnostics().time))) < .3, "audio joins at the current visual time after permission is granted");
   await denied.page.getByRole("button", { name: "Silenciar sonido" }).tap();
-  check(await denied.page.locator("video").evaluate(v => v.muted && !v.paused), "mute remains available after browser-policy recovery");
+  check(await denied.page.locator("audio[data-intro-soundtrack]").evaluate(v => v.muted && !v.paused), "mute remains available after browser-policy recovery");
   await denied.page.getByRole("button", { name: "Omitir", exact: true }).tap();
   await denied.context.close();
   const small = await setup(320, 568);
