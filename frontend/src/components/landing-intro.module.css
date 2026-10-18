@@ -41,6 +41,7 @@
 .experience[data-intro-active] .content :global(.landing-nav-pill) { opacity: 0 !important; transform: none; }
 .experience[data-intro-active] .content :global(.hero-copy) { transform: none; }
 .experience[data-intro-active] .content :global(.hero-mascot) { transform: none !important; }
+.experience[data-intro-active] .content :global(.hero-speech) { transform: none !important; transition: none !important; }
 @media (min-width: 640px) { .controls { gap: 10px; padding: 8px; bottom: max(28px, env(safe-area-inset-bottom)); } .controls button { padding-inline: 18px; } }
 @media (max-width: 359px) { .controls { gap: 2px; } .controls button { padding-inline: 9px; } .controls button:not(.skip) span { display: none; } }
 @media (prefers-reduced-motion: reduce) { .experience[data-intro-active] .content { opacity: 1; } }

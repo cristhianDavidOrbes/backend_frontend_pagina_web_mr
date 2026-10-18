@@ -28,7 +28,7 @@ export function createLandingAssembly(content: HTMLElement, layer: HTMLElement) 
     clone.removeAttribute("id");
     clone.querySelectorAll("[id]").forEach(node => node.removeAttribute("id"));
     Object.assign(clone.style, { position: "relative", inset: "auto", left: "0", top: "0", translate: "none", margin: "0", width: `${box.width}px`, height: `${box.height}px`, maxWidth: "none", minHeight: "0", transform: slice ? `translateY(-${slice[0]}px)` : "none", opacity: "1" });
-    Object.assign(clone.style, { fontFamily: typography.fontFamily, fontSize: typography.fontSize, fontWeight: typography.fontWeight, lineHeight: typography.lineHeight, letterSpacing: typography.letterSpacing, textAlign: typography.textAlign });
+    Object.assign(clone.style, { fontFamily: typography.fontFamily, fontSize: typography.fontSize, fontWeight: typography.fontWeight, lineHeight: typography.lineHeight, letterSpacing: typography.letterSpacing, textAlign: typography.textAlign, display: typography.display, boxSizing: typography.boxSizing, padding: typography.padding, whiteSpace: typography.whiteSpace, transition: "none", animation: "none" });
     element.appendChild(clone); fragment.appendChild(element);
     pieces.push({ element, target, key, start, end, scale, angle, arc, settled: false });
   }

@@ -31,6 +31,20 @@ async function noIntro(page, label) {
   await page.waitForTimeout(450);
   check(await page.locator("audio[data-intro-soundtrack]").count() === 0, label);
 }
+async function speechMatchesLanding(page, label) {
+  const result = await page.evaluate(() => {
+    const original = document.querySelector('.landing .hero-speech');
+    const clone = document.querySelector('[data-intro-assembly] .hero-speech');
+    if (!original || !clone) return false;
+    const a = original.getBoundingClientRect(), b = clone.getBoundingClientRect();
+    const lines = element => { const range = document.createRange(); range.selectNodeContents(element); return Array.from(range.getClientRects()); };
+    const aa = lines(original), bb = lines(clone);
+    return ['x','y','width','height'].every(key => Math.abs(a[key]-b[key]) < 1)
+      && aa.length === bb.length && aa.every((rect,i) => Math.abs(rect.width-bb[i].width) < 1 && Math.abs(rect.y-bb[i].y) < 1)
+      && bb.every(rect => rect.bottom <= b.bottom + 1);
+  });
+  check(result, label);
+}
 async function robotAnchored(page, label) {
   await page.waitForFunction(() => {
     const iframe = document.querySelector('iframe[src*="intro-scene"]');
@@ -95,6 +109,7 @@ try {
   await mobileFrame.waitForFunction(() => { const c = document.querySelector("#filmCanvas"); return c.height > c.width; });
   await mobile.page.locator("audio[data-intro-soundtrack]").evaluate(v => new Promise(resolve => { v.addEventListener("seeked", resolve, { once: true }); v.currentTime = 19.95; }));
   await mobileFrame.waitForFunction(() => Math.abs(window.__continuityDiagnostics().time - 19.95) < .02);
+  await speechMatchesLanding(mobile.page, "mobile: assembled speech has the final size, position and line breaks before handover");
   check(await mobileFrame.evaluate(() => window.__continuityDiagnostics().performance.worldPasses === 0), "the fully faded room is not rendered behind the closing robot");
   const mobileEnd = await mobileFrame.evaluate(() => window.__continuityDiagnostics().landing);
   check(await mobileFrame.evaluate(() => {
@@ -160,6 +175,10 @@ try {
   await desktopFrame.waitForFunction(() => Math.abs(window.__continuityDiagnostics().time - 18.7) < .1);
   check(await desktop.page.locator(".hero-stage canvas").count() === 0, "no second robot renderer is mounted behind the transition");
   await desktop.page.screenshot({ path: path.join(output, "desktop-handoff.png") });
+  await desktop.page.locator("audio[data-intro-soundtrack]").evaluate(v => new Promise(resolve => { v.addEventListener("seeked", resolve, { once: true }); v.currentTime = 19.95; }));
+  await desktopFrame.waitForFunction(() => Math.abs(window.__continuityDiagnostics().time - 19.95) < .02);
+  await speechMatchesLanding(desktop.page, "desktop: assembled speech has the final size, position and line breaks before handover");
+  await desktop.page.screenshot({ path: path.join(output, "desktop-assembled-speech.png") });
   await desktop.page.getByRole("button", { name: "Reproducir animación" }).click();
   await desktop.page.waitForFunction(() => !document.querySelector('[role="dialog"][aria-label="Bienvenida a AlgoLab"]'), { timeout: 10000 });
   await desktopFrame.waitForFunction(() => window.__continuityDiagnostics().landed);
