@@ -20,6 +20,10 @@
 # production
 /build
 
+# Deterministic intro output; generated before dev, demo and production builds.
+/public/intro-scene/runtime/
+/src/generated/intro-assets.json
+
 # misc
 .DS_Store
 *.pem

@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="es">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>Personaje continuo de AlgoLab</title>
+ <style>:root{color-scheme:dark}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}#support{display:none}</style>
+ <!-- INTRO_PRELOADS -->
+ <script type="importmap">{"imports":{"three":"./assets/vendor/three.module.js"}}</script>
+</head>
+<body>
+ <canvas id="filmCanvas" aria-label="Robot 3D de AlgoLab"></canvas>
+ <div id="support" hidden><div id="player"></div><div id="loading"></div><button id="play"></button><button id="restart"></button><button id="sound"></button><button id="full"></button><input id="seek" type="range" min="0" max="20" step=".01"><input id="reduced" type="checkbox"><output id="time"></output></div>
+ <script type="module" src="INTRO_ENTRY"></script>
+</body>
+</html>

@@ -5,6 +5,8 @@ import { ArrowRight, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { markIntroSeen, readIntroState, shouldShowIntro } from "@/lib/landing-intro";
 import { createLandingAssembly, type LandingAnchors } from "@/lib/landing-assembly";
 import { LandingRobotContext } from "./landing-robot-context";
+import { BrandMark } from "./brand-mark";
+import introAssets from "@/generated/intro-assets.json";
 import styles from "./landing-intro.module.css";
 
 type Connection = { saveData?: boolean };
@@ -16,7 +18,8 @@ export function LandingIntro({ children }: { children: ReactNode }) {
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
-  const [preparing, setPreparing] = useState(true);
+  const [opening, setOpening] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const video = useRef<HTMLAudioElement>(null);
   const scene = useRef<HTMLIFrameElement>(null);
@@ -35,6 +38,10 @@ export function LandingIntro({ children }: { children: ReactNode }) {
   const ready = useRef(false);
   const mediaReady = useRef(false);
   const clockStarted = useRef(false);
+  const revealStarted = useRef(false);
+  const revealPlaybackStarted = useRef(false);
+  const revealDone = useRef(false);
+  const revealTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const userPaused = useRef(false);
   const lastSent = useRef(-1);
   const timeline = useRef(0);
@@ -52,15 +59,14 @@ export function LandingIntro({ children }: { children: ReactNode }) {
   const target = useCallback(() => targetSnapshot.current, []);
   const clearWaiting = useCallback(() => { clearTimeout(waiting.current); waiting.current = undefined; }, []);
   const beginClock = useCallback(() => {
-    if (!ready.current || clockStarted.current) return;
+    if (!ready.current || !revealPlaybackStarted.current || clockStarted.current) return;
     clockStarted.current = true;
     timeline.current = 0; lastTick.current = null;
-    setPreparing(false);
     if (!started.current) { started.current = true; markIntroSeen(); }
   }, []);
   const playSound = useCallback(() => {
     const element = video.current;
-    if (!element || !ready.current || userPaused.current || document.hidden) return;
+    if (!element || !ready.current || !revealPlaybackStarted.current || userPaused.current || document.hidden) return;
     element.volume = .65;
     // Keep audio aligned even when autoplay was denied while the visual clock continued.
     if (clockStarted.current && Math.abs(element.currentTime - timeline.current) > .15) element.currentTime = timeline.current;
@@ -72,13 +78,32 @@ export function LandingIntro({ children }: { children: ReactNode }) {
       if (!element.muted && error instanceof DOMException && error.name === "NotAllowedError") { setAudioBlocked(true); if (mediaReady.current) beginClock(); }
     });
   }, [beginClock, clearWaiting]);
-  const startWhenReady = useCallback(() => {
-    if (!ready.current || !mediaReady.current || clockStarted.current) return;
-    beginClock();
-    playSound();
+  const startRevealPlayback = useCallback(() => {
+    if (!revealStarted.current || revealPlaybackStarted.current || revealDone.current) return;
+    revealPlaybackStarted.current = true;
+    if (!userPaused.current && !document.hidden) { beginClock(); playSound(); }
   }, [beginClock, playSound]);
+  const completeReveal = useCallback(() => {
+    if (!revealStarted.current || revealDone.current) return;
+    clearTimeout(revealTimeout.current); revealTimeout.current = undefined;
+    // Also covers browsers that suppress animationstart along with animationend.
+    startRevealPlayback();
+    revealDone.current = true;
+    setRevealed(true); setOpening(false);
+  }, [startRevealPlayback]);
+  const startWhenReady = useCallback(() => {
+    if (!ready.current || !mediaReady.current || revealStarted.current) return;
+    revealStarted.current = true;
+    setOpening(true);
+    // Animationend owns the exact one-second reveal; retain a bounded fallback
+    // if browser settings suppress CSS animation events.
+    revealTimeout.current = setTimeout(completeReveal, 1200);
+  }, [completeReveal]);
   const finish = useCallback((seen = true) => {
     clearWaiting(); video.current?.pause();
+    clearTimeout(revealTimeout.current); revealTimeout.current = undefined;
+    revealPlaybackStarted.current = false;
+    revealDone.current = true; setRevealed(true); setOpening(false);
     if (seen) markIntroSeen();
     if (ready.current) send({ type: "algolab:land", target: target() });
     setActive(false);
@@ -91,17 +116,37 @@ export function LandingIntro({ children }: { children: ReactNode }) {
     catch { state = { preference: "once" as const, seen: true }; }
     const connection = (navigator as Navigator & { connection?: Connection }).connection;
     const show = shouldShowIntro({ ...state, reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches, saveData: connection?.saveData, preview: new URLSearchParams(location.search).get("intro") === "preview" });
-    const frame = requestAnimationFrame(() => { setActive(show); setInitializing(false); });
-    return () => cancelAnimationFrame(frame);
+    const element = scene.current;
+    const frame = requestAnimationFrame(() => {
+      if (!show && element) {
+        // Preferences/accessibility can change while hydration is downloading.
+        const boot = window.__algolabIntroBoot;
+        if (boot?.frame === element) boot.release();
+        element.removeAttribute("src");
+        element.parentElement?.removeAttribute("data-playing");
+        element.parentElement?.removeAttribute("data-enabled");
+      }
+      setActive(show); setInitializing(false);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      const boot = window.__algolabIntroBoot;
+      if (boot?.frame === element) boot.release();
+    };
   }, []);
 
   useEffect(() => {
+    let handoff = 0;
+    function sceneReady() {
+      if (ready.current) return;
+      ready.current = true; setLive(true); clearWaiting();
+      send({ type: "algolab:render", time: 0, target: measureTarget() });
+      if (mediaReady.current) startWhenReady();
+    }
     function message(event: MessageEvent) {
       if (event.origin !== location.origin || event.source !== scene.current?.contentWindow) return;
       if (event.data?.type === "algolab:ready" && active) {
-        ready.current = true; setLive(true); clearWaiting();
-        send({ type: "algolab:render", time: 0, target: measureTarget() });
-        if (mediaReady.current) startWhenReady(); else playSound();
+        sceneReady();
       }
       if (event.data?.type === "algolab:error") {
         ready.current = false; setLive(false); finish(false);
@@ -111,7 +156,18 @@ export function LandingIntro({ children }: { children: ReactNode }) {
       }
     }
     window.addEventListener("message", message);
-    return () => window.removeEventListener("message", message);
+    if (active && scene.current) {
+      const boot = window.__algolabIntroBoot;
+      if (boot?.frame === scene.current) {
+        if (boot.failed) handoff = requestAnimationFrame(() => finish(false));
+        else if (boot.ready) handoff = requestAnimationFrame(sceneReady);
+        boot.release();
+      }
+      // React never writes src: adopting a preloaded iframe must not reload it.
+      if (!scene.current.hasAttribute("src")) scene.current.src = introAssets.scene;
+      send({ type: "algolab:hello" });
+    }
+    return () => { cancelAnimationFrame(handoff); window.removeEventListener("message", message); };
   }, [active, clearWaiting, finish, measureTarget, playSound, send, startWhenReady]);
 
   useEffect(() => {
@@ -179,7 +235,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
     window.addEventListener("resize", resize);
     motion.addEventListener("change", reduceMotion);
     document.addEventListener("visibilitychange", visibility); document.addEventListener("keydown", keyboard);
-    const loadDeadline = setTimeout(() => { if (!clockStarted.current) finish(false); }, 20000);
+    const loadDeadline = setTimeout(() => { if (!clockStarted.current && !revealStarted.current) finish(false); }, 20000);
     let frame = 0;
     function update(now: number) {
       if (lastTick.current === null) lastTick.current = now;
@@ -206,6 +262,7 @@ export function LandingIntro({ children }: { children: ReactNode }) {
     frame = requestAnimationFrame(update);
     return () => {
       cancelAnimationFrame(frame); clearTimeout(loadDeadline); clearWaiting();
+      clearTimeout(revealTimeout.current); revealTimeout.current = undefined;
       disposed = true; cancelWarmup(); layoutObserver.disconnect();
       assembly.current?.dispose(); assembly.current = null;
       window.removeEventListener("resize", resize); motion.removeEventListener("change", reduceMotion);
@@ -240,15 +297,20 @@ export function LandingIntro({ children }: { children: ReactNode }) {
 
   return <LandingRobotContext.Provider value={robotContext}>
     <div className={styles.experience} data-intro-active={active || undefined} data-live-robot={live || undefined} ref={shell}>
-      <div className={styles.content} inert={active || undefined} ref={content}>{children}</div>
-      {active || live ? <div className={styles.sceneLayer} data-playing={active || undefined} ref={sceneLayer}>
+      <div className={styles.sceneLayer} data-intro-scene-layer data-enabled={active || live || undefined} data-playing={active || undefined} ref={sceneLayer} suppressHydrationWarning>
         {active && !live ? <div aria-hidden className={styles.backdrop} /> : null}
-        <iframe aria-hidden className={styles.scene} ref={scene} src="/intro-scene/index.html?site=1" tabIndex={-1} title="Escena continua y personaje 3D de AlgoLab" />
+        <iframe aria-hidden className={styles.scene} data-intro-scene ref={scene} suppressHydrationWarning tabIndex={-1} title="Escena continua y personaje 3D de AlgoLab" />
+        <div aria-hidden className={styles.curtain} data-intro-curtain data-opening={opening || undefined} hidden={revealed}>
+          <div className={styles.curtainTop} data-intro-panel="top" onAnimationStart={startRevealPlayback} onAnimationEnd={completeReveal}>
+            <div className={styles.curtainBrand}><BrandMark /></div>
+          </div>
+          <div className={styles.curtainBottom} data-intro-panel="bottom" />
+        </div>
         {active ? <>
           <div aria-hidden className={styles.assembly} data-intro-assembly inert ref={pieces} />
           <div aria-describedby="intro-description" aria-label="Bienvenida a AlgoLab" aria-modal="true" className={styles.overlay} ref={dialog} role="dialog">
             <p className="sr-only" id="intro-description">Animación de 20 segundos con sonido. El robot transforma objetos en un cuarto de realidad mixta y permanece en la página de inicio. Puedes pausarla, silenciar el sonido u omitirla.</p>
-            <audio aria-hidden autoPlay={live && !paused} className={styles.clock} data-intro-soundtrack muted={muted}
+            <audio aria-hidden className={styles.clock} data-intro-soundtrack muted={muted}
               onSeeked={() => { if (video.current) timeline.current = Math.min(20, video.current.currentTime); lastTick.current = null; lastSent.current = -1; }}
               onCanPlay={() => { clearWaiting(); mediaReady.current = Boolean(video.current && video.current.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA); if (clockStarted.current) playSound(); else startWhenReady(); }}
               onCanPlayThrough={() => { mediaReady.current = true; clearWaiting(); startWhenReady(); }}
@@ -256,8 +318,8 @@ export function LandingIntro({ children }: { children: ReactNode }) {
               onLoadedMetadata={() => { if (video.current) video.current.volume = .65; }}
               onLoadStart={waitForMedia} onWaiting={waitForMedia}
               onPlaying={() => { clearWaiting(); beginClock(); setAudioBlocked(false); }}
-              preload="auto" ref={video} src="/media/intro/algolab-soundtrack.mp3" />
-            {!live || preparing ? <p className={styles.loading} role="status">Preparando el cuarto y el sonido…</p> : null}
+              preload="auto" ref={video} src={introAssets.soundtrack} />
+            {!revealed ? <p className="sr-only" role="status">Cargando la bienvenida de AlgoLab.</p> : null}
             {audioBlocked && !muted ? <p className={styles.audioNotice} role="status">Toca «Activar sonido» para escuchar la animación.</p> : null}
             <div className={styles.controls}>
               <button aria-label={paused ? "Reproducir animación" : "Pausar animación"} onClick={togglePlayback} type="button">
@@ -271,7 +333,8 @@ export function LandingIntro({ children }: { children: ReactNode }) {
             <div aria-hidden className={styles.progress}><span ref={progress} /></div>
           </div>
         </> : null}
-      </div> : null}
+      </div>
+      <div className={styles.content} inert={active || undefined} ref={content}>{children}</div>
     </div>
   </LandingRobotContext.Provider>;
 }

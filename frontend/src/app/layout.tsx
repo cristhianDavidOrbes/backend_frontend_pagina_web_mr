@@ -1,14 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import { introPreloadScript } from "@/lib/intro-preload";
+import introAssets from "@/generated/intro-assets.json";
 import { GlassPointer } from "@/components/glass-pointer";
 import { AuthRobotProvider } from "@/components/auth-robot-provider";
 import "./legacy.css";
 import "./globals.css";
-import "./landing.css";
-import "./shell.css";
-import "./code-lab.css";
 
 // Fuentes autoalojadas: la compilación no depende de Google Fonts.
 // Nunito: terminaciones redondeadas, cercana y muy legible (enfoque tipo Duolingo).
@@ -17,6 +14,19 @@ const nunito = localFont({
   display: "swap",
   weight: "200 1000",
   src: "./fonts/nunito-latin-wght-normal.woff2",
+});
+
+// Keep identical local font files and CSS variables, but fetch these families
+// only when a route actually uses them instead of competing with the intro.
+const geistSans = localFont({
+  src: "../../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2",
+  variable: "--font-geist-sans", weight: "100 900", preload: false,
+});
+const geistMono = localFont({
+  src: "../../node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2",
+  variable: "--font-geist-mono", weight: "100 900", preload: false,
+  adjustFontFallback: false,
+  fallback: ["ui-monospace", "SFMono-Regular", "Roboto Mono", "Menlo", "Monaco", "Liberation Mono", "DejaVu Sans Mono", "Courier New", "monospace"],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://algolab-navy.vercel.app";
@@ -113,9 +123,10 @@ export default function RootLayout({
     <html
       lang="es"
       data-scroll-behavior="smooth"
-      className={`${GeistSans.variable} ${GeistMono.variable} ${nunito.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${nunito.variable} h-full antialiased`}
     >
       <head>
+        <script data-intro-bootstrap dangerouslySetInnerHTML={{ __html: introPreloadScript(introAssets) }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

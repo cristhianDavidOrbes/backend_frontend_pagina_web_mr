@@ -3,8 +3,10 @@ import { createRequire } from "node:module";
 
 import { CONTRASENA_DEMO, CUENTAS_DEMO, crearServidorDemo } from "./servidor-demo.mjs";
 import { buscarPuerto, esperarRespuesta } from "./utilidades.mjs";
+import { buildIntro } from "../build-intro.mjs";
 
 export async function iniciarDemo({ silencioso = false } = {}) {
+  await buildIntro();
   const puertoApi = await buscarPuerto(Number(process.env.PUERTO_DEMO ?? 4010));
   const puertoWeb = await buscarPuerto(Number(process.env.PORT ?? 3000), "0.0.0.0");
   const api = `http://127.0.0.1:${puertoApi}`;
@@ -21,7 +23,7 @@ export async function iniciarDemo({ silencioso = false } = {}) {
   const next = spawn(process.execPath, [nextCli, "dev", "-p", String(puertoWeb)], {
     stdio: silencioso ? "ignore" : "inherit",
     detached: !windows,
-    env: { ...process.env, API_BASE_URL: api, NEXT_DIST_DIR: ".next/demo", NEXT_TELEMETRY_DISABLED: "1" },
+    env: { ...process.env, API_BASE_URL: api, RAILWAY_API_BASE_URL: api, RENDER_API_BASE_URL: "", NEXT_DIST_DIR: ".next/demo", NEXT_TELEMETRY_DISABLED: "1" },
   });
 
   let cierre;

@@ -17,6 +17,7 @@ test("modest hardware gets a smaller GPU budget even with a high-density display
     assert.ok(q.ratio <= 1);
     assert.equal(q.pixels, 650000);
     assert.equal(q.shadowSize, 512);
+    assert.equal(q.antialias, false);
   }
 });
 

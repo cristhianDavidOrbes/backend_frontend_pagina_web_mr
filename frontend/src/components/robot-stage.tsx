@@ -17,6 +17,7 @@ import { Bounds, ContactShadows, OrbitControls, useBounds, useGLTF } from "@reac
 import { Box3, Color, Group, Mesh, MeshStandardMaterial, Vector3, type BufferGeometry, type Material, type Object3D } from "three";
 import { INITIAL_ROBOT_RENDERER, ROBOT_RENDERER_RETRY_DELAYS, robotRendererReducer } from "@/lib/robot-renderer-recovery";
 import type { CompanionPose } from "@/lib/auth-robot-motion";
+import { robotGpuBudget } from "@/lib/robot-gpu-budget";
 
 /**
  * Robot de AlgoLab (modelo GLB exportado desde Unity) con reacciones.
@@ -942,6 +943,7 @@ function StageContent({
   reduceMotion,
   pose,
   facing,
+  shadowResolution,
 }: {
   onReady: () => void;
   onTurn: TurnReporter;
@@ -951,6 +953,7 @@ function StageContent({
   reduceMotion: boolean;
   pose: RobotPose;
   facing: -1 | 1;
+  shadowResolution: number;
 }) {
   return (
     <>
@@ -962,7 +965,7 @@ function StageContent({
       <Bounds margin={1.18} maxDuration={0}>
         <RobotModel facing={facing} onReady={onReady} onTurn={onTurn} pose={pose} presence={presence} reduceMotion={reduceMotion} signal={signal} />
       </Bounds>
-      <ContactShadows blur={2.6} far={6} opacity={0.5} position={[0, -2.3, 0]} scale={7} />
+      <ContactShadows blur={2.6} far={6} opacity={0.5} position={[0, -2.3, 0]} scale={7} resolution={shadowResolution} />
       {draggable ? (
         <OrbitControls
           enableDamping
@@ -981,6 +984,11 @@ function StageContent({
 /* ---------------- Escenario ---------------- */
 
 export function RobotStage({ signal = null, presence = "hero", draggable = true, pose = "stand", facing = 1, className = "", label, recoveryKey }: Props) {
+  const gpuBudget = useMemo(() => typeof window === "undefined" ? robotGpuBudget() : robotGpuBudget({
+    memory: (navigator as Navigator & { deviceMemory?: number }).deviceMemory,
+    cores: navigator.hardwareConcurrency,
+    coarse: matchMedia("(pointer: coarse)").matches,
+  }), []);
   const [renderer, dispatch] = useReducer(robotRendererReducer, INITIAL_ROBOT_RENDERER);
   const { mode, attempt, failures, reason } = renderer;
   const [visible, setVisible] = useState(true);
@@ -1126,9 +1134,9 @@ export function RobotStage({ signal = null, presence = "hero", draggable = true,
           <Suspense fallback={null}>
             <Canvas
               camera={{ fov: 34, position: [0, 0.6, 7] }}
-              dpr={[1, 1.6]}
+              dpr={gpuBudget.dpr}
               frameloop={!visible || !documentVisible ? "never" : reduceMotion || frozen ? "demand" : "always"}
-              gl={{ alpha: true, antialias: true, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false }}
+              gl={{ alpha: true, antialias: gpuBudget.antialias, powerPreference: "default", failIfMajorPerformanceCaveat: false }}
               onCreated={({ gl }) => {
                 gl.setClearColor(0x000000, 0);
               }}
@@ -1153,6 +1161,7 @@ export function RobotStage({ signal = null, presence = "hero", draggable = true,
                   presence={presence}
                   reduceMotion={reduceMotion}
                   signal={activeSignal}
+                  shadowResolution={gpuBudget.shadowResolution}
                 />
               </Suspense>
             </Canvas>

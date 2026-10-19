@@ -1,11 +1,23 @@
 .experience { position: relative; min-width: 0; }
 .content { min-width: 0; }
 .sceneLayer { position: absolute; inset: 0 0 auto; z-index: 1; height: 100svh; pointer-events: none; isolation: isolate; }
+.sceneLayer:not([data-enabled]) { display: none; }
 .sceneLayer[data-playing] { position: fixed; inset: 0; z-index: 10000; height: 100dvh; }
 .scene { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; pointer-events: none; color-scheme: dark; }
 .assembly { position: absolute; inset: 0; pointer-events: none; }
 .clock { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-.loading { position: absolute; top: 45%; left: 0; width: 100%; text-align: center; color: #071b17; font-weight: 800; }
+.curtain { --curtain-radius: 36px; --curtain-overlap: calc(var(--curtain-radius) + var(--curtain-radius) + 2px); --curtain-icon-size: clamp(76px, 12vw, 104px); position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+.curtain[hidden] { display: none; }
+.curtainTop, .curtainBottom { position: absolute; left: 0; right: 0; }
+.curtainTop { top: 0; z-index: 2; height: 50%; border-radius: 0 0 var(--curtain-radius) var(--curtain-radius); background: #f1e8d2; }
+.curtainBottom { bottom: 0; z-index: 1; height: calc(50% + var(--curtain-overlap)); border-radius: var(--curtain-radius) var(--curtain-radius) 0 0; background: #d9d0bb; }
+.curtainBrand { position: absolute; top: 100%; left: 50%; translate: -50% -50%; }
+.curtainBrand :global(.brand-mark) { width: var(--curtain-icon-size); height: auto; aspect-ratio: 1; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.curtainBrand :global(.brand-mark svg) { width: 100%; height: 100%; }
+.curtain[data-opening] .curtainTop { animation: curtain-up 1s cubic-bezier(.87, 0, .13, 1) both; will-change: transform; }
+.curtain[data-opening] .curtainBottom { animation: curtain-down 1s cubic-bezier(.87, 0, .13, 1) both; will-change: transform; }
+@keyframes curtain-up { from { transform: translateY(0); } to { transform: translateY(calc(-100% - var(--curtain-icon-size))); } }
+@keyframes curtain-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
 .audioNotice { position: absolute; bottom: calc(max(22px, env(safe-area-inset-bottom)) + 74px); left: 12px; right: 12px; width: fit-content; max-width: calc(100% - 24px); margin: 0 auto; padding: 8px 12px; border-radius: 11px; background: #071b17f5; color: #effaf5; font-size: 13px; text-align: center; }
 .controls button { pointer-events: auto; }
 .overlay { position: fixed; inset: 0; z-index: 10000; isolation: isolate; height: 100dvh; }
@@ -44,4 +56,7 @@
 .experience[data-intro-active] .content :global(.hero-speech) { transform: none !important; transition: none !important; }
 @media (min-width: 640px) { .controls { gap: 10px; padding: 8px; bottom: max(28px, env(safe-area-inset-bottom)); } .controls button { padding-inline: 18px; } }
 @media (max-width: 359px) { .controls { gap: 2px; } .controls button { padding-inline: 9px; } .controls button:not(.skip) span { display: none; } }
-@media (prefers-reduced-motion: reduce) { .experience[data-intro-active] .content { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .experience[data-intro-active] .content { opacity: 1; }
+  .curtain[data-opening] .curtainTop, .curtain[data-opening] .curtainBottom { animation-duration: .01ms; }
+}

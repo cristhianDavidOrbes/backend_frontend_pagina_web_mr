@@ -10,8 +10,15 @@ export function createLandingRobotPass(renderer,scene,camera,context,options){
  async function prepare(robot){
   prepareLayers(robot);
   const mask=camera.layers.mask,shadows=renderer.shadowMap.enabled,background=scene.background,fog=scene.fog;
-  try{camera.layers.set(1);renderer.shadowMap.enabled=false;scene.background=null;scene.fog=null;await renderer.compileAsync(scene,camera);}
-  finally{camera.layers.mask=mask;renderer.shadowMap.enabled=shadows;scene.background=background;scene.fog=fog;}
+  let pending;
+  try{
+   camera.layers.set(1);renderer.shadowMap.enabled=false;scene.background=null;scene.fog=null;
+   // Camera layers do not restrict compileAsync's traversal. Compile ONLY
+   // the protagonist, with the shared scene supplying its lighting.
+   pending=renderer.compileAsync(robot.root,camera,scene);
+  }finally{camera.layers.mask=mask;renderer.shadowMap.enabled=shadows;scene.background=background;scene.fog=fog;}
+  // Never leave shared rendering state changed while an async job is pending.
+  await pending;
  }
  function draw(robot,time){
   const [width,height]=options.viewport();

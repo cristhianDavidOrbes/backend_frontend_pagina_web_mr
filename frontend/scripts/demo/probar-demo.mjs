@@ -1,5 +1,6 @@
 import { CONTRASENA_DEMO } from "./servidor-demo.mjs";
 import { iniciarDemo } from "./iniciar-demo.mjs";
+import assert from "node:assert/strict";
 
 const resultados = [];
 const sesiones = [];
@@ -18,7 +19,9 @@ async function json(respuesta) {
 }
 
 console.log("Levantando la demostración para probarla (la primera compilación puede tardar)…\n");
-const demo = await iniciarDemo({ silencioso: true });
+const existing = process.env.TEST_BASE_URL;
+if (existing) assert.ok(["localhost", "127.0.0.1"].includes(new URL(existing).hostname), "Use only an isolated local demo");
+const demo = existing ? { web: existing.replace(/\/$/, ""), cerrar: async () => {} } : await iniciarDemo({ silencioso: true });
 const { web } = demo;
 
 try {

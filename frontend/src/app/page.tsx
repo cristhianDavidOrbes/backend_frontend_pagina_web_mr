@@ -1,5 +1,7 @@
 "use client";
 
+import "./landing.css";
+
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Component, useRef, useState, type ReactNode } from "react";

@@ -1,5 +1,6 @@
 import * as THREE from '../assets/vendor/three.module.js';
 import { exitRoute } from './prop-motion.js';
+import { mergeGeometries } from '../assets/vendor/utils/BufferGeometryUtils.js';
 
 // The physical room remains present throughout the film, including the
 // broken wall pieces after the car's departure. Animation is seekable.
@@ -56,25 +57,38 @@ export function createRoom(scene, { extendedFloor = false } = {}) {
   planks.receiveShadow = true;
   room.add(planks);
 
-  // An open front/right cutaway lets the camera see the room and its contents.
+  // Extend the sides beyond the furthest camera position, so even ultrawide
+  // views cannot see around their front edges. Keep the back edge unchanged
+  // to leave the car's outdoor turn clear; stretching adds no extra meshes.
+  const sideWallBack = -4.4;
+  const sideWallFront = 18;
+  const sideWallDepth = sideWallFront - sideWallBack;
+  const sideWallCenter = (sideWallFront + sideWallBack) / 2;
   // Real aperture: no opaque backing is left behind the breakable panel.
   // The lower 2.3 m of this section is tiled with eighteen plaster shards.
   box(7.25, 6.6, 0.2, cream, -3.375, 1.7, -4.3);
   box(4.25, 6.6, 0.2, cream, 4.875, 1.7, -4.3);
   box(2.5, 4.25, 0.2, cream, 1.5, 2.875, -4.3);
-  box(0.2, 6.6, 10.8, sage, -6.55, 1.7, 1);
+  const leftWall = box(0.2, 6.6, sideWallDepth, sage, -6.55, 1.7, sideWallCenter);
+  leftWall.name = 'room-left-wall';
+  const rightWall = box(0.2, 6.6, sideWallDepth, sage, 6.55, 1.7, sideWallCenter);
+  rightWall.name = 'room-right-wall';
   box(7.2, 0.18, 0.12, porcelain, -3.35, floorY + 0.11, -4.12);
   box(4.2, 0.18, 0.12, porcelain, 4.85, floorY + 0.11, -4.12);
-  box(0.12, 0.18, 10.5, porcelain, -6.4, floorY + 0.11, 0.9);
+  const leftSkirting = box(0.12, 0.18, sideWallDepth, porcelain, -6.4, floorY + 0.11, sideWallCenter);
+  leftSkirting.name = 'room-left-skirting';
+  const rightSkirting = box(0.12, 0.18, sideWallDepth, porcelain, 6.4, floorY + 0.11, sideWallCenter);
+  rightSkirting.name = 'room-right-skirting';
 
   const garden = material('#8c9b74');
   const path = material('#b8b39d');
   box(38, 0.12, 12, garden, 10, floorY - 0.035, -10.4);
   // A single flat road strip follows exactly the same right-hand bend as the
-  // car. It starts inside the opening and continues beyond the camera's view.
+  // car. Start at the OUTER face of the back wall, never over the wood floor.
   const roadVertices=[],roadIndices=[],roadSamples=96;
+  const roadStart = exitRoute(0).z - sideWallBack;
   for(let i=0;i<=roadSamples;i++) {
-    const pose=exitRoute(28*i/roadSamples),sideX=Math.sin(pose.yaw)*1.225,sideZ=Math.cos(pose.yaw)*1.225;
+    const pose=exitRoute(roadStart+(28-roadStart)*i/roadSamples),sideX=Math.sin(pose.yaw)*1.225,sideZ=Math.cos(pose.yaw)*1.225;
     roadVertices.push(pose.x-sideX,floorY+.04,pose.z-sideZ,pose.x+sideX,floorY+.04,pose.z+sideZ);
     if(i<roadSamples){const a=i*2;roadIndices.push(a,a+1,a+2,a+1,a+3,a+2);}
   }
@@ -272,11 +286,40 @@ export function createRoom(scene, { extendedFloor = false } = {}) {
   const scan = mesh(new THREE.PlaneGeometry(6.6,0.055), scanMaterial, 0, floorY + 0.055, 2.75);
   scan.rotation.x = -Math.PI / 2;
   scan.castShadow = false;
+  // Batch only stationary, direct-child furniture. Keep animated fragments,
+  // plant leaves, the MR scan, instanced flooring and room boundaries intact.
+  room.updateMatrixWorld(true);
+  const batches = new Map();
+  for (const object of room.children) {
+    if (!object.isMesh || object.isInstancedMesh || object === scan
+      || object.name.startsWith('room-') || object.name.startsWith('wall-fragment')
+      || object.name === 'car-route-right-hand-bend') continue;
+    const attributes = Object.keys(object.geometry.attributes).sort().join(',');
+    const key = `${object.material.uuid}:${object.castShadow}:${object.receiveShadow}:${attributes}`;
+    if (!batches.has(key)) batches.set(key, []);
+    batches.get(key).push(object);
+  }
+  let staticBatches = 0, staticDrawCallsSaved = 0;
+  for (const objects of batches.values()) {
+    if (objects.length < 4) continue;
+    const geometries = objects.map(object => object.geometry.clone().applyMatrix4(object.matrix));
+    const combined = mergeGeometries(geometries, false);
+    geometries.forEach(geometry => geometry.dispose());
+    if (!combined) continue;
+    const merged = new THREE.Mesh(combined, objects[0].material);
+    merged.name = 'static-furniture-batch';
+    merged.castShadow = objects[0].castShadow;
+    merged.receiveShadow = objects[0].receiveShadow;
+    for (const object of objects) { room.remove(object); object.geometry.dispose(); }
+    room.add(merged);
+    staticBatches++;
+    staticDrawCallsSaved += objects.length - 1;
+  }
   return {
     floorY,
     group: room,
     ready,
-    diagnostics: () => ({ chairBackUprights: 2, botanicalLeafSurfaces: 12, landscapeReady, landscapeLicense: 'CC0-1.0' }),
+    diagnostics: () => ({ chairBackUprights: 2, botanicalLeafSurfaces: 12, staticBatches, staticDrawCallsSaved, landscapeReady, landscapeLicense: 'CC0-1.0', rightWall: { id: rightWall.uuid, position: rightWall.position.toArray(), size: [rightWall.geometry.parameters.width, rightWall.geometry.parameters.height, rightWall.geometry.parameters.depth], visible: rightWall.visible, skirting: rightSkirting.visible } }),
     update(t) {
       const p = THREE.MathUtils.clamp(t / 2.5, 0, 1);
       const eased = p * p * (3 - 2 * p);

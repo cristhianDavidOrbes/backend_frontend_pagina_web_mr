@@ -250,10 +250,10 @@ try {
   await reduced.page.goto(base); await noIntro(reduced.page, "reduced motion bypasses the intro even on a new device");
   await reduced.context.close();
   const failed = await setup(390, 844);
-  await failed.context.route("**/media/intro/*.mp3", route => route.abort());
+  await failed.context.route(/\/(?:media\/intro\/[^/]+|intro-scene\/runtime\/soundtrack-[^/]+)\.mp3$/, route => route.abort());
   await failed.page.goto(base); await noIntro(failed.page, "media failure falls back to the real landing");
   await failed.context.close();
-  for (const [asset, label] of [["**/intro-scene/assets/algolab-robot-demo.glb", "room"], ["**/media/intro/algolab-soundtrack.mp3", "soundtrack"]]) {
+  for (const [asset, label] of [[/\/intro-scene\/(?:assets\/algolab-robot-demo|runtime\/robot-[^/]+)\.glb$/, "room"], [/\/(?:media\/intro\/algolab-soundtrack|intro-scene\/runtime\/soundtrack-[^/]+)\.mp3$/, "soundtrack"]]) {
     const slow = await setup(390, 844);
     let release;
     let requested;

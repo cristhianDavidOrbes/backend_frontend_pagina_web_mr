@@ -31,7 +31,7 @@ const canvas = document.querySelector('#filmCanvas');
 canvas.width = WIDTH;
 canvas.height = HEIGHT;
 const ctx = canvas.getContext('2d', { alpha: true });
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ antialias: initialQuality.antialias, alpha: true });
 renderer.setSize(WIDTH, HEIGHT, false);
 renderer.setPixelRatio(1);
 renderer.shadowMap.enabled = true;
@@ -166,7 +166,8 @@ const portraitCameraKeys=[
  [17.3,[2,1.8,12.2],[.1,-.05,0]], [19.4,[0,1.15,12.8],[.2,-.05,0]], [20,[0,1.15,12.8],[.2,-.05,0]],
 ];
 const landscapeCameraKeys=[
- [0,[7,3.6,11],[0,-.05,-.3]], [2.5,[4.5,2.3,9],[0,-.05,0]],
+ // Stay inside the new right wall, including the opening establishing shot.
+ [0,[5.8,3.6,11],[0,-.05,-.3]], [2.5,[4.5,2.3,9],[0,-.05,0]],
  [5.2,[2.6,1.5,9],[.3,-.15,0]], [8.3,[4.8,2.7,8.6],[.4,-.35,0]],
  [9.6,[4.1,2.4,8.7],[.1,-.25,-1.4]], [10.3,[3.8,2.1,9],[.1,-.15,-.7]],
  [11.8,[2.3,1.3,8.7],[.1,-.03,0]], [14.6,[-.5,2.1,9.5],[.4,-.08,0]],
@@ -338,7 +339,20 @@ window.__introProjection=()=>{
  return {time,feet,height:Math.abs(feet[1]-head[1])};
 };
 window.__sceneDiagnostics=()=>({time,duration:DURATION,objects:scene.children.length,robot:robot?.root.position.toArray(),joints:robot?.root.diagnostics,car:car.position.toArray(),props:{doors:doors.scale.x,book:book.scale.x,vinyl:vinyl.scale.x},wall:room.group.children.filter(o=>o.name.startsWith('wall-fragment')).map(o=>o.position.toArray()),shell:shell.position.toArray(),landingReady:!!landing?.ready,room:room.diagnostics(),landingRobot:landingRobot.diagnostics(),camera:camera.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles});
-Promise.all([createRobot(scene),siteIntro?Promise.resolve(null):import('./landing-morph.js').then(module=>module.createLandingMorph()),brandReady,room.ready]).then(async([r,l])=>{robot=r;landing=l;await landingRobot.prepare(robot);ready=true;document.querySelector('#loading').hidden=true;renderAtTime(0);parent.postMessage({type:'algolab:ready',instanceId:robot.root.uuid,rendererId},location.origin);}).catch(error=>{document.querySelector('#loading').textContent='No se pudo cargar la escena. Abre la demo desde el servidor local y recarga.';parent.postMessage({type:'algolab:error',message:String(error)},location.origin);console.error(error);});
+let warmTimer, warmIdle, warmDisposed=false;
+function warmLaterShots(){
+ const jobs=[()=>landingRobot.prepare(robot),()=>renderer.compileAsync(car,camera,scene),()=>renderer.compileAsync(consoleFit,camera,scene),()=>renderer.compileAsync(book,camera,scene),()=>renderer.compileAsync(vinyl,camera,scene),()=>renderer.compileAsync(code,camera,scene)];
+ const schedule=()=>{
+  if(warmDisposed||!jobs.length||document.hidden||!worldActive)return;
+  const work=()=>{warmIdle=undefined;if(warmDisposed||document.hidden||!worldActive)return;Promise.resolve().then(jobs.shift()).catch(error=>console.warn('Optional shader warmup failed',error)).finally(()=>{if(!warmDisposed)warmTimer=setTimeout(schedule,120);});};
+  if(typeof requestIdleCallback==='function')warmIdle=requestIdleCallback(work,{timeout:500});else warmTimer=setTimeout(work,50);
+ };
+ // Let the first real frame and the soundtrack start before preparing props
+ // that will not enter the story for several more seconds.
+ warmTimer=setTimeout(schedule,250);
+}
+addEventListener('pagehide',()=>{warmDisposed=true;clearTimeout(warmTimer);if(warmIdle!==undefined&&typeof cancelIdleCallback==='function')cancelIdleCallback(warmIdle);});
+Promise.all([createRobot(scene),siteIntro?Promise.resolve(null):import('./landing-morph.js').then(module=>module.createLandingMorph()),brandReady,room.ready]).then(([r,l])=>{robot=r;landing=l;ready=true;document.querySelector('#loading').hidden=true;renderAtTime(0);performance.mark('algolab:intro:first-frame');parent.postMessage({type:'algolab:ready',instanceId:robot.root.uuid,rendererId},location.origin);warmLaterShots();}).catch(error=>{document.querySelector('#loading').textContent='No se pudo cargar la escena. Abre la demo desde el servidor local y recarga.';parent.postMessage({type:'algolab:error',message:String(error)},location.origin);console.error(error);});
 function loop(now){if(last===null)last=now;const dt=Math.min((now-last)/1000,.1);last=now;if(ready&&embeddedLanding&&embeddedVisible&&!document.hidden&&now-lastLandingFrame>=33){renderAtTime(20);lastLandingFrame=now;}if(ready&&playing){time=soundtrack.time(Math.min(time+dt,DURATION));renderAtTime(time);if(time>=DURATION){playing=false;soundtrack.sync();sync();}}requestAnimationFrame(loop);}requestAnimationFrame(loop);
 
 
@@ -349,6 +363,7 @@ function embeddedAnchors(){
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==parent||!event.data)return;
  const data=event.data;
+ if(data.type==='algolab:hello'&&ready)parent.postMessage({type:'algolab:ready',instanceId:robot.root.uuid,rendererId},location.origin);
  if(data.target&&[data.target.x,data.target.y,data.target.height].every(Number.isFinite))embeddedTarget=data.target;
  if(data.type==='algolab:render'&&ready){setWorldActive(true);embeddedLanding=false;window.__renderAtTime(Number(data.time)||0);parent.postMessage({type:'algolab:frame',time,anchors:embeddedAnchors(),instanceId:robot.root.uuid,rendererId},location.origin);}
  if(data.type==='algolab:land'&&ready){embeddedLanding=true;landingStarted=performance.now();landingBehavior.reset(landingStarted);window.__renderAtTime(20);setWorldActive(false);}

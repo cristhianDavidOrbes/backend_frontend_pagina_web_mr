@@ -5,11 +5,15 @@
  <meta name="viewport" content="width=device-width,initial-scale=1">
  <title>Personaje continuo de AlgoLab</title>
  <style>:root{color-scheme:dark}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}#support{display:none}</style>
+ <link rel="modulepreload" href="/intro-scene/runtime/film-NAYMBHJA.js">
+ <link rel="preload" href="/intro-scene/runtime/robot-38328fd7dc6c.glb" as="fetch" crossorigin="anonymous">
+ <link rel="preload" href="/intro-scene/runtime/landscape-edd3336b92e0.jpg" as="image">
+ <link rel="preload" href="/intro-scene/runtime/brand-978871bc6266.png" as="image">
  <script type="importmap">{"imports":{"three":"./assets/vendor/three.module.js"}}</script>
 </head>
 <body>
  <canvas id="filmCanvas" aria-label="Robot 3D de AlgoLab"></canvas>
  <div id="support" hidden><div id="player"></div><div id="loading"></div><button id="play"></button><button id="restart"></button><button id="sound"></button><button id="full"></button><input id="seek" type="range" min="0" max="20" step=".01"><input id="reduced" type="checkbox"><output id="time"></output></div>
- <script type="module" src="./src/film.js"></script>
+ <script type="module" src="/intro-scene/runtime/film-NAYMBHJA.js"></script>
 </body>
 </html>

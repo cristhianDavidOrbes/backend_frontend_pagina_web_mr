@@ -67,6 +67,16 @@
 
 html { background: rgb(var(--bg)); -webkit-text-size-adjust: 100%; }
 
+/* The parser starts the intro before React takes over. Lock scrolling from
+   that first visible frame too, so the native scrollbar cannot leave a strip
+   beside the panels. Removing data-playing automatically restores the page. */
+html:has([data-intro-scene-layer][data-playing]),
+html:has([data-intro-scene-layer][data-playing]) body {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+  overscroll-behavior: none;
+}
+
 body {
   position: relative;
   margin: 0;

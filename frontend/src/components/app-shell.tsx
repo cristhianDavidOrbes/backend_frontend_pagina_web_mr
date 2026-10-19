@@ -1,5 +1,7 @@
 "use client";
 
+import "@/app/shell.css";
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
