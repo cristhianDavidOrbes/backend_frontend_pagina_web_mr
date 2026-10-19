@@ -21,8 +21,6 @@ type Step = {
   effect?: CompanionFrame["effect"]; carried?: SceneryKind; place?: PlacedScenery;
   /** Returns a thrown toy to its original slot. */
   restore?: Restore;
-  /** Ballistic flight (px/s) used when the robot itself is thrown. */
-  ballistic?: Point;
 };
 
 /* ------------------------------------------------------------------------ */
@@ -46,6 +44,14 @@ type ToyMaterial = { restitution: number; friction: number; drag: number; rolls:
 
 const TOY_GRAVITY = 2200;
 const ROBOT_GRAVITY = 2600;
+/** Matches the 150px visible body inside the 220 × 190px companion canvas. */
+export const AUTH_ROBOT_CENTRE_ABOVE_FEET = 75;
+export function authRobotHalfExtents(rotation: number, squash = 1) {
+  const angle = rotation * Math.PI / 180;
+  const width = 44 / Math.sqrt(squash), height = 75 * squash;
+  return { x: Math.abs(Math.cos(angle)) * width + Math.abs(Math.sin(angle)) * height,
+    y: Math.abs(Math.sin(angle)) * width + Math.abs(Math.cos(angle)) * height };
+}
 const MAX_THROW = 2600;
 /** Hands are roughly this far above the feet when reaching up. */
 const HAND_HEIGHT = 135;
@@ -64,14 +70,7 @@ const MATERIALS: Record<SceneryKind, ToyMaterial> = {
   picture: { restitution: 0.15, friction: 5, drag: 0.9, rolls: false, spin: 1.5, gravity: 0.8 },
 };
 const wrapDegrees = (angle: number) => ((angle % 360) + 540) % 360 - 180;
-/** Reflects a coordinate between two walls, like a billiard ball. */
-function reflect(value: number, min: number, max: number) {
-  const span = max - min;
-  if (span <= 0) return min;
-  let p = (value - min) % (2 * span);
-  if (p < 0) p += 2 * span;
-  return min + (p > span ? 2 * span - p : p);
-}
+type RobotFlight = { vx: number; vy: number; spin: number; bounces: number; impact: number; groundImpact: boolean };
 
 /** A tiny, deterministic 2D physics world for thrown props. */
 export class ToyBox {
@@ -339,6 +338,7 @@ export class AuthRobotMotion {
   private pokes = 0;
   private chase: Chase | null = null;
   private squashVelocity = 0;
+  private flight: RobotFlight | null = null;
 
   setGeometry(next: RobotGeometry) {
     if (![next.home.x, next.home.y, next.left, next.right, next.top, next.bottom, next.width, next.height].every(Number.isFinite)
@@ -348,6 +348,9 @@ export class AuthRobotMotion {
     this.toys.setBounds(next.width, next.height);
     if (previous && this.deposited.length) this.reflowScenery();
     if (!previous || this.frame.pose === "sit") this.home();
+    // Scroll/address-bar/font measurements must not replace a live throw with
+    // the scripted return route. The next physics step uses the new bounds.
+    else if (this.flight) return;
     // A running game keeps going through scrolls and small layout changes.
     else if (this.chase && !this.steps.length) this.frame.x = clamp(this.frame.x, 30, next.width - 30);
     else if (this.frame.pose !== "held") this.returnHome();
@@ -364,6 +367,7 @@ export class AuthRobotMotion {
     this.dropCarried();
     Object.assign(this.frame, this.geometry.home, frameDefaults, { pose: "sit", scene: "reposo" });
     this.steps = [];
+    this.flight = null;
     this.chase = null;
     this.squashVelocity = 0;
     this.elapsed = this.idle = 0;
@@ -373,6 +377,7 @@ export class AuthRobotMotion {
     if (!this.geometry) return;
     this.dropCarried();
     this.steps = [];
+    this.flight = null;
     this.chase = null;
     this.squashVelocity = 0;
     Object.assign(this.frame, frameDefaults, { pose: "held", scene: "arrastrando" });
@@ -390,10 +395,10 @@ export class AuthRobotMotion {
   drop(edge?: ExitEdge, velocity?: Point) {
     if (this.frame.pose !== "held") return;
     const g = this.geometry!;
-    if (this.reducedMotion || (!edge && distance(this.frame, g.home) < 18)) return this.home();
+    const speed = velocity ? Math.hypot(velocity.x, velocity.y) : 0;
+    if (this.reducedMotion || (!edge && distance(this.frame, g.home) < 18 && !(speed > 700))) return this.home();
     const exit = edge ?? this.exitedEdge();
     if (exit) return this.driveBack(exit);
-    const speed = velocity ? Math.hypot(velocity.x, velocity.y) : 0;
     if (velocity && Number.isFinite(speed) && speed > 700) return this.fling(velocity, speed);
     const floor = this.floor();
     const landing = { x: clamp(this.frame.x, 38, g.width - 38), y: floor };
@@ -433,6 +438,7 @@ export class AuthRobotMotion {
   returnHome() {
     const g = this.geometry;
     if (!g) return;
+    this.flight = null;
     this.dropCarried();
     this.chase = null;
     if (this.reducedMotion || distance(this.frame, g.home) < 18) return this.home();
@@ -521,6 +527,7 @@ export class AuthRobotMotion {
     this.toys.step(dt);
     if (this.frame.pose === "held") return this.frame;
     this.updateSquash(dt);
+    if (this.flight) { this.tickFlight(dt); return this.frame; }
     if (this.chase && !this.steps.length) { this.tickChase(dt); return this.frame; }
     const step = this.steps[0];
     if (!step) {
@@ -537,20 +544,12 @@ export class AuthRobotMotion {
     }
     this.elapsed += dt;
     const t = Math.min(this.elapsed / step.duration, 1);
-    if (step.ballistic) {
-      const g = this.geometry;
-      const time = Math.min(this.elapsed, step.duration);
-      this.frame.x = t === 1 ? step.to.x : reflect(this.origin.x + step.ballistic.x * time, 38, g.width - 38);
-      this.frame.y = t === 1 ? step.to.y : Math.min(step.to.y, this.origin.y + step.ballistic.y * time + 0.5 * ROBOT_GRAVITY * time * time);
-      this.frame.rotation = this.originRotation + ((step.rotation ?? 0) - this.originRotation) * t;
-    } else {
-      const linear = ["walk", "run", "tiptoe", "pull", "push", "drive", "carry"].includes(step.pose);
-      const progress = step.pose === "fall" ? t * t : linear ? t : t * t * (3 - 2 * t);
-      this.frame.x = this.origin.x + (step.to.x - this.origin.x) * progress;
-      this.frame.y = this.origin.y + (step.to.y - this.origin.y) * progress - Math.sin(t * Math.PI) * (step.arc ?? 0);
-      if (step.pose === "tumble") this.frame.rotation = (step.rotation ?? 360) * t;
-      else this.frame.rotation = this.originRotation + ((step.rotation ?? 0) - this.originRotation) * progress;
-    }
+    const linear = ["walk", "run", "tiptoe", "pull", "push", "drive", "carry"].includes(step.pose);
+    const progress = step.pose === "fall" ? t * t : linear ? t : t * t * (3 - 2 * t);
+    this.frame.x = this.origin.x + (step.to.x - this.origin.x) * progress;
+    this.frame.y = this.origin.y + (step.to.y - this.origin.y) * progress - Math.sin(t * Math.PI) * (step.arc ?? 0);
+    if (step.pose === "tumble") this.frame.rotation = (step.rotation ?? 360) * t;
+    else this.frame.rotation = this.originRotation + ((step.rotation ?? 0) - this.originRotation) * progress;
     if (t === 1) {
       if (step.place) this.place(step.place);
       if (step.restore) this.restore(step.restore);
@@ -796,25 +795,78 @@ export class AuthRobotMotion {
 
   private fling(velocity: Point, speed: number) {
     const g = this.geometry!;
-    const floor = this.floor();
     const scale = Math.min(1, 2200 / speed) * 0.9;
-    const vx = velocity.x * scale;
-    const vy = velocity.y * scale;
-    const drop = Math.max(0, floor - this.frame.y);
-    const time = clamp((vy + Math.sqrt(vy * vy + 2 * ROBOT_GRAVITY * drop)) / ROBOT_GRAVITY, 0.25, 2.2);
-    const landing = { x: reflect(clamp(this.frame.x, 38, g.width - 38) + vx * time, 38, g.width - 38), y: floor };
-    const turns = Math.max(1, Math.min(3, Math.round(speed / 1100)));
-    const roll = { x: clamp(landing.x + (vx > 0 ? -26 : 26), 38, g.width - 38), y: floor };
-    this.frame.x = clamp(this.frame.x, 38, g.width - 38);
-    this.frame.scene = "lanzamiento";
+    this.steps = [];
+    this.idle = 0;
+    this.flight = { vx: velocity.x * scale, vy: velocity.y * scale,
+      spin: (velocity.x < 0 ? -1 : 1) * clamp(speed * .32, 240, 720), bounces: 0, impact: 0, groundImpact: false };
+    this.frame.x = clamp(this.frame.x, 86, g.width - 86);
+    this.frame.y = clamp(this.frame.y, 161, this.floor());
+    Object.assign(this.frame, { pose: "fall", scene: "lanzamiento", layer: "behind", rotation: 0, squash: 1 });
+  }
+
+  /** Real damped collisions, not a timed flight that snaps to its landing. */
+  private tickFlight(dt: number) {
+    if (!dt) return;
+    const flight = this.flight!;
+    const g = this.geometry!;
+    const count = Math.max(1, Math.ceil(dt * 120)), h = dt / count;
+    for (let index = 0; index < count; index++) {
+      flight.impact = Math.max(0, flight.impact - h);
+      flight.vx *= Math.exp(-.2 * h);
+      flight.vy += ROBOT_GRAVITY * h;
+      this.frame.rotation += flight.spin * h;
+      this.frame.x += flight.vx * h;
+      let centreY = this.frame.y - AUTH_ROBOT_CENTRE_ABOVE_FEET + flight.vy * h;
+      const extent = authRobotHalfExtents(this.frame.rotation, this.frame.squash);
+      if (this.frame.x < extent.x + 4 || this.frame.x > g.width - extent.x - 4) {
+        const left = this.frame.x < extent.x + 4;
+        this.frame.x = left ? extent.x + 4 : g.width - extent.x - 4;
+        if (left ? flight.vx < 0 : flight.vx > 0) {
+          flight.vx *= -.62;
+          flight.spin *= -.75;
+          flight.impact = .12;
+          flight.groundImpact = false;
+        }
+      }
+      if (centreY < extent.y + 4) {
+        centreY = extent.y + 4;
+        if (flight.vy < 0) { flight.vy *= -.55; flight.impact = .12; flight.groundImpact = false; }
+      }
+      if (centreY + extent.y >= this.floor()) {
+        centreY = this.floor() - extent.y;
+        if (flight.vy > 0) {
+          const speed = flight.vy;
+          flight.bounces++;
+          flight.impact = .14;
+          flight.groundImpact = true;
+          flight.vx *= .72;
+          flight.spin *= .62;
+          if (speed < 190 && Math.abs(flight.vx) < 90) {
+            this.frame.y = centreY + AUTH_ROBOT_CENTRE_ABOVE_FEET;
+            this.finishFlight();
+            return;
+          }
+          flight.vy = -speed * .52;
+        }
+      }
+      this.frame.y = centreY + AUTH_ROBOT_CENTRE_ABOVE_FEET;
+    }
+    this.frame.pose = flight.impact > 0 && flight.groundImpact ? "bonk" : flight.bounces ? "tumble" : "fall";
+    this.frame.effect = flight.impact > 0 ? "impact" : null;
+  }
+
+  private finishFlight() {
+    const landing = { x: this.frame.x, y: this.floor() };
+    this.flight = null;
+    // Equivalent angle: stand up by the shortest turn, never rewind full spins.
+    this.frame.rotation = wrapDegrees(this.frame.rotation);
     this.play([
-      { to: landing, duration: time, pose: "fall", ballistic: { x: vx, y: vy }, rotation: (vx >= 0 ? 360 : -360) * turns, layer: "behind" },
-      { to: landing, duration: 0.55, pose: "bonk", effect: "impact", layer: "behind" },
-      { to: roll, duration: 0.65, pose: "tumble", rotation: vx > 0 ? -360 : 360, layer: "behind" },
-      { to: roll, duration: 0.85, pose: "dizzy", effect: "stars", layer: "behind" },
-      { to: roll, duration: 1.1, pose: "getup", layer: "behind" },
-      ...this.recoveryDetour(roll),
-      ...this.arriveSteps(roll),
+      { to: landing, duration: .35, pose: "bonk", effect: "impact", layer: "behind" },
+      { to: landing, duration: .85, pose: "dizzy", effect: "stars", layer: "behind" },
+      { to: landing, duration: 1.1, pose: "getup", layer: "behind" },
+      ...this.recoveryDetour(landing),
+      ...this.arriveSteps(landing),
     ]);
   }
 
@@ -956,6 +1008,7 @@ export class AuthRobotMotion {
   }
 
   private play(steps: Step[]) {
+    this.flight = null;
     this.steps = steps;
     this.idle = 0;
     this.beginStep();

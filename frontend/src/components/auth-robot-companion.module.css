@@ -1,5 +1,5 @@
 .layer { position: fixed; inset: 0; z-index: 30; overflow: hidden; pointer-events: none; visibility: hidden; }
-.actor { position: absolute; top: 0; left: 0; width: 220px; height: 190px; will-change: transform; transform-origin: 50% 85%; }
+.actor { position: absolute; top: 0; left: 0; width: 220px; height: 190px; will-change: transform; transform-origin: 50% 50%; }
 .backdrop { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; visibility: hidden; }
 .backdrop[hidden] { display: none; }
 .gloom { position: fixed; inset: 0; z-index: 20; pointer-events: none; visibility: hidden; background: radial-gradient(ellipse at 50% 30%, #04050799, #000e 75%); box-shadow: inset 0 0 160px 55px #000; animation: gloomArrival 700ms ease-in-out both; }
