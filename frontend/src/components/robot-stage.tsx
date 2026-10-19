@@ -159,7 +159,7 @@ function RobotPoster({ visible, reaction, reactionId, pose, facing, animated, ha
       ref={poster}
       style={pose === "haunted" ? { transition: reduceMotion ? "none" : "opacity 100ms ease" } : undefined}
     >
-      <svg viewBox="0 0 360 500" role="presentation">
+      <svg width="360" height="500" viewBox="0 0 360 500" preserveAspectRatio="xMidYMid meet" role="presentation">
         <defs>
           <linearGradient id={`${gradientId}-body`} x1="0" x2="1" y1="0" y2="1">
             <stop offset="0" stopColor="#b6efff" />
@@ -1169,7 +1169,7 @@ export function RobotStage({ signal = null, presence = "hero", draggable = true,
         </WebGLErrorBoundary>
       ) : null}
       {mode === "checking" || mode === "loading" ? (
-        <span className="robot-stage-loading" role="status">
+        <span className="robot-stage-status" role="status">
           Preparando el robot…
         </span>
       ) : null}

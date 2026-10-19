@@ -40,7 +40,20 @@
 .hero-mascot { position: relative; order: 2; }
 @media (min-width: 940px) { .hero-mascot { order: 0; } }
 .hero-stage { position: relative; height: clamp(340px, 46vw, 560px); }
-.hero-stage .robot-stage { position: absolute; inset: 0; }
+.hero-stage .robot-stage { position: absolute; inset: 0; min-width: 0; min-height: 0; }
+/* The loading SVG must use the reserved stage, never an intrinsic grid track.
+   Percentage height + auto width in that track briefly produced a huge,
+   off-centre drawing on narrow screens before the canvas fitted itself. */
+.hero-stage .robot-poster { display: block; padding: 0; }
+.hero-stage .robot-poster svg {
+  position: absolute;
+  top: 6%;
+  left: 10%;
+  width: 80%;
+  height: 88%;
+  max-width: 80%;
+  max-height: 88%;
+}
 .hero-copy { text-align: center; }
 @media (min-width: 940px) { .hero-copy { text-align: left; } }
 .hero-copy .lead { max-width: 30rem; margin-inline: auto; }

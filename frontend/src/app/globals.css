@@ -707,7 +707,7 @@ select.field-input {
 }
 .robot-stage canvas { cursor: grab; }
 .robot-stage canvas:active { cursor: grabbing; }
-.robot-stage-loading {
+.robot-stage-status {
   position: absolute;
   left: 50%;
   bottom: 6%;
