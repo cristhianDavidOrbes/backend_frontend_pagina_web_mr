@@ -50,14 +50,16 @@ try {
     check(await page.locator("audio[data-intro-soundtrack]").evaluate(a => a.currentTime === 0 && a.paused), `${name}: controls cannot start playback before opening`);
     await page.screenshot({ path: path.join(output, name + "-closed.png") });
     release();
-    await page.waitForFunction(() => document.querySelector('[data-intro-panel="top"]')?.getAnimations().some(a => a.currentTime > 250));
+    await page.waitForFunction(() => document.querySelector('[data-intro-panel="top"]')?.getAnimations().some(a => a.currentTime > 250)
+      && document.querySelector('audio[data-intro-soundtrack]')?.currentTime > .05
+      && document.querySelector('[data-intro-scene]')?.contentWindow.__continuityDiagnostics?.().time > 0);
     const motion = await page.evaluate(() => {
       const top = document.querySelector('[data-intro-panel="top"]'), bottom = document.querySelector('[data-intro-panel="bottom"]');
       return { duration: top.getAnimations()[0]?.effect.getTiming().duration, easing: getComputedStyle(top).animationTimingFunction, top: new DOMMatrix(getComputedStyle(top).transform).m42, bottom: new DOMMatrix(getComputedStyle(bottom).transform).m42, audio: document.querySelector('audio[data-intro-soundtrack]').currentTime, sceneTime: document.querySelector('[data-intro-scene]').contentWindow.__continuityDiagnostics().time };
     });
     check(motion.duration === 1000 && motion.easing.includes("0.87"), `${name}: exact one-second exponential-style easing`);
     check(motion.top < 0 && motion.bottom > 0, `${name}: panels move in opposite vertical directions`);
-    check(motion.audio > .05 && motion.sceneTime > 0 && Math.abs(motion.audio - motion.sceneTime) < .25, `${name}: film and sound play together while panels open`);
+    check(motion.audio > .05 && motion.sceneTime > 0 && Math.abs(motion.audio - motion.sceneTime) < .25, `${name}: film and sound play together while panels open (${JSON.stringify(motion)})`);
     await page.screenshot({ path: path.join(output, name + "-opening.png") });
     await curtain.waitFor({ state: "hidden" });
     check(await page.locator('audio[data-intro-soundtrack]').evaluate((a, earlier) => a.currentTime > earlier && !a.paused, motion.audio), `${name}: opening finishes without restarting or pausing the film`);

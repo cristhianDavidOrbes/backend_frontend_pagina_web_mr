@@ -7,6 +7,7 @@ import { createLandingRobotPass } from './landing-robot.js';
 import { createLandingBehavior } from './landing-behavior.js';
 import { renderQuality } from './render-quality.js';
 import { carDeparture, EXIT_APPROACH, EXIT_ARC } from './prop-motion.js';
+import { DOOR_MOUNT, doorPose } from './door-motion.js';
 
 const DURATION = 20;
 // Preserve the authored pacing on a twenty-second public timeline.
@@ -78,8 +79,8 @@ function textPlane(parent,w,h,pos,texture){const m=new THREE.Mesh(new THREE.Plan
 // remain recognizable while fittings unfold, lock in and park in the same room.
 const shell=new THREE.Group();scene.add(shell);
 shell.name='original-book-and-door';
-rounded(shell,[1,1,.12],[0,0,0],materials.mint,.045);
-rounded(shell,[.18,.08,.035],[.38,.42,.075],materials.gold,.015);
+const coverPanel=rounded(shell,[1,1,.12],[0,0,0],materials.mint,.045);
+const coverCorner=rounded(shell,[.18,.08,.035],[.38,.42,.075],materials.gold,.015);
 const inset=rounded(shell,[.78,.76,.025],[0,0,.074],mat('#2ead87'),.025);
 const handle=new THREE.Group();shell.add(handle);
 cylinder(handle,.045,.12,[.34,-.03,.16],materials.gold);
@@ -95,13 +96,8 @@ const brandReady=new THREE.TextureLoader().loadAsync(new URL('../assets/algolab-
 
 // Door frames are hollow, so the robot and background remain visible through them.
 const doors=new THREE.Group();scene.add(doors);
-function doorFrame(x,color){const g=new THREE.Group();g.position.x=x;doors.add(g);rounded(g,[.1,2.45,.19],[-.6,1.225,0],materials.dark);rounded(g,[.1,2.45,.19],[.6,1.225,0],materials.dark);rounded(g,[1.3,.12,.19],[0,2.45,0],materials.dark);rounded(g,[1.35,.07,.45],[0,.035,0],materials.chrome);return g;}
-const firstDoor=doorFrame(0,materials.mint);
-const second=doorFrame(1.6,materials.cyan);
-const leaf=new THREE.Group();leaf.position.set(-.55,.06,.05);second.add(leaf);
-rounded(leaf,[1.1,2.3,.12],[.55,1.15,0],materials.cyan);
-rounded(leaf,[.68,.6,.035],[.55,1.68,.08],mat('#c9ece7',.3,.17));
-rounded(leaf,[.065,.28,.1],[.95,1.02,.1],materials.gold);
+function doorFrame(){const g=new THREE.Group();doors.add(g);rounded(g,[.1,2.45,.19],[-.6,1.225,0],materials.dark);rounded(g,[.1,2.45,.19],[.6,1.225,0],materials.dark);rounded(g,[1.3,.12,.19],[0,2.45,0],materials.dark);rounded(g,[1.35,.07,.45],[0,.035,0],materials.chrome);return g;}
+const firstDoor=doorFrame();
 // The original book is the first door leaf; there is no replacement panel.
 const doorCenter=new THREE.Vector3(0,1.22,.05);
 
@@ -118,6 +114,10 @@ const consoleGood=diagramTexture('console',true);
 
 // A real bound book: page block, back cover, spine and a hinged front cover.
 const book=new THREE.Group();scene.add(book);
+// A later book is separate: the original guide remains the room's door.
+// Reuse the small geometries/materials; there is no new asset or second door.
+const laterBookCover=new THREE.Group();scene.add(laterBookCover);
+laterBookCover.add(coverPanel.clone(),coverCorner.clone(),bookBadge.clone());
 const bookCoverPose=new THREE.Object3D();
 let bookCoverAngle=0;
 rounded(book,[1.0,1.4,.08],[0,0,-.2],materials.dark,.025);
@@ -187,7 +187,7 @@ const robotKeys=[
 const carKeys=[[0,[.8,-1.55,.28],[0]],[8.05,[.8,-1.55,.28],[0]],[8.7,[1.5,-1.55,-.15],[Math.PI/2]],[9.4,[1.5,-1.55,-3.05],[Math.PI/2]],[20,[1.5,-1.55,-3.05],[Math.PI/2]]];
 const chapters=[
  {start:0,end:2.5,title:'Tu cuarto. Nuevas posibilidades.',sub:'Realidad mixta · lo virtual vive en tu espacio'},
- {start:2.5,end:5.5,title:'Una clase. Objetos con vida propia.',sub:'Clases y objetos · cada puerta conserva su estado'},
+ {start:2.5,end:5.5,title:'Una clase. Objetos con vida propia.',sub:'Clases y objetos · el libro se convierte en la puerta del cuarto'},
  {start:5.5,end:8.8,title:'Elige las piezas. Construye tu idea.',sub:'Construcción de objetos · del diseño a la acción'},
  {start:8.8,end:12.3,title:'Controla las acciones. Protege el interior.',sub:'Encapsulamiento · cargar, enfriar y apagar'},
  {start:12.3,end:15.2,title:'Descubre lo que importa.',sub:'Abstracción · selecciona según tu objetivo'},
@@ -218,27 +218,23 @@ function renderAtTime(t){
  const s=track(shellKeys,anim);fit(shell,...s);
  // No loose green slab between scenes: the cover exists only as an actual
  // book or door. Vehicle, controls and code each have their own fitted body.
- const coverPresence=anim<6.15?1:phase(anim,12.0,12.7)*(1-phase(anim,14.45,15.35));
- shell.scale.multiplyScalar(Math.max(.001,coverPresence));
- shell.visible=coverPresence>.001;
- const guide=1-phase(anim,2.1,2.75);openingBook.scale.z=Math.max(.001,guide);bookBadge.scale.setScalar(Math.max(.001,guide));
- const doorMode=anim<6.15?phase(anim,2.15,2.9):0;
+ shell.visible=true;
+ const guide=1-phase(anim,2.1,2.75);openingBook.scale.z=Math.max(.001,guide);openingBook.visible=guide>.001;bookBadge.scale.setScalar(Math.max(.001,guide));
+ const doorMode=phase(anim,2.15,2.9);
  handle.scale.setScalar(Math.max(.001,doorMode));
  inset.scale.setScalar(Math.max(.001,doorMode));
- const opening=phase(anim,2.3,3.05);const parking=phase(anim,5.1,6.15);
- // Carry the closed doors away as a rigid assembly, rather than shrinking one
- // leaf and growing a lookalike inside its frame. This is deterministic on seek.
- doors.position.set(mix(.6,12,parking),-1.5,mix(0,-1.4,parking));
- doors.scale.set(Math.max(.001,opening),Math.max(.001,opening),1);
- doors.rotation.set(0,-parking*.35,-parking*.12);
- doors.visible=opening>.001&&anim<6.15;
- if(anim>=5.1&&anim<6.15){
+ const door=doorPose(anim);
+ doors.position.set(...door.position);
+ doors.scale.set(Math.max(.001,door.growth),Math.max(.001,door.growth),1);
+ doors.rotation.set(0,door.yaw,0);
+ doors.visible=door.growth>.001;
+ if(anim>=3.05){
   doors.updateMatrixWorld(true);
+  doorCenter.set(-.55+.55*Math.cos(door.angle),1.22,.05-.55*Math.sin(door.angle));
   shell.position.copy(doorCenter).applyMatrix4(firstDoor.matrixWorld);
-  shell.rotation.copy(doors.rotation);
+  shell.rotation.set(0,door.yaw+door.angle,0);
   shell.scale.set(1.1,2.3,1);
  }
- leaf.rotation.y=-phase(anim,3.6,4.35)*1.15+parking*1.15;
  // The robot gives its creation a push. It turns, accelerates and actually crosses the wall opening at 9.4s.
  const assemble=phase(anim,5.7,6.2),cp=track(carKeys,anim),departure=carDeparture(anim);car.position.set(...cp[0]);car.rotation.y=cp[1][0];car.scale.setScalar(Math.max(.001,assemble));
  if(anim>=9.4){car.position.set(departure.x,-1.55,departure.z);car.rotation.y=departure.yaw;}
@@ -251,7 +247,7 @@ function renderAtTime(t){
  wheels.forEach((w,i)=>{const p=phase(anim,6.1+i*.1,6.85+i*.1),[x,y,z]=w.userData.target;w.position.set(x,y+Math.sin(p*Math.PI)*.25,z+Math.sign(z)*(1-p)*1.1);w.rotation.z=-((anim>=9.4?3.33+departure.distance:.28-car.position.z))/.3;w.rotation.y=x>0?steering:0;w.scale.setScalar(Math.max(.001,p));});
  // Controls lock onto the shell, then retract into the binding as it becomes a book.
  const controlP=phase(anim,8.65,9.2)*(1-phase(anim,11.9,12.6));
- consoleFit.position.copy(shell.position);consoleFit.rotation.copy(shell.rotation);consoleFit.scale.setScalar(Math.max(.001,controlP));
+ consoleFit.position.set(...s[0]);consoleFit.rotation.set(...s[1]);consoleFit.scale.setScalar(Math.max(.001,controlP));
  consoleFit.visible=controlP>.001;
  const footY=-1.55-consoleFit.position.y;consoleFoot.position.y=footY+.03;consoleStem.position.y=(footY-.6)/2;consoleStem.scale.y=Math.max(.05,(-.6-footY)/.7);
  const press= Math.sin(phase(anim,10.4,11.0)*Math.PI);buttons[0].position.z=.15-press*.06;
@@ -260,16 +256,16 @@ function renderAtTime(t){
  book.position.set(mix(.75,1,parkBook),mix(-.03,.05,parkBook),mix(.19,.02,parkBook));
  book.rotation.set(mix(-.1,0,parkBook),mix(-.3,-.15,parkBook),mix(-.05,0,parkBook));book.scale.setScalar(Math.max(.001,bookP*(1-parkBook)));
  book.visible=bookP*(1-parkBook)>.001;
- // Hinge the original cover at the spine. Closing, movement and shrink all use
+ // Hinge this later book's cover at its spine. Closing, movement and shrink use
  // the body's single transform, so no separate green strip crosses the pages.
  bookCoverAngle=-1.05*phase(anim,13,13.9)*(1-phase(anim,14.05,14.6));
+ laterBookCover.visible=book.visible;
  if(anim>=12&&anim<15.35){
   bookCoverPose.position.set(-.48+.48*Math.cos(bookCoverAngle)+.045*Math.sin(bookCoverAngle),0,.06-.48*Math.sin(bookCoverAngle)+.045*Math.cos(bookCoverAngle));
   bookCoverPose.rotation.set(0,bookCoverAngle,0);bookCoverPose.scale.set(1,1.4,1);bookCoverPose.updateMatrix();
   book.updateMatrixWorld(true);
-  shell.matrix.multiplyMatrices(book.matrixWorld,bookCoverPose.matrix);
-  shell.matrix.decompose(shell.position,shell.quaternion,shell.scale);
-  shell.visible=book.visible;
+  laterBookCover.matrix.multiplyMatrices(book.matrixWorld,bookCoverPose.matrix);
+  laterBookCover.matrix.decompose(laterBookCover.position,laterBookCover.quaternion,laterBookCover.scale);
  }
  const vinylP=phase(anim,12.4,13.2);vinyl.position.set(mix(2.05,s[0][0],parkBook),mix(.0,s[0][1],parkBook)+Math.sin(parkBook*Math.PI)*.4,mix(.05,s[0][2]-.08,parkBook));vinyl.rotation.set(0,mix(-.3,Math.PI*2,parkBook),Math.sin(anim*1.6)*.025);vinyl.scale.setScalar(Math.max(.001,vinylP*(1-parkBook)));
  vinyl.visible=vinylP*(1-parkBook)>.001;
@@ -285,7 +281,8 @@ function renderAtTime(t){
  robot.update(actingTime,{x:rp[0][0],y:rp[0][1],z:rp[0][2],yaw:rp[1][0],walk:moving,reach,wave:embeddedLanding?0:pulse(anim,18,19.5),lookX:mix(.5,-.3,surprise),lookY:pulse(anim,1.6,2.8)*.3,headTilt:pulse(anim,12.5,13.5)*.3,lean:reach*.07,crouch,jump,surprise,celebrate,push:pulse(anim,7.7,8.6),run:pulse(anim,8.6,9.75),...(embeddedLanding?landingPose:{})});
  // Keep this very same 3D object throughout the move into the landing page.
  robot.root.visible=true;
- const ray=interactionGeometry.attributes.position;ray.setXYZ(0,rp[0][0]+.42,rp[0][1]+1.4,rp[0][2]+.3);ray.setXYZ(1,shell.position.x,shell.position.y,shell.position.z+.15);ray.needsUpdate=true;interactionGeometry.computeBoundingSphere();interactionRay.material.opacity=reach*.55;}
+ const target=anim<5.7?shell.position:anim<8.65?car.position:anim<12?consoleFit.position:anim<15.35?laterBookCover.position:code.position;
+ const ray=interactionGeometry.attributes.position;ray.setXYZ(0,rp[0][0]+.42,rp[0][1]+1.4,rp[0][2]+.3);ray.setXYZ(1,target.x,target.y,target.z+.15);ray.needsUpdate=true;interactionGeometry.computeBoundingSphere();interactionRay.material.opacity=reach*.55;}
  ctx.clearRect(0,0,WIDTH,HEIGHT);
  worldPasses=0;
  if(anim<19.08){
@@ -327,9 +324,9 @@ window.__propDiagnostics=()=>{
  };
  return {
   time,
-  door:{id:shell.uuid,frameId:firstDoor.uuid,frameCount:doors.children.length,visible:shell.visible,framesVisible:doors.visible,scale:shell.scale.toArray(),frameScale:doors.scale.toArray(),localCenter:firstDoor.worldToLocal(shell.position.clone()).toArray(),bounds:bounds(doors)},
+  door:{id:shell.uuid,frameId:firstDoor.uuid,frameCount:doors.children.length,visible:shell.visible,framesVisible:doors.visible,scale:shell.scale.toArray(),frameScale:doors.scale.toArray(),localCenter:firstDoor.worldToLocal(shell.position.clone()).toArray(),bounds:bounds(doors),position:doors.position.toArray(),yaw:doors.rotation.y,installed:doorPose(time).installed,mount:DOOR_MOUNT,angle:doorPose(time).angle,leafWorldMaxX:new THREE.Box3().setFromObject(coverPanel).max.x},
   car:{id:car.uuid,visible:car.visible,position:car.position.toArray(),yaw:car.rotation.y,wheelRoll:wheels[0].rotation.z,steering:wheels[2].rotation.y,bounds:bounds(car)},
-  book:{id:book.uuid,coverId:shell.uuid,visible:book.visible,coverVisible:shell.visible,scale:book.scale.x,coverScale:shell.scale.toArray(),hingeAngle:bookCoverAngle,coverLocal:book.worldToLocal(shell.position.clone()).toArray(),bounds:bounds(book)},
+  book:{id:book.uuid,coverId:laterBookCover.uuid,visible:book.visible,coverVisible:laterBookCover.visible,scale:book.scale.x,coverScale:laterBookCover.scale.toArray(),hingeAngle:bookCoverAngle,coverLocal:book.worldToLocal(laterBookCover.position.clone()).toArray(),bounds:bounds(book)},
  };
 };
 window.__introProjection=()=>{

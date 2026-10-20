@@ -24,13 +24,17 @@ try {
     const original=await sample(0);
     for(const t of [3.1,4.4,5.1,5.25,5.5,5.8,6.149]) {
       const d=await sample(t);
-      check(d.door.id===original.door.id&&d.door.frameId===original.door.frameId&&d.door.frameCount===2,`${name} ${t}s: same book/door and frame; no replacement leaf`);
+      check(d.door.id===original.door.id&&d.door.frameId===original.door.frameId&&d.door.frameCount===1,`${name} ${t}s: exactly one original book-door and frame; no blue door`);
       check(d.door.visible&&d.door.framesVisible&&d.door.scale.every((n,i)=>Math.abs(n-[1.1,2.3,1][i])<1e-8),`${name} ${t}s: original door stays full size`);
       if(t>=5.1)check(d.door.localCenter.every((n,i)=>Math.abs(n-[0,1.22,.05][i])<1e-8),`${name} ${t}s: door and frame move as one rigid object`);
       if([3.1,4.4,5.25,5.5].includes(t))await page.screenshot({path:path.join(output,`${name}-door-${t}.png`)});
     }
-    const leaving=await sample(6.149),gone=await sample(6.15);
-    check(offscreen(leaving.door.bounds)&&!gone.door.visible&&!gone.door.framesVisible,`${name}: doors only hide once the entire assembly has left the frame`);
+    for(const t of [6.15,6.5,7,8,10,12,15,17]) {
+      const d=await sample(t),door=d.door;
+      check(door.installed&&door.visible&&door.framesVisible&&door.id===original.door.id,`${name} ${t}s: original door remains installed, never parks offscreen`);
+      check(door.position.every((v,i)=>Math.abs(v-[door.mount.x,door.mount.y,door.mount.z][i])<1e-8)&&door.leafWorldMaxX<=6.45&&door.yaw===-Math.PI/2&&door.angle===0,`${name} ${t}s: closed and flush to the RIGHT wall, without crossing its inner face`);
+      if([6.5,10].includes(t))await page.screenshot({path:path.join(output,`${name}-door-mounted-${t}.png`)});
+    }
     let last;
     for(const t of [9.4,9.7,9.95,10.1,10.35,10.5,10.8,11.8]) {
       const d=await sample(t);
@@ -44,7 +48,7 @@ try {
     for(const t of [12.9,13.9,14.4,14.65,14.95,15.15,15.3]) {
       const d=await sample(t),book=d.book,a=book.hingeAngle;
       const local=[-.48+.48*Math.cos(a)+.045*Math.sin(a),0,.06-.48*Math.sin(a)+.045*Math.cos(a)];
-      check(book.coverId===original.door.id&&book.visible&&book.coverVisible,`${name} ${t}s: original cover stays with the physical book`);
+      check(book.coverId!==original.door.id&&book.visible&&book.coverVisible&&d.door.installed,`${name} ${t}s: later book has its own cover without stealing the installed door`);
       check(book.coverScale.every((n,i)=>Math.abs(n-book.scale*[1,1.4,1][i])<1e-8)&&book.coverLocal.every((n,i)=>Math.abs(n-local[i])<1e-8),`${name} ${t}s: binding, pages and cover share one scale and hinge`);
       check(book.scale<=bookScale,`${name} ${t}s: book contracts continuously without a second cover`);
       if(t>=14.65)check(Math.abs(a)<1e-8,`${name} ${t}s: book remains closed while it shrinks`);

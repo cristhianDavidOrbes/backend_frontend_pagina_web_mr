@@ -46,6 +46,8 @@ export function LandingIntro({ children }: { children: ReactNode }) {
   const lastSent = useRef(-1);
   const timeline = useRef(0);
   const lastTick = useRef<number | null>(null);
+  const audioSeek = useRef(false);
+  const audioPlayPending = useRef<HTMLAudioElement | null>(null);
 
   const send = useCallback((message: Record<string, unknown>) => {
     scene.current?.contentWindow?.postMessage(message, location.origin);
@@ -61,22 +63,28 @@ export function LandingIntro({ children }: { children: ReactNode }) {
   const beginClock = useCallback(() => {
     if (!ready.current || !revealPlaybackStarted.current || clockStarted.current) return;
     clockStarted.current = true;
-    timeline.current = 0; lastTick.current = null;
+    timeline.current = 0; lastTick.current = performance.now();
     if (!started.current) { started.current = true; markIntroSeen(); }
   }, []);
   const playSound = useCallback(() => {
     const element = video.current;
     if (!element || !ready.current || !revealPlaybackStarted.current || userPaused.current || document.hidden) return;
+    // Unmuting a running soundtrack must not seek/restart its decoder.
+    if ((!element.paused && !element.ended) || audioPlayPending.current === element) return;
     element.volume = .65;
     // Keep audio aligned even when autoplay was denied while the visual clock continued.
-    if (clockStarted.current && Math.abs(element.currentTime - timeline.current) > .15) element.currentTime = timeline.current;
+    if (clockStarted.current && Math.abs(element.currentTime - timeline.current) > .15) {
+      audioSeek.current = true;
+      element.currentTime = timeline.current;
+    }
+    audioPlayPending.current = element;
     void element.play().then(() => {
       if (video.current === element) { beginClock(); setAudioBlocked(false); }
     }).catch((error: unknown) => {
       if (video.current !== element) return;
       clearWaiting();
       if (!element.muted && error instanceof DOMException && error.name === "NotAllowedError") { setAudioBlocked(true); if (mediaReady.current) beginClock(); }
-    });
+    }).finally(() => { if (audioPlayPending.current === element) audioPlayPending.current = null; });
   }, [beginClock, clearWaiting]);
   const startRevealPlayback = useCallback(() => {
     if (!revealStarted.current || revealPlaybackStarted.current || revealDone.current) return;
@@ -240,10 +248,9 @@ export function LandingIntro({ children }: { children: ReactNode }) {
     function update(now: number) {
       if (lastTick.current === null) lastTick.current = now;
       if (clockStarted.current && !userPaused.current && !document.hidden) {
-        const audio = video.current;
-        // Once playing, audio is the master clock: slow frames or buffering cannot desync the film.
-        if (audio && !audio.paused) timeline.current = Math.min(20, audio.currentTime);
-        else timeline.current += (now - lastTick.current) / 1000;
+        // Decoding/seeking after enabling sound must never hold or rewind video.
+        // Audio is aligned on start/resume; this visual clock stays monotonic.
+        timeline.current += (now - lastTick.current) / 1000;
       }
       lastTick.current = now;
       const time = Math.min(20, timeline.current);
@@ -311,7 +318,11 @@ export function LandingIntro({ children }: { children: ReactNode }) {
           <div aria-describedby="intro-description" aria-label="Bienvenida a AlgoLab" aria-modal="true" className={styles.overlay} ref={dialog} role="dialog">
             <p className="sr-only" id="intro-description">Animación de 20 segundos con sonido. El robot transforma objetos en un cuarto de realidad mixta y permanece en la página de inicio. Puedes pausarla, silenciar el sonido u omitirla.</p>
             <audio aria-hidden className={styles.clock} data-intro-soundtrack muted={muted}
-              onSeeked={() => { if (video.current) timeline.current = Math.min(20, video.current.currentTime); lastTick.current = null; lastSent.current = -1; }}
+              onSeeked={() => {
+                if (audioSeek.current) { audioSeek.current = false; return; }
+                if (video.current) timeline.current = Math.min(20, video.current.currentTime);
+                lastTick.current = null; lastSent.current = -1;
+              }}
               onCanPlay={() => { clearWaiting(); mediaReady.current = Boolean(video.current && video.current.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA); if (clockStarted.current) playSound(); else startWhenReady(); }}
               onCanPlayThrough={() => { mediaReady.current = true; clearWaiting(); startWhenReady(); }}
               onEnded={() => finish()} onError={() => finish(false)}

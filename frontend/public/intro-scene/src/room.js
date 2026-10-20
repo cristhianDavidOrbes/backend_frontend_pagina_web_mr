@@ -1,6 +1,7 @@
 import * as THREE from '../assets/vendor/three.module.js';
 import { exitRoute } from './prop-motion.js';
 import { mergeGeometries } from '../assets/vendor/utils/BufferGeometryUtils.js';
+import { DOOR_MOUNT } from './door-motion.js';
 
 // The physical room remains present throughout the film, including the
 // broken wall pieces after the car's departure. Animation is seekable.
@@ -66,18 +67,36 @@ export function createRoom(scene, { extendedFloor = false } = {}) {
   const sideWallCenter = (sideWallFront + sideWallBack) / 2;
   // Real aperture: no opaque backing is left behind the breakable panel.
   // The lower 2.3 m of this section is tiled with eighteen plaster shards.
-  box(7.25, 6.6, 0.2, cream, -3.375, 1.7, -4.3);
+  const doorTop = floorY + DOOR_MOUNT.height;
+  box(7.25, 6.6, .2, cream, -3.375, 1.7, -4.3);
   box(4.25, 6.6, 0.2, cream, 4.875, 1.7, -4.3);
   box(2.5, 4.25, 0.2, cream, 1.5, 2.875, -4.3);
   const leftWall = box(0.2, 6.6, sideWallDepth, sage, -6.55, 1.7, sideWallCenter);
   leftWall.name = 'room-left-wall';
-  const rightWall = box(0.2, 6.6, sideWallDepth, sage, 6.55, 1.7, sideWallCenter);
+  // The book-door belongs to the side wall, not the back wall. Merge the
+  // jambs and lintel into one mesh so the real opening costs no extra draws.
+  const doorBack = DOOR_MOUNT.z - DOOR_MOUNT.width / 2;
+  const doorFront = DOOR_MOUNT.z + DOOR_MOUNT.width / 2;
+  function sideSegments(width, height, centerY, withLintel = false) {
+    const parts = [
+      new THREE.BoxGeometry(width, height, doorBack - sideWallBack).translate(0, 0, (sideWallBack + doorBack) / 2 - sideWallCenter),
+      new THREE.BoxGeometry(width, height, sideWallFront - doorFront).translate(0, 0, (sideWallFront + doorFront) / 2 - sideWallCenter),
+    ];
+    if (withLintel) parts.push(new THREE.BoxGeometry(width, 5 - doorTop, DOOR_MOUNT.width).translate(0, (5 + doorTop) / 2 - centerY, DOOR_MOUNT.z - sideWallCenter));
+    const merged = mergeGeometries(parts, false);
+    parts.forEach(part => part.dispose());
+    return merged;
+  }
+  const rightWall = mesh(sideSegments(.2, 6.6, 1.7, true), sage, 6.55, 1.7, sideWallCenter);
   rightWall.name = 'room-right-wall';
-  box(7.2, 0.18, 0.12, porcelain, -3.35, floorY + 0.11, -4.12);
+  // Reveal the side-wall opening only as the closed door arrives.
+  const doorInfill = box(.2, DOOR_MOUNT.height, DOOR_MOUNT.width, sage, 6.55, floorY + DOOR_MOUNT.height / 2, DOOR_MOUNT.z);
+  doorInfill.name = 'room-door-infill';
+  box(7.2, .18, .12, porcelain, -3.35, floorY + .11, -4.12);
   box(4.2, 0.18, 0.12, porcelain, 4.85, floorY + 0.11, -4.12);
   const leftSkirting = box(0.12, 0.18, sideWallDepth, porcelain, -6.4, floorY + 0.11, sideWallCenter);
   leftSkirting.name = 'room-left-skirting';
-  const rightSkirting = box(0.12, 0.18, sideWallDepth, porcelain, 6.4, floorY + 0.11, sideWallCenter);
+  const rightSkirting = mesh(sideSegments(.12, .18, floorY + .11), porcelain, 6.4, floorY + .11, sideWallCenter);
   rightSkirting.name = 'room-right-skirting';
 
   const garden = material('#8c9b74');
@@ -319,8 +338,12 @@ export function createRoom(scene, { extendedFloor = false } = {}) {
     floorY,
     group: room,
     ready,
-    diagnostics: () => ({ chairBackUprights: 2, botanicalLeafSurfaces: 12, staticBatches, staticDrawCallsSaved, landscapeReady, landscapeLicense: 'CC0-1.0', rightWall: { id: rightWall.uuid, position: rightWall.position.toArray(), size: [rightWall.geometry.parameters.width, rightWall.geometry.parameters.height, rightWall.geometry.parameters.depth], visible: rightWall.visible, skirting: rightSkirting.visible } }),
+    diagnostics: () => ({ chairBackUprights: 2, botanicalLeafSurfaces: 12, staticBatches, staticDrawCallsSaved, landscapeReady, landscapeLicense: 'CC0-1.0', rightWall: { id: rightWall.uuid, position: rightWall.position.toArray(), size: [.2, 6.6, sideWallDepth], visible: rightWall.visible, skirting: rightSkirting.visible } }),
     update(t) {
+      const aperture = THREE.MathUtils.smoothstep(t, 5.4, 6.15);
+      doorInfill.scale.y = Math.max(.001, 1 - aperture);
+      doorInfill.position.y = doorTop - DOOR_MOUNT.height * doorInfill.scale.y / 2;
+      doorInfill.visible = aperture < 1;
       const p = THREE.MathUtils.clamp(t / 2.5, 0, 1);
       const eased = p * p * (3 - 2 * p);
       scan.position.z = 2.75 - eased * 5.2;
