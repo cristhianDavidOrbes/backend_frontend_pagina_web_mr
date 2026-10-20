@@ -1,7 +1,7 @@
 import * as THREE from '../assets/vendor/three.module.js';
 import { exitRoute } from './prop-motion.js';
 import { mergeGeometries } from '../assets/vendor/utils/BufferGeometryUtils.js';
-import { DOOR_MOUNT } from './door-motion.js';
+import { DOOR_MOUNT, doorPose } from './door-motion.js';
 
 // The physical room remains present throughout the film, including the
 // broken wall pieces after the car's departure. Animation is seekable.
@@ -98,6 +98,18 @@ export function createRoom(scene, { extendedFloor = false } = {}) {
   leftSkirting.name = 'room-left-skirting';
   const rightSkirting = mesh(sideSegments(.12, .18, floorY + .11), porcelain, 6.4, floorY + .11, sideWallCenter);
   rightSkirting.name = 'room-right-skirting';
+  // Fill the future threshold as well: no pre-cut notch during the book scene.
+  // Two shared-geometry halves retract towards the jambs as the door docks.
+  const doorSkirting = new THREE.Group();
+  doorSkirting.name = 'room-door-skirting-infill';
+  doorSkirting.position.set(6.4, floorY + .11, DOOR_MOUNT.z);
+  room.add(doorSkirting);
+  const skirtingHalf = new THREE.BoxGeometry(.12, .18, DOOR_MOUNT.width / 2);
+  const skirtingHalves = [-1, 1].map(side => {
+    const half = mesh(skirtingHalf, porcelain, 0, 0, side * DOOR_MOUNT.width / 4, doorSkirting);
+    half.userData.side = side;
+    return half;
+  });
 
   const garden = material('#8c9b74');
   const path = material('#b8b39d');
@@ -338,12 +350,17 @@ export function createRoom(scene, { extendedFloor = false } = {}) {
     floorY,
     group: room,
     ready,
-    diagnostics: () => ({ chairBackUprights: 2, botanicalLeafSurfaces: 12, staticBatches, staticDrawCallsSaved, landscapeReady, landscapeLicense: 'CC0-1.0', rightWall: { id: rightWall.uuid, position: rightWall.position.toArray(), size: [.2, 6.6, sideWallDepth], visible: rightWall.visible, skirting: rightSkirting.visible } }),
+    diagnostics: () => ({ chairBackUprights: 2, botanicalLeafSurfaces: 12, staticBatches, staticDrawCallsSaved, landscapeReady, landscapeLicense: 'CC0-1.0', rightWall: { id: rightWall.uuid, position: rightWall.position.toArray(), size: [.2, 6.6, sideWallDepth], visible: rightWall.visible, skirting: rightSkirting.visible }, doorOpening: { centerZ: DOOR_MOUNT.z, skirtingCenterZ: doorSkirting.position.z, skirtingVisible: doorSkirting.visible, skirtingGapWidth: DOOR_MOUNT.width * (1 - skirtingHalves[0].scale.z), wallInfillVisible: doorInfill.visible } }),
     update(t) {
-      const aperture = THREE.MathUtils.smoothstep(t, 5.4, 6.15);
+      const aperture = doorPose(t).aperture;
       doorInfill.scale.y = Math.max(.001, 1 - aperture);
       doorInfill.position.y = doorTop - DOOR_MOUNT.height * doorInfill.scale.y / 2;
       doorInfill.visible = aperture < 1;
+      doorSkirting.visible = aperture < 1;
+      for (const half of skirtingHalves) {
+        half.scale.z = Math.max(.001, 1 - aperture);
+        half.position.z = half.userData.side * DOOR_MOUNT.width * (1 + aperture) / 4;
+      }
       const p = THREE.MathUtils.clamp(t / 2.5, 0, 1);
       const eased = p * p * (3 - 2 * p);
       scan.position.z = 2.75 - eased * 5.2;

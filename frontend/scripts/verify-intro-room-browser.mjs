@@ -20,7 +20,7 @@ try{
     await page.goto(`${base}/intro-scene/index.html?site=1`);
     await page.waitForFunction(()=>window.__isRobotReady?.(),{timeout:60000});
     let wallId;
-    for(const time of [0,5.2,9.4,10.35,14.6,17,19.2,20,0]){
+    for(const time of [0,5.2,5.89,6.025,6.15,9.4,10.35,14.6,17,19.2,20,0]){
       const d=await page.evaluate(time=>{window.__renderAtTime(time);return {scene:window.__sceneDiagnostics(),continuity:window.__continuityDiagnostics()};},time);
       const wall=d.scene.room.rightWall;
       check(wall?.visible&&wall.skirting,`${label}: wall and skirting remain present at ${time}s`);
@@ -29,17 +29,34 @@ try{
       check(wall.position.every((v,i)=>Math.abs(v-[6.55,1.7,6.8][i])<1e-8)&&wall.size.every((v,i)=>Math.abs(v-[.2,6.6,22.4][i])<1e-8),`${label}: side extends past all camera positions`);
       check(d.scene.camera[0]<wall.position[0]-wall.size[0]/2,`${label}: camera remains on the room side of the wall`);
       check(d.continuity.performance.pixels<=d.continuity.performance.budget+width+height,`${label}: pixel budget is preserved, allowing canvas integer rounding`);
+      const opening=d.scene.room.doorOpening;
+      check(opening.centerZ===opening.skirtingCenterZ,`${label}: door and marked skirting opening share one center`);
+      if(time<5.9)check(opening.skirtingVisible&&opening.skirtingGapWidth===0&&opening.wallInfillVisible,`${label}: wall and skirting stay complete before docking`);
+      else if(time<6.15)check(opening.skirtingVisible&&opening.skirtingGapWidth>0&&opening.skirtingGapWidth<1.1,`${label}: skirting opens only while door is docking`);
+      else check(!opening.skirtingVisible&&!opening.wallInfillVisible,`${label}: installed door replaces the infill without skirting across its threshold`);
       if(time===0||time===14.6||time===10.35)await page.screenshot({path:path.join(output,`${label}-${time}.png`)});
     }
     const geometry=await page.evaluate(async()=>{
       const THREE=await import('/intro-scene/assets/vendor/three.module.js');
       const {createRoom}=await import('/intro-scene/src/room.js');
       const {exitRoute}=await import('/intro-scene/src/prop-motion.js');
+      const {DOOR_MOUNT}=await import('/intro-scene/src/door-motion.js');
       const scene=new THREE.Scene(),room=createRoom(scene,{extendedFloor:true});
       await room.ready;scene.updateMatrixWorld(true);
       const wall=room.group.getObjectByName('room-right-wall');
       const leftWall=room.group.getObjectByName('room-left-wall');
       const skirting=room.group.getObjectByName('room-right-skirting');
+      const doorSkirting=room.group.getObjectByName('room-door-skirting-infill');
+      const trimCoverage=[];
+      for(const t of [0,5.89,6.025,6.15,0]) {
+        room.update(t);scene.updateMatrixWorld(true);
+        const targets=[skirting,...(doorSkirting.visible?doorSkirting.children:[])];
+        const covered=Array.from({length:21},(_,i)=>{
+          const z=DOOR_MOUNT.z+DOOR_MOUNT.width*(i/20-.5)*.98;
+          return new THREE.Raycaster(new THREE.Vector3(6,room.floorY+.11,z),new THREE.Vector3(1,0,0)).intersectObjects(targets).length>0;
+        }).filter(Boolean).length;
+        trimCoverage.push({t,covered,centerZ:doorSkirting.position.z});
+      }
       const roadBox=new THREE.Box3().setFromObject(room.group.getObjectByName('car-route-right-hand-bend'));
       const hit=new THREE.Raycaster(new THREE.Vector3(3,3,0),new THREE.Vector3(1,0,0)).intersectObject(wall)[0];
       const wallBox=new THREE.Box3().setFromObject(wall),trimBox=new THREE.Box3().setFromObject(skirting);
@@ -51,7 +68,7 @@ try{
         ray.setFromCamera(new THREE.Vector2(x,y),camera);
         return ray.intersectObjects([leftWall,wall]).length>0;
       }));
-      return {hitX:hit?.point.x,wallMin:wallBox.min.toArray(),wallMax:wallBox.max.toArray(),roadMaxZ:roadBox.max.z,trimMaxX:trimBox.max.x,trimMaxZ:trimBox.max.z,leftSize:leftWall.geometry.parameters.depth,leftZ:leftWall.position.z,sideCoverage,count:room.group.children.filter(o=>o.name==='room-right-wall').length,fragments:room.group.children.filter(o=>o.name.startsWith('wall-fragment')).length,carClear};
+      return {trimCoverage,hitX:hit?.point.x,wallMin:wallBox.min.toArray(),wallMax:wallBox.max.toArray(),roadMaxZ:roadBox.max.z,trimMaxX:trimBox.max.x,trimMaxZ:trimBox.max.z,leftSize:leftWall.geometry.parameters.depth,leftZ:leftWall.position.z,sideCoverage,count:room.group.children.filter(o=>o.name==='room-right-wall').length,fragments:room.group.children.filter(o=>o.name.startsWith('wall-fragment')).length,carClear};
     });
     check(Math.abs(geometry.hitX-6.45)<1e-6,`${label}: solid wall blocks the former open right-side view`);
     check(geometry.wallMin[2]<-4.3&&geometry.wallMin[1]<-1.55&&geometry.wallMax[2]>13.8,`${label}: joins back wall and extends beyond the furthest camera`);
@@ -61,6 +78,8 @@ try{
     check(geometry.fragments===18,`${label}: original breakable car exit stays intact`);
     check(geometry.carClear,`${label}: the car turns right outside, without crossing the new side wall`);
     check(geometry.roadMaxZ<=-4.4+1e-6,`${label}: road stays entirely outside the back wall, never over the interior floor`);
+    check(geometry.trimCoverage[0].covered===21&&geometry.trimCoverage[1].covered===21&&geometry.trimCoverage[4].covered===21,`${label}: real geometry closes the full marked skirting gap, including after rewind`);
+    check(geometry.trimCoverage[2].covered>0&&geometry.trimCoverage[2].covered<21&&geometry.trimCoverage[3].covered===0,`${label}: threshold opens progressively only during final docking`);
     await context.close();
   }
   check(errors.length===0,`No browser errors: ${errors.join('; ')}`);
